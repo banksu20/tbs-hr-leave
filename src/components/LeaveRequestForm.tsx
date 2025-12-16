@@ -21,6 +21,7 @@ const WEBHOOK_URL = "https://thirstless-ostensively-maryam.ngrok-free.dev/webhoo
 interface FormData {
   userName: string;
   userId: string;
+  department: string;
   leaveType: string;
   startDateTime: string;
   endDateTime: string;
@@ -35,6 +36,7 @@ const LeaveRequestForm = () => {
   const [formData, setFormData] = useState<FormData>({
     userName: "",
     userId: "",
+    department: "",
     leaveType: "",
     startDateTime: "",
     endDateTime: "",
@@ -71,7 +73,7 @@ const LeaveRequestForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.leaveType || !formData.startDateTime || !formData.endDateTime || !formData.reason) {
+    if (!formData.department || !formData.leaveType || !formData.startDateTime || !formData.endDateTime || !formData.reason) {
       Swal.fire({
         icon: "warning",
         title: "Incomplete Form",
@@ -103,6 +105,7 @@ const LeaveRequestForm = () => {
         body: JSON.stringify({
           userName: formData.userName,
           userId: formData.userId,
+          department: formData.department,
           leaveType: formData.leaveType,
           startDateTime: formData.startDateTime,
           endDateTime: formData.endDateTime,
@@ -188,6 +191,31 @@ const LeaveRequestForm = () => {
                   readOnly
                   className="bg-muted/50"
                 />
+              </div>
+
+              {/* Department */}
+              <div className="space-y-2">
+                <Label htmlFor="department" className="flex items-center gap-2 text-muted-foreground">
+                  <FileText className="h-4 w-4" />
+                  Department *
+                </Label>
+                <Select
+                  value={formData.department}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, department: value }))
+                  }
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="IT">IT</SelectItem>
+                    <SelectItem value="HR">HR</SelectItem>
+                    <SelectItem value="Sales">Sales</SelectItem>
+                    <SelectItem value="Accounting">Accounting</SelectItem>
+                    <SelectItem value="Marketing">Marketing</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Leave Type */}
