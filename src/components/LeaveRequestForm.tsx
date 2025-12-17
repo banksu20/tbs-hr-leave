@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Calendar, User, FileText } from "lucide-react";
 
 const LIFF_ID = "2008617589-89gR1Y3Y";
-const WEBHOOK_URL = "https://thirstless-ostensively-maryam.ngrok-free.dev/webhook/submit-leave";
+const WEBHOOK_URL = "https://thirstless-ostensively-maryam.ngrok-free.dev/webhook-test/submit-leave";
 
 interface FormData {
   userName: string;
