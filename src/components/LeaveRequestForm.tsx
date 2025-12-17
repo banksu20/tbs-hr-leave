@@ -282,7 +282,6 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                   <SelectContent>
                     <SelectItem value="sick">Sick Leave</SelectItem>
                     <SelectItem value="vacation">Vacation Leave</SelectItem>
-                    <SelectItem value="personal">Personal Leave</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
