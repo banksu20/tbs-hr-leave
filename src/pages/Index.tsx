@@ -1,35 +1,39 @@
-import { useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import Dashboard from "@/components/Dashboard"; // ตรวจสอบว่า path นี้ถูกต้อง (ถ้าหาไม่เจอให้ลอง ../components/Dashboard)
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Dashboard from "@/components/Dashboard";
 
 const Index = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   
-  // ดึงค่า type จาก URL (เช่น ?type=sick)
-  const type = searchParams.get("type");
+  // 🚀 เช็ค URL ทันทีตั้งแต่เริ่ม (เร็วกว่าใช้ useSearchParams)
+  const params = new URLSearchParams(window.location.search);
+  const type = params.get("type");
+  const action = params.get("action");
+
+  // ถ้ามี "type" (เช่น type=sick) แสดงว่าต้องย้ายหน้า -> ให้ซ่อน Dashboard ไว้ก่อน (false)
+  // ถ้าไม่มี "type" (หรือเป็น action=holidays) -> ให้โชว์ Dashboard ได้เลย (true)
+  const [showDashboard, setShowDashboard] = useState(!type);
 
   useEffect(() => {
-    // ถ้ามี 'type' ติดมา แสดงว่าตั้งใจจะไปหน้าลา
     if (type) {
-      console.log("Redirecting to Leave Request:", type);
-      // สั่งย้ายหน้าทันที (replace: true จะช่วยไม่ให้กด back แล้ววนกลับมา)
+      // ⚡ ถ้ามี type ให้ดีดไปหน้า leave-request ทันที
       navigate(`/leave-request?type=${type}`, { replace: true });
+    } else {
+      // ถ้าไม่มี type (เช่น เข้าหน้าแรกเฉยๆ หรือกดดูวันหยุด) ให้โชว์ Dashboard
+      setShowDashboard(true);
     }
   }, [type, navigate]);
 
-  // 🔴 จุดสำคัญ: ถ้ามี type ติดมา "ห้าม" return Dashboard เด็ดขาด
-  // ให้ return เป็น div ว่างๆ หรือ Loading แทน
-  if (type) {
+  // 🙈 ถ้ายังไม่ให้โชว์ Dashboard (กำลังย้ายหน้า) ให้ขึ้นจอสีเขียวรอไว้
+  if (!showDashboard) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        {/* ใส่ Loading Spin หรือปล่อยว่างไว้ก็ได้ */}
-        <div className="text-gray-400">Loading...</div> 
+      <div className="min-h-screen bg-[#06C755] flex items-center justify-center">
+         {/* ไม่ต้องใส่ text ก็ได้ หรือใส่ Loading เล็กๆ */}
       </div>
     );
   }
 
-  // ✅ ถ้าไม่มี type (เข้าหน้าแรกปกติ) ถึงจะโชว์ Dashboard
+  // ✅ ถ้าตรวจสอบแล้วว่าให้อยู่หน้านี้ได้ ก็โชว์ Dashboard
   return <Dashboard />;
 };
 
