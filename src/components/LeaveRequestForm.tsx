@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import liff from "@line/liff";
 import Swal from "sweetalert2";
 import { Button } from "@/components/ui/button";
@@ -12,8 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Calendar, User, FileText } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, Calendar, User, FileText, ArrowLeft } from "lucide-react";
 
 const LIFF_ID = "2008617589-89gR1Y3Y";
 const WEBHOOK_URL = "https://thirstless-ostensively-maryam.ngrok-free.dev/webhook/submit-leave";
@@ -29,6 +30,10 @@ interface FormData {
 }
 
 const LeaveRequestForm = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const preselectedType = searchParams.get("type") || "";
+  
   const [isLiffInitialized, setIsLiffInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,7 +42,7 @@ const LeaveRequestForm = () => {
     userName: "",
     userId: "",
     department: "",
-    leaveType: "",
+    leaveType: preselectedType,
     startDateTime: "",
     endDateTime: "",
     reason: "",
@@ -193,9 +198,19 @@ const LeaveRequestForm = () => {
   return (
     <div className="min-h-screen bg-[#06C755]">
       {/* Header */}
-      <div className="bg-[#06C755] text-white py-6 px-4 text-center">
-        <h1 className="text-2xl font-bold">Leave Request</h1>
-        <p className="text-sm opacity-90 mt-1">Submit your leave application</p>
+      <div className="bg-[#06C755] text-white py-6 px-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/")}
+            className="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold">Leave Request</h1>
+            <p className="text-sm opacity-90">Submit your leave application</p>
+          </div>
+        </div>
       </div>
 
       {/* Form Card */}

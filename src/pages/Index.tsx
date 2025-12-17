@@ -1,7 +1,7 @@
-import LeaveRequestForm from "@/components/LeaveRequestForm";
+import Dashboard from "@/components/Dashboard";
 
 const Index = () => {
-  return <LeaveRequestForm />;
+  return <Dashboard />;
 };
 
 export default Index;
