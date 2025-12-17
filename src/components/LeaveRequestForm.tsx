@@ -114,19 +114,43 @@ const LeaveRequestForm = () => {
         }),
       });
 
+      const result = await response.json();
+
+      // Check if response is not ok (e.g., status 400) or if response body contains error status
+      if (!response.ok || result.status === "error") {
+        await Swal.fire({
+          icon: "error",
+          title: "Submission Failed",
+          text: result.message || "An error occurred. Please try again.",
+          confirmButtonColor: "#06C755",
+        });
+        return;
+      }
+
+      // Success case
       await Swal.fire({
         icon: "success",
         title: "Request Submitted!",
-        text: "Your leave request has been sent successfully.",
+        text: result.message || "Your leave request has been sent successfully.",
         confirmButtonColor: "#06C755",
       });
+
+      // Reset form fields (keep userName and userId from LINE profile)
+      setFormData((prev) => ({
+        ...prev,
+        department: "",
+        leaveType: "",
+        startDateTime: "",
+        endDateTime: "",
+        reason: "",
+      }));
 
       if (liff.isInClient()) {
         liff.closeWindow();
       }
     } catch (err) {
       console.error("Submission failed:", err);
-      Swal.fire({
+      await Swal.fire({
         icon: "error",
         title: "Submission Failed",
         text: "Failed to submit your request. Please try again.",
