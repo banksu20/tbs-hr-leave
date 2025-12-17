@@ -186,6 +186,7 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
         text: err.message || "Failed to submit your request.",
         confirmButtonColor: "#06C755",
       });
+      navigate("/")
     } finally {
       setIsSubmitting(false);
     }
