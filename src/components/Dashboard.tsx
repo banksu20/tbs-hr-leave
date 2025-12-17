@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Card, CardContent } from "@/components/ui/card";
 import { Thermometer, Palmtree, CalendarCheck, CalendarDays } from "lucide-react";
@@ -7,14 +7,25 @@ import HolidaysModal from "./HolidaysModal";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  // 1. ✅ เพิ่มตัวดึงค่าจาก URL
+  const [searchParams] = useSearchParams();
   const [showHolidaysModal, setShowHolidaysModal] = useState(false);
+
+  // 2. ✅ เพิ่ม useEffect เพื่อเช็คว่าต้องเปิด Modal อัตโนมัติไหม
+  useEffect(() => {
+    const action = searchParams.get("action");
+    if (action === "holidays") {
+      setShowHolidaysModal(true);
+    }
+  }, [searchParams]);
 
   const handleSickLeave = () => {
     navigate("/leave-request?type=sick");
   };
 
   const handleVacationLeave = () => {
-    navigate("/leave-request?type=annual");
+    // 3. ✅ แก้เป็น type=vacation ให้ตรงกับ Logic ในหน้าฟอร์ม
+    navigate("/leave-request?type=vacation");
   };
 
   const handleCheckQuota = () => {
@@ -72,7 +83,7 @@ const Dashboard = () => {
 
       {/* Menu Grid */}
       <div className="px-4 pb-6 -mt-2">
-        <Card className="rounded-t-3xl shadow-lg">
+        <Card className="rounded-t-3xl shadow-lg border-none">
           <CardContent className="pt-8 pb-6">
             <div className="grid grid-cols-2 gap-4">
               {menuItems.map((item, index) => (
