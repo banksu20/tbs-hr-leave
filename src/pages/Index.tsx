@@ -1,39 +1,37 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Dashboard from "@/components/Dashboard";
+import { Loader2 } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
-  
-  // 🚀 เช็ค URL ทันทีตั้งแต่เริ่ม (เร็วกว่าใช้ useSearchParams)
-  const params = new URLSearchParams(window.location.search);
-  const type = params.get("type");
-  const action = params.get("action");
 
-  // ถ้ามี "type" (เช่น type=sick) แสดงว่าต้องย้ายหน้า -> ให้ซ่อน Dashboard ไว้ก่อน (false)
-  // ถ้าไม่มี "type" (หรือเป็น action=holidays) -> ให้โชว์ Dashboard ได้เลย (true)
-  const [showDashboard, setShowDashboard] = useState(!type);
+  // 🔥 1. เช็คจาก URL ของ Browser โดยตรง (ทำงานทันที เร็วกว่า State)
+  const params = new URLSearchParams(window.location.search);
+  const type = params.get("type"); // เช่น sick, vacation
+
+  // ตัวแปรเช็คสถานะ: ถ้ามี type แปลว่า "กำลังจะย้ายห้อง" (ห้ามโชว์ Dashboard)
+  const isRedirecting = !!type; 
 
   useEffect(() => {
-    if (type) {
-      // ⚡ ถ้ามี type ให้ดีดไปหน้า leave-request ทันที
+    if (isRedirecting) {
+      console.log("Redirecting to:", type);
+      // สั่งย้ายไปหน้า Leave Request ทันที
       navigate(`/leave-request?type=${type}`, { replace: true });
-    } else {
-      // ถ้าไม่มี type (เช่น เข้าหน้าแรกเฉยๆ หรือกดดูวันหยุด) ให้โชว์ Dashboard
-      setShowDashboard(true);
     }
-  }, [type, navigate]);
+  }, [isRedirecting, type, navigate]);
 
-  // 🙈 ถ้ายังไม่ให้โชว์ Dashboard (กำลังย้ายหน้า) ให้ขึ้นจอสีเขียวรอไว้
-  if (!showDashboard) {
+  // 🛑 2. จุดสำคัญที่สุด: ถ้ากำลังจะย้ายห้อง ให้ Return จอโหลดทันที (ห้ามไปบรรทัดล่าง)
+  if (isRedirecting) {
     return (
       <div className="min-h-screen bg-[#06C755] flex items-center justify-center">
-         {/* ไม่ต้องใส่ text ก็ได้ หรือใส่ Loading เล็กๆ */}
+        {/* ใส่ Spinner สีขาวหมุนๆ ให้รู้ว่ากำลังทำงาน */}
+        <Loader2 className="h-12 w-12 text-white animate-spin" />
       </div>
     );
   }
 
-  // ✅ ถ้าตรวจสอบแล้วว่าให้อยู่หน้านี้ได้ ก็โชว์ Dashboard
+  // ✅ 3. ถ้าไม่มี type (คนเข้าหน้าแรกปกติ) ถึงจะยอมให้โชว์ Dashboard
   return <Dashboard />;
 };
 
