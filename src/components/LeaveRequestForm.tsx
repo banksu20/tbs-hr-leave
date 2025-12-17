@@ -263,10 +263,8 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                   <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="IT">IT</SelectItem>
-                    <SelectItem value="HR">HR</SelectItem>
-                    <SelectItem value="Sales">Sales</SelectItem>
-                    <SelectItem value="Marketing">Marketing</SelectItem>
-                    <SelectItem value="Accounting">Accounting</SelectItem>
+                    <SelectItem value="SEO">SEO</SelectItem>
+                    <SelectItem value="Contnet">Content</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
