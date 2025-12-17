@@ -1,36 +1,39 @@
+import { useState, useEffect } from "react";
+// ✅ 1. เพิ่ม Navigate เข้ามาใน import
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import liff from "@line/liff";
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useState, useEffect } from "react";
-import liff from "@line/liff"; 
+
 import Index from "./pages/Index";
 import LeaveRequest from "./pages/LeaveRequest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+const LIFF_ID = "2008617589-89gR1Y3Y";
 
 const App = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [leaveType, setLeaveType] = useState<string>("");
+
+  // ✅ 2. เช็ค URL ทันทีตั้งแต่บรรทัดแรก (ไม่ต้องรอ useEffect)
+  // เพื่อดูว่า user กดมาจากปุ่มลาป่วย/ลาพักร้อน หรือไม่
+  const params = new URLSearchParams(window.location.search);
+  const typeFromUrl = params.get("type"); // จะได้ค่า 'sick', 'vacation' หรือ null
 
   useEffect(() => {
     const initializeLiff = async () => {
       try {
-        // ใส่ LIFF ID ของคุณตรงนี้
-        await liff.init({ liffId: "2008617589-89gR1Y3Y" });
-
+        await liff.init({ liffId: LIFF_ID });
+        
         if (liff.isLoggedIn()) {
           const profile = await liff.getProfile();
           setUserProfile(profile);
           console.log("LIFF Profile:", profile);
-        }
-
-        const params = new URLSearchParams(window.location.search);
-        const typeParam = params.get("type");
-        if (typeParam) {
-          setLeaveType(typeParam);
+        } else {
+          // liff.login(); // เปิดไว้ถ้าต้องการบังคับ Login
         }
       } catch (error) {
         console.error("LIFF Init Error:", error);
@@ -46,17 +49,32 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
+            {/* ✅ 3. จุดตัดสินใจสำคัญ (Traffic Controller) */}
+            <Route 
+              path="/" 
+              element={
+                // ถ้ามี type ติดมาใน URL -> ให้กระโดดไปหน้า /leave-request ทันที (ห้ามโหลด Index)
+                typeFromUrl ? (
+                  <Navigate to={`/leave-request?type=${typeFromUrl}`} replace />
+                ) : (
+                  // ถ้าไม่มี -> ค่อยโหลดหน้า Dashboard (Index)
+                  <Index />
+                )
+              } 
+            />
+
+            {/* หน้าฟอร์ม: รับค่า User และ Type ที่เตรียมไว้ */}
             <Route 
               path="/leave-request" 
               element={
                 <LeaveRequest 
                   userId={userProfile?.userId} 
                   userName={userProfile?.displayName}
-                  initialLeaveType={leaveType}
+                  initialLeaveType={typeFromUrl || ""}
                 />
               } 
             />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
