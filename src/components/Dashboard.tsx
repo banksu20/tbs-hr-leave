@@ -1,17 +1,43 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import liff from "@line/liff";
 import Swal from "sweetalert2";
 import { Card, CardContent } from "@/components/ui/card";
-import { Thermometer, Palmtree, CalendarCheck, CalendarDays } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Thermometer, Palmtree, CalendarCheck, CalendarDays, Calendar } from "lucide-react";
 import HolidaysModal from "./HolidaysModal";
+import { useLeaveQuota } from "@/hooks/useLeaveQuota";
+
+const LIFF_ID = "2008617589-89gR1Y3Y";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  // 1. ✅ เพิ่มตัวดึงค่าจาก URL
   const [searchParams] = useSearchParams();
   const [showHolidaysModal, setShowHolidaysModal] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>("");
 
-  // 2. ✅ เพิ่ม useEffect เพื่อเช็คว่าต้องเปิด Modal อัตโนมัติไหม
+  // ดึงข้อมูล Leave Quota
+  const { remainingDays, isLoading: isQuotaLoading } = useLeaveQuota(userId);
+
+  // Init LIFF เพื่อดึง userId
+  useEffect(() => {
+    const initLiff = async () => {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if (liff.isLoggedIn()) {
+          const profile = await liff.getProfile();
+          setUserId(profile.userId);
+          setUserName(profile.displayName);
+        }
+      } catch (err) {
+        console.error("LIFF init failed:", err);
+      }
+    };
+    initLiff();
+  }, []);
+
+  // เช็คว่าต้องเปิด Modal อัตโนมัติไหม
   useEffect(() => {
     const action = searchParams.get("action");
     if (action === "holidays") {
@@ -73,12 +99,36 @@ const Dashboard = () => {
     },
   ];
 
+  // กำหนดสีตามจำนวนวันลาคงเหลือ
+  const getQuotaColor = () => {
+    if (remainingDays === null) return "bg-muted text-muted-foreground";
+    if (remainingDays < 3) return "bg-destructive/10 text-destructive";
+    return "bg-emerald-100 text-emerald-700";
+  };
+
   return (
     <div className="min-h-screen bg-[#06C755]">
       {/* Header */}
-      <div className="bg-[#06C755] text-white py-8 px-4 text-center">
-        <h1 className="text-2xl font-bold">Employee Self-Service</h1>
-        <p className="text-sm opacity-90 mt-1">ระบบบริการพนักงาน</p>
+      <div className="bg-[#06C755] text-white py-6 px-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Employee Self-Service</h1>
+            <p className="text-sm opacity-90 mt-1">
+              {userName ? `สวัสดี, ${userName}` : "ระบบบริการพนักงาน"}
+            </p>
+          </div>
+          {/* Leave Quota Badge */}
+          <div className={`px-3 py-2 rounded-xl ${getQuotaColor()} flex items-center gap-2`}>
+            <Calendar className="h-4 w-4" />
+            {isQuotaLoading ? (
+              <Skeleton className="h-4 w-12" />
+            ) : remainingDays !== null ? (
+              <span className="text-sm font-semibold">{remainingDays} วัน</span>
+            ) : (
+              <span className="text-sm">-</span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Menu Grid */}

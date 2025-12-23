@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import liff from "@line/liff";
 import Swal from "sweetalert2";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -14,7 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Calendar, User, FileText, ArrowLeft } from "lucide-react";
+import { Loader2, Calendar, User, FileText, ArrowLeft, AlertTriangle } from "lucide-react";
+import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 
 // ค่า Config
 const LIFF_ID = "2008617589-89gR1Y3Y";
@@ -46,9 +48,12 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
   const defaultType = initialLeaveType || typeFromUrl;
 
   // State
-  // ถ้ามี userId ส่งมาแล้ว ให้ isLoading เป็น false เลย (แสดงผลทันที)
   const [isLoading, setIsLoading] = useState(!userId); 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(userId || "");
+
+  // ดึงข้อมูล Leave Quota
+  const { remainingDays, isLoading: isQuotaLoading } = useLeaveQuota(currentUserId || null);
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
@@ -61,10 +66,24 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
     reason: "",
   });
 
+  // คำนวณจำนวนวันลา
+  const requestedDays = useMemo(() => {
+    if (!formData.startDateTime || !formData.endDateTime) return 0;
+    const start = new Date(formData.startDateTime);
+    const end = new Date(formData.endDateTime);
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(diffDays, 1); // อย่างน้อย 1 วัน
+  }, [formData.startDateTime, formData.endDateTime]);
+
+  // เช็คว่าเกินโควต้าหรือไม่
+  const isOverQuota = remainingDays !== null && requestedDays > remainingDays;
+
   // Effect 1: อัปเดตฟอร์มเมื่อได้รับค่าจาก Props (App.tsx)
   useEffect(() => {
     if (userId || userName || initialLeaveType) {
       console.log("Props received:", { userId, userName, initialLeaveType });
+      if (userId) setCurrentUserId(userId);
       setFormData((prev) => ({
         ...prev,
         userId: userId || prev.userId,
@@ -73,7 +92,7 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                    initialLeaveType === "vacation" ? "vacation" : 
                    prev.leaveType,
       }));
-      setIsLoading(false); // ปิด Loading
+      setIsLoading(false);
     }
   }, [userId, userName, initialLeaveType]);
 
@@ -87,6 +106,7 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
         await liff.init({ liffId: LIFF_ID });
         if (liff.isLoggedIn()) {
           const profile = await liff.getProfile();
+          setCurrentUserId(profile.userId);
           setFormData((prev) => ({
             ...prev,
             userName: profile.displayName,
@@ -323,11 +343,44 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                 />
               </div>
 
+              {/* Leave Quota Info */}
+              <div className={`p-4 rounded-xl border ${isOverQuota ? "bg-destructive/10 border-destructive/30" : "bg-muted/50 border-border"}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">วันลาคงเหลือ:</span>
+                  </div>
+                  {isQuotaLoading ? (
+                    <Skeleton className="h-5 w-16" />
+                  ) : remainingDays !== null ? (
+                    <span className={`font-bold ${remainingDays < 3 ? "text-destructive" : "text-foreground"}`}>
+                      {remainingDays} วัน
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </div>
+                {requestedDays > 0 && (
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+                    <span className="text-sm text-muted-foreground">จำนวนวันที่ขอลา:</span>
+                    <span className={`font-bold ${isOverQuota ? "text-destructive" : "text-foreground"}`}>
+                      {requestedDays} วัน
+                    </span>
+                  </div>
+                )}
+                {isOverQuota && (
+                  <div className="flex items-center gap-2 mt-3 text-destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="text-sm font-medium">จำนวนวันที่ขอเกินโควต้าที่เหลือ</span>
+                  </div>
+                )}
+              </div>
+
               {/* Submit */}
               <Button
                 type="submit"
-                disabled={isSubmitting}
-                className="w-full h-12 text-lg font-semibold bg-[#06C755] hover:bg-[#05a647] text-white rounded-xl shadow-md"
+                disabled={isSubmitting || isOverQuota}
+                className="w-full h-12 text-lg font-semibold bg-[#06C755] hover:bg-[#05a647] text-white rounded-xl shadow-md disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</>
