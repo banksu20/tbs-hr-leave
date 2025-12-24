@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import liff from "@line/liff";
 import Swal from "sweetalert2";
+import { format } from "date-fns";
+import { th } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,7 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Calendar, User, FileText, ArrowLeft, AlertTriangle } from "lucide-react";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Loader2, Calendar as CalendarIcon, User, FileText, ArrowLeft, AlertTriangle } from "lucide-react";
 import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 
 // ค่า Config
@@ -34,8 +37,6 @@ interface FormData {
   userId: string;
   department: string;
   leaveType: string;
-  startDateTime: string;
-  endDateTime: string;
   reason: string;
 }
 
@@ -67,23 +68,26 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
     userId: userId || "",
     department: localStorage.getItem("userDepartment") || "",
     leaveType: defaultType === "sick" ? "sick" : defaultType === "vacation" ? "vacation" : "",
-    startDateTime: "",
-    endDateTime: "",
     reason: "",
   });
 
-  // คำนวณจำนวนวันลา (Inclusive: นับทั้งวันเริ่มและวันสิ้นสุด)
-  const requestedDays = useMemo(() => {
-    if (!formData.startDateTime || !formData.endDateTime) return 0;
-    const start = new Date(formData.startDateTime);
-    const end = new Date(formData.endDateTime);
-    // ตัดเวลาออก เอาแค่วันที่
-    const startDate = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-    const endDate = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-    const diffTime = endDate.getTime() - startDate.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 เพื่อให้เป็น Inclusive
-    return Math.max(diffDays, 1);
-  }, [formData.startDateTime, formData.endDateTime]);
+  // State สำหรับ Multi-select dates
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+
+  // คำนวณจำนวนวันลาจากวันที่เลือก
+  const requestedDays = selectedDates.length;
+
+  // หา Start Date และ End Date จากวันที่เลือก
+  const { startDateTime, endDateTime } = useMemo(() => {
+    if (selectedDates.length === 0) {
+      return { startDateTime: "", endDateTime: "" };
+    }
+    const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
+    return {
+      startDateTime: sortedDates[0].toISOString(),
+      endDateTime: sortedDates[sortedDates.length - 1].toISOString(),
+    };
+  }, [selectedDates]);
 
   // ใช้ค่า Default 10 วัน ถ้าไม่มีข้อมูลจาก API
   const displayRemainingDays = remainingDays ?? 10;
@@ -164,21 +168,11 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
     e.preventDefault();
 
     // Validation
-    if (!formData.department || !formData.leaveType || !formData.startDateTime || !formData.endDateTime || !formData.reason) {
+    if (!formData.department || !formData.leaveType || selectedDates.length === 0 || !formData.reason) {
       Swal.fire({
         icon: "warning",
         title: "Incomplete Form",
-        text: "Please fill in all required fields.",
-        confirmButtonColor: "#06C755",
-      });
-      return;
-    }
-
-    if (new Date(formData.endDateTime) < new Date(formData.startDateTime)) {
-      Swal.fire({
-        icon: "warning",
-        title: "Invalid Dates",
-        text: "End date must be after start date.",
+        text: "Please fill in all required fields and select at least one leave date.",
         confirmButtonColor: "#06C755",
       });
       return;
@@ -198,8 +192,10 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
           userId: formData.userId,
           department: formData.department,
           leaveType: formData.leaveType,
-          startDateTime: formData.startDateTime,
-          endDateTime: formData.endDateTime,
+          startDateTime: startDateTime,
+          endDateTime: endDateTime,
+          leaveDays: selectedDates.length,
+          selectedDates: selectedDates.map(d => format(d, "yyyy-MM-dd")),
           reason: formData.reason,
           submittedAt: new Date().toISOString(),
         }),
@@ -221,11 +217,9 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
       // Reset Form (แต่เก็บชื่อไว้)
       setFormData((prev) => ({
         ...prev,
-        department: "",
-        startDateTime: "",
-        endDateTime: "",
         reason: "",
       }));
+      setSelectedDates([]);
 
       if (liff.isInClient()) {
         liff.closeWindow();
@@ -344,27 +338,39 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                 </Select>
               </div>
 
-              {/* Dates */}
+              {/* Multi-select Calendar */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="h-4 w-4" /> Start Date *
+                  <CalendarIcon className="h-4 w-4" /> เลือกวันที่ต้องการลา *
                 </Label>
-                <Input
-                  type="datetime-local"
-                  value={formData.startDateTime}
-                  onChange={(e) => setFormData({ ...formData, startDateTime: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="h-4 w-4" /> End Date *
-                </Label>
-                <Input
-                  type="datetime-local"
-                  value={formData.endDateTime}
-                  onChange={(e) => setFormData({ ...formData, endDateTime: e.target.value })}
-                />
+                <div className="border rounded-xl p-3 bg-background">
+                  <CalendarComponent
+                    mode="multiple"
+                    selected={selectedDates}
+                    onSelect={(dates) => setSelectedDates(dates || [])}
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                    className="pointer-events-auto mx-auto"
+                    modifiersStyles={{
+                      selected: {
+                        backgroundColor: "#06C755",
+                        color: "white",
+                        borderRadius: "50%",
+                      },
+                    }}
+                  />
+                </div>
+                {/* แสดงสรุปวันที่เลือก */}
+                {selectedDates.length > 0 && (
+                  <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                    <p className="text-muted-foreground mb-1">คุณเลือกวันลาทั้งหมด: <span className="font-bold text-foreground">{selectedDates.length} วัน</span></p>
+                    <p className="text-xs text-muted-foreground">
+                      ({[...selectedDates]
+                        .sort((a, b) => a.getTime() - b.getTime())
+                        .map(d => format(d, "dd/MM/yyyy", { locale: th }))
+                        .join(", ")})
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Reason */}
@@ -384,7 +390,7 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
               <div className={`p-4 rounded-xl border ${isOverQuota ? "bg-destructive/10 border-destructive/30" : "bg-muted/50 border-border"}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
+                    <CalendarIcon className="h-5 w-5 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">วันลาคงเหลือ:</span>
                   </div>
                   {isQuotaLoading ? (
@@ -414,7 +420,7 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
               {/* Submit */}
               <Button
                 type="submit"
-                disabled={isSubmitting || isOverQuota}
+                disabled={isSubmitting || isOverQuota || selectedDates.length === 0}
                 className="w-full h-12 text-lg font-semibold bg-[#06C755] hover:bg-[#05a647] text-white rounded-xl shadow-md disabled:opacity-50"
               >
                 {isSubmitting ? (
