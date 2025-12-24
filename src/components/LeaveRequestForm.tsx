@@ -66,14 +66,17 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
     reason: "",
   });
 
-  // คำนวณจำนวนวันลา
+  // คำนวณจำนวนวันลา (Inclusive: นับทั้งวันเริ่มและวันสิ้นสุด)
   const requestedDays = useMemo(() => {
     if (!formData.startDateTime || !formData.endDateTime) return 0;
     const start = new Date(formData.startDateTime);
     const end = new Date(formData.endDateTime);
-    const diffTime = end.getTime() - start.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(diffDays, 1); // อย่างน้อย 1 วัน
+    // ตัดเวลาออก เอาแค่วันที่
+    const startDate = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const endDate = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    const diffTime = endDate.getTime() - startDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 เพื่อให้เป็น Inclusive
+    return Math.max(diffDays, 1);
   }, [formData.startDateTime, formData.endDateTime]);
 
   // เช็คว่าเกินโควต้าหรือไม่
