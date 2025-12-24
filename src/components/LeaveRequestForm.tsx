@@ -56,8 +56,11 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
   const { remainingDays, isLoading: isQuotaLoading } = useLeaveQuota(currentUserId || null);
   const [error, setError] = useState<string | null>(null);
 
+
+  const isDepartmentLocked = Boolean(defaultType);
   // ตรวจสอบว่าต้อง Lock Leave Type หรือไม่
   const isLeaveTypeLocked = Boolean(defaultType);
+
 
   const [formData, setFormData] = useState<FormData>({
     userName: userName || "",
@@ -295,8 +298,10 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                 <Select
                   value={formData.department}
                   onValueChange={handleDepartmentChange}
+                  disabled={isDepartmentLocked}
                 >
-                  <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+                  <SelectTrigger className={isDepartmentLocked ? "bg-muted/50" : ""}>
+                    <SelectValue placeholder="Select department" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="IT">IT</SelectItem>
                     <SelectItem value="SEO">SEO</SelectItem>

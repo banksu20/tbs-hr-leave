@@ -58,7 +58,7 @@ const Dashboard = () => {
     Swal.fire({
       icon: "info",
       title: "เช็ควันลา",
-      html: `<p style="font-size: 16px; line-height: 1.6;">หากต้องการตรวจสอบวันลาคงเหลือ<br/>กรุณาพิมพ์ <strong>'เช็ควันลา'</strong><br/>ในแชท LINE</p>`,
+      html: `<p style="font-size: 16px; line-height: 1.6;">หากต้องการตรวจสอบวันลาคงเหลือ<br/>กรุณาเลือก Menu <strong>'เช็ควันลา'</strong><br/>ในแชท LINE</p>`,
       confirmButtonText: "ตกลง",
       confirmButtonColor: "#06C755",
     });
@@ -112,9 +112,9 @@ const Dashboard = () => {
       <div className="bg-[#06C755] text-white py-6 px-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Employee Self-Service</h1>
+            <h1 className="text-2xl font-bold">TBS Leave Management System</h1>
             <p className="text-sm opacity-90 mt-1">
-              {userName ? `สวัสดี, ${userName}` : "ระบบบริการพนักงาน"}
+              {userName ? `สวัสดี, ${userName}` : "Leave Management System"}
             </p>
           </div>
           {/* Leave Quota Badge */}
