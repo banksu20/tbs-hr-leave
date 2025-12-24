@@ -71,8 +71,10 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
     reason: "",
   });
 
+
   // State สำหรับ Multi-select dates
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+
 
   // คำนวณจำนวนวันลาจากวันที่เลือก
   const requestedDays = selectedDates.length;
@@ -156,6 +158,29 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
 
     initializeLiff();
   }, [userId]);
+
+
+// ฟังก์ชันเมื่อมีการจิ้มเลือกวันที่
+  const handleDateSelect = (dates: Date[] | undefined) => {
+    const safeDates = dates || [];
+    setSelectedDates(safeDates);
+
+    if (safeDates.length > 0) {
+      // เรียงวันที่จากน้อยไปมาก
+      const sortedDates = [...safeDates].sort((a, b) => a.getTime() - b.getTime());
+      
+      setFormData((prev) => ({
+        ...prev,
+        startDateTime: sortedDates[0].toISOString(), // วันแรก
+        endDateTime: sortedDates[sortedDates.length - 1].toISOString(), // วันสุดท้าย
+        leaveDays: safeDates.length // ✅ ส่งจำนวนวันที่จิ้มจริงไปด้วย
+      }));
+    } else {
+      // กรณีเอาออกหมด
+      setFormData((prev) => ({ ...prev, startDateTime: "", endDateTime: "", leaveDays: 0 }));
+    }
+  };
+
 
   
   // Handle Department Change
@@ -343,11 +368,14 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                 <Label className="flex items-center gap-2 text-muted-foreground">
                   <CalendarIcon className="h-4 w-4" /> เลือกวันที่ต้องการลา *
                 </Label>
+                
                 <div className="border rounded-xl p-3 bg-background">
+                  {/* 👇 ใส่บรรทัดนี้เพื่อแก้เส้นแดง */}
+                  {/* @ts-ignore */}
                   <CalendarComponent
                     mode="multiple"
                     selected={selectedDates}
-                    onSelect={(dates) => setSelectedDates(dates || [])}
+                    onSelect={handleDateSelect} // ✅ เปลี่ยนมาใช้ฟังก์ชันที่เตรียมไว้
                     disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                     className="pointer-events-auto mx-auto"
                     modifiersStyles={{
@@ -359,14 +387,18 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                     }}
                   />
                 </div>
+
                 {/* แสดงสรุปวันที่เลือก */}
-                {selectedDates.length > 0 && (
+                {selectedDates && selectedDates.length > 0 && (
                   <div className="p-3 bg-muted/50 rounded-lg text-sm">
-                    <p className="text-muted-foreground mb-1">คุณเลือกวันลาทั้งหมด: <span className="font-bold text-foreground">{selectedDates.length} วัน</span></p>
+                    <p className="text-muted-foreground mb-1">
+                      คุณเลือกวันลาทั้งหมด: <span className="font-bold text-foreground">{selectedDates.length} วัน</span>
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       ({[...selectedDates]
                         .sort((a, b) => a.getTime() - b.getTime())
-                        .map(d => format(d, "dd/MM/yyyy", { locale: th }))
+                        // 👇 อย่าลืม import { th } from "date-fns/locale" ด้านบนด้วยนะครับ
+                        .map(d => format(d, "dd/MM/yyyy", { locale: th })) 
                         .join(", ")})
                     </p>
                   </div>
