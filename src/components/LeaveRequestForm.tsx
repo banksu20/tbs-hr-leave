@@ -56,15 +56,24 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
   const { remainingDays, isLoading: isQuotaLoading } = useLeaveQuota(currentUserId || null);
   const [error, setError] = useState<string | null>(null);
 
+  // ตรวจสอบว่าต้อง Lock Leave Type หรือไม่
+  const isLeaveTypeLocked = Boolean(defaultType);
+
   const [formData, setFormData] = useState<FormData>({
     userName: userName || "",
     userId: userId || "",
-    department: "",
+    department: localStorage.getItem("userDepartment") || "",
     leaveType: defaultType === "sick" ? "sick" : defaultType === "vacation" ? "vacation" : "",
     startDateTime: "",
     endDateTime: "",
     reason: "",
   });
+
+  // บันทึก Department ลง localStorage เมื่อมีการเปลี่ยนแปลง
+  const handleDepartmentChange = (val: string) => {
+    setFormData({ ...formData, department: val });
+    localStorage.setItem("userDepartment", val);
+  };
 
   // คำนวณจำนวนวันลา (Inclusive: นับทั้งวันเริ่มและวันสิ้นสุด)
   const requestedDays = useMemo(() => {
@@ -79,8 +88,11 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
     return Math.max(diffDays, 1);
   }, [formData.startDateTime, formData.endDateTime]);
 
+  // ใช้ค่า Default 10 วัน ถ้าไม่มีข้อมูลจาก API
+  const displayRemainingDays = remainingDays ?? 10;
+
   // เช็คว่าเกินโควต้าหรือไม่
-  const isOverQuota = remainingDays !== null && requestedDays > remainingDays;
+  const isOverQuota = requestedDays > displayRemainingDays;
 
   // Effect 1: อัปเดตฟอร์มเมื่อได้รับค่าจาก Props (App.tsx)
   useEffect(() => {
@@ -282,13 +294,13 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                 </Label>
                 <Select
                   value={formData.department}
-                  onValueChange={(val) => setFormData({ ...formData, department: val })}
+                  onValueChange={handleDepartmentChange}
                 >
                   <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="IT">IT</SelectItem>
                     <SelectItem value="SEO">SEO</SelectItem>
-                    <SelectItem value="Contnet">Content</SelectItem>
+                    <SelectItem value="Content">Content</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -301,8 +313,11 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                 <Select
                   value={formData.leaveType}
                   onValueChange={(val) => setFormData({ ...formData, leaveType: val })}
+                  disabled={isLeaveTypeLocked}
                 >
-                  <SelectTrigger><SelectValue placeholder="Select leave type" /></SelectTrigger>
+                  <SelectTrigger className={isLeaveTypeLocked ? "bg-muted/50" : ""}>
+                    <SelectValue placeholder="Select leave type" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="sick">Sick Leave</SelectItem>
                     <SelectItem value="vacation">Vacation Leave</SelectItem>
@@ -355,12 +370,10 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                   </div>
                   {isQuotaLoading ? (
                     <Skeleton className="h-5 w-16" />
-                  ) : remainingDays !== null ? (
-                    <span className={`font-bold ${remainingDays < 3 ? "text-destructive" : "text-foreground"}`}>
-                      {remainingDays} วัน
-                    </span>
                   ) : (
-                    <span className="text-muted-foreground">-</span>
+                    <span className={`font-bold ${displayRemainingDays < 3 ? "text-destructive" : "text-foreground"}`}>
+                      {displayRemainingDays} วัน
+                    </span>
                   )}
                 </div>
                 {requestedDays > 0 && (
