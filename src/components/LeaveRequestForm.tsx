@@ -56,8 +56,8 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
   const { remainingDays, isLoading: isQuotaLoading } = useLeaveQuota(currentUserId || null);
   const [error, setError] = useState<string | null>(null);
 
+  const [isDepartmentLocked, setIsDepartmentLocked] = useState(false);
 
-  const isDepartmentLocked = Boolean(defaultType);
   // ตรวจสอบว่าต้อง Lock Leave Type หรือไม่
   const isLeaveTypeLocked = Boolean(defaultType);
 
@@ -71,12 +71,6 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
     endDateTime: "",
     reason: "",
   });
-
-  // บันทึก Department ลง localStorage เมื่อมีการเปลี่ยนแปลง
-  const handleDepartmentChange = (val: string) => {
-    setFormData({ ...formData, department: val });
-    localStorage.setItem("userDepartment", val);
-  };
 
   // คำนวณจำนวนวันลา (Inclusive: นับทั้งวันเริ่มและวันสิ้นสุด)
   const requestedDays = useMemo(() => {
@@ -96,6 +90,20 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
 
   // เช็คว่าเกินโควต้าหรือไม่
   const isOverQuota = requestedDays > displayRemainingDays;
+
+ // userEffect: ตรวจสอบ localStorage สำหรับ Department
+  useEffect(() => {
+    const savedDepartment = localStorage.getItem("userDepartment");
+    if (savedDepartment){
+      setFormData((prev) => ({
+        ...prev, department: savedDepartment
+      }));
+      setIsDepartmentLocked(true);
+    }else{
+      setIsDepartmentLocked(false);
+    }
+  },[])
+
 
   // Effect 1: อัปเดตฟอร์มเมื่อได้รับค่าจาก Props (App.tsx)
   useEffect(() => {
@@ -145,6 +153,12 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
     initializeLiff();
   }, [userId]);
 
+  
+  // Handle Department Change
+    const handleDepartmentChange = (value: string) => {
+      setFormData((prev) => ({ ...prev, department: value }));
+      localStorage.setItem("userDepartment", value); // บันทึกไว้ ครั้งหน้ามาจะได้จำได้
+    };
   // Handle Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
