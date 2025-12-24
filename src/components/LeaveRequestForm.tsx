@@ -433,14 +433,14 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                     </span>
                   )}
                 </div>
-                {requestedDays > 0 && (
+                {/* {requestedDays > 0 && (
                   <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
                     <span className="text-sm text-muted-foreground">จำนวนวันที่ขอลา:</span>
                     <span className={`font-bold ${isOverQuota ? "text-destructive" : "text-foreground"}`}>
                       {requestedDays} วัน
                     </span>
                   </div>
-                )}
+                )} */}
                 {isOverQuota && (
                   <div className="flex items-center gap-2 mt-3 text-destructive">
                     <AlertTriangle className="h-4 w-4" />
