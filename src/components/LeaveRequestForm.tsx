@@ -160,7 +160,29 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
   }, [userId]);
 
 
-
+  // ✅ Effect 3: Auto-Reset (ฉบับแก้ไข: ลบเฉพาะคนที่ถูกจำค่าไว้ แต่หาไม่เจอใน Sheet)
+  useEffect(() => {
+    // เงื่อนไข:
+    // 1. โหลดข้อมูลเสร็จแล้ว (!isQuotaLoading)
+    // 2. ไม่เจอข้อมูลวันลา (แสดงว่าไม่มีชื่อใน Sheet)
+    // 3. **สำคัญ:** สถานะต้องเป็น "ล็อค" อยู่ (isDepartmentLocked) -> แปลว่าระบบจำค่าผิด
+    if (!isQuotaLoading && (remainingDays === null || remainingDays === undefined) && isDepartmentLocked) {
+      console.log("User deleted from Sheet -> Clearing LocalStorage");
+      
+      localStorage.removeItem("userDepartment"); // ลบความจำ
+      setIsDepartmentLocked(false); // ปลดล็อค
+      setFormData(prev => ({ ...prev, department: "" })); // เคลียร์หน้าจอ
+      
+      // (Optional) แจ้งเตือนเพื่อให้ผู้ใช้รู้ตัว
+      Swal.fire({
+        icon: 'info',
+        title: 'อัปเดตข้อมูล',
+        text: 'ไม่พบข้อมูลของคุณในระบบ กรุณาระบุแผนกใหม่อีกครั้ง',
+        timer: 2000,
+        showConfirmButton: false
+      });
+    }
+  }, [isQuotaLoading, remainingDays, isDepartmentLocked]);
 
 
 // ฟังก์ชันเมื่อมีการจิ้มเลือกวันที่
