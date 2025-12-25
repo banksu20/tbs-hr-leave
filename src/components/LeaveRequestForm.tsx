@@ -160,19 +160,6 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
   }, [userId]);
 
 
-  // ✅ Effect 3: Auto-Reset (เพิ่มส่วนนี้เข้าไป)
-  // ตรรกะ: ถ้าโหลดข้อมูลเสร็จแล้ว (!isQuotaLoading)
-  // แต่ไม่พบข้อมูลวันลา (remainingDays เป็น null หรือ undefined)
-  // แสดงว่า User นี้ไม่มีอยู่ในระบบ Google Sheet (หรือถูกลบไปแล้ว)
-  // ดังนั้นต้องเคลียร์ข้อมูลเก่าที่ค้างในเครื่องทิ้ง
-  useEffect(() => {
-    if (!isQuotaLoading && remainingDays === null) {
-      console.log("User not found in Sheet -> Clearing LocalStorage");
-      localStorage.removeItem("userDepartment"); // ลบความจำแผนกออกจาก Browser
-      setIsDepartmentLocked(false); // ปลดล็อคช่องเลือกแผนก
-      setFormData(prev => ({ ...prev, department: "" })); // เคลียร์ค่าแผนกในฟอร์มให้ว่าง
-    }
-  }, [isQuotaLoading, remainingDays]);
 
 
 
