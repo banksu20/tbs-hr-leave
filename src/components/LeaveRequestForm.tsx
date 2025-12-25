@@ -417,7 +417,7 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                           </span>
                         </span>
                       ) : (
-                        <span>กดเพื่อเลือกวันที่ (จิ้มทีละวัน)</span>
+                        <span>กดเพื่อเลือกวันที่</span>
                       )}
                     </Button>
                   </PopoverTrigger>
