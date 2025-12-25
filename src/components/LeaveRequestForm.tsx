@@ -20,6 +20,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Loader2, Calendar as CalendarIcon, User, FileText, ArrowLeft, AlertTriangle } from "lucide-react";
 import { useLeaveQuota } from "@/hooks/useLeaveQuota";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 // ค่า Config
 const LIFF_ID = "2008617589-89gR1Y3Y";
@@ -388,45 +390,63 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                 </Select>
               </div>
 
-              {/* Multi-select Calendar */}
+              {/* Multi-select Calendar (แก้ไขเป็นแบบ Popover ซ่อนปฏิทิน) */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-muted-foreground">
                   <CalendarIcon className="h-4 w-4" /> เลือกวันที่ต้องการลา *
                 </Label>
                 
-                <div className="border rounded-xl p-3 bg-background">
-                  {/* 👇 ใส่บรรทัดนี้เพื่อแก้เส้นแดง */}
-                  {/* @ts-ignore */}
-                  <CalendarComponent
-                    mode="multiple"
-                    selected={selectedDates}
-                    onSelect={handleDateSelect} // ✅ เปลี่ยนมาใช้ฟังก์ชันที่เตรียมไว้
-                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                    className="pointer-events-auto mx-auto"
-                    modifiersStyles={{
-                      selected: {
-                        backgroundColor: "#06C755",
-                        color: "white",
-                        borderRadius: "50%",
-                      },
-                    }}
-                  />
-                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal h-12 rounded-xl border-input bg-background",
+                        !selectedDates?.length && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedDates && selectedDates.length > 0 ? (
+                        <span className="text-foreground font-medium truncate">
+                          เลือกแล้ว {selectedDates.length} วัน 
+                          <span className="text-xs text-muted-foreground ml-2 font-normal">
+                             ({[...selectedDates]
+                                .sort((a,b)=>a.getTime()-b.getTime())
+                                .map(d => format(d, "dd MMM", { locale: th }))
+                                .join(", ")})
+                          </span>
+                        </span>
+                      ) : (
+                        <span>กดเพื่อเลือกวันที่ (จิ้มทีละวัน)</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  
+                  <PopoverContent className="w-auto p-0" align="start">
+                    {/* @ts-ignore */}
+                    <CalendarComponent
+                      mode="multiple"
+                      selected={selectedDates}
+                      onSelect={handleDateSelect}
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      initialFocus
+                      className="pointer-events-auto bg-background rounded-md border shadow-md"
+                      modifiersStyles={{
+                        selected: {
+                          backgroundColor: "#06C755",
+                          color: "white",
+                          borderRadius: "50%",
+                        },
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
 
-                {/* แสดงสรุปวันที่เลือก */}
+                {/* ข้อความสรุปสีเขียวด้านล่าง */}
                 {selectedDates && selectedDates.length > 0 && (
-                  <div className="p-3 bg-muted/50 rounded-lg text-sm">
-                    <p className="text-muted-foreground mb-1">
-                      คุณเลือกวันลาทั้งหมด: <span className="font-bold text-foreground">{selectedDates.length} วัน</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      ({[...selectedDates]
-                        .sort((a, b) => a.getTime() - b.getTime())
-                        // 👇 อย่าลืม import { th } from "date-fns/locale" ด้านบนด้วยนะครับ
-                        .map(d => format(d, "dd/MM/yyyy", { locale: th })) 
-                        .join(", ")})
-                    </p>
-                  </div>
+                  <p className="text-sm text-[#06C755] mt-1 ml-1">
+                    * คุณเลือกวันลาทั้งหมด <b>{selectedDates.length}</b> วัน
+                  </p>
                 )}
               </div>
 
