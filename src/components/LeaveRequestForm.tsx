@@ -320,34 +320,40 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
 
   // Render Form
   return (
-    <div className="min-h-screen bg-[#06C755]">
-      {/* Header */}
-      <div className="bg-[#06C755] text-white py-6 px-4">
+// ✅ 1. เปลี่ยนพื้นหลังหลักเป็นสีเทาอ่อน (Clean Look)
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      
+      {/* Header (TBS Style) */}
+      <div className="bg-white text-slate-800 py-6 px-4 shadow-sm relative overflow-hidden">
+        {/* แถบสี Brand ด้านบน */}
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-500 via-amber-400 to-emerald-500"></div>
+
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/")}
-            className="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors"
+            // ปรับสีปุ่ม Back ให้เข้ากับพื้นขาว
+            className="p-2 -ml-2 rounded-full hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-800"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold">Leave Request</h1>
-            <p className="text-sm opacity-90">Submit your leave application</p>
+            <h1 className="text-2xl font-bold text-slate-800">Leave Request</h1>
+            <p className="text-sm text-slate-500">Submit your leave application</p>
           </div>
         </div>
       </div>
 
       {/* Form Card */}
-      <div className="px-4 pb-6 -mt-2">
-        <Card className="rounded-t-3xl shadow-lg border-none">
+      <div className="px-4 pb-6 -mt-2 mt-4 flex-1">
+        <Card className="rounded-2xl shadow-sm border border-slate-200">
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* User Name */}
               <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-muted-foreground">
+                <Label className="flex items-center gap-2 text-slate-600">
                   <User className="h-4 w-4" /> User Name
                 </Label>
-                <Input value={formData.userName} readOnly className="bg-muted/50" />
+                <Input value={formData.userName} readOnly className="bg-slate-50 border-slate-200 text-slate-600" />
               </div>
 
               {/* Department */}
@@ -374,7 +380,7 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
 
               {/* Leave Type */}
               <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-muted-foreground">
+                <Label className="flex items-center gap-2 text-slate-600">
                   <FileText className="h-4 w-4" /> Leave Type *
                 </Label>
                 <Select
@@ -382,12 +388,12 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                   onValueChange={(val) => setFormData({ ...formData, leaveType: val })}
                   disabled={isLeaveTypeLocked}
                 >
-                  <SelectTrigger className={isLeaveTypeLocked ? "bg-muted/50" : ""}>
+                  <SelectTrigger className={`border-slate-200 ${isLeaveTypeLocked ? "bg-slate-50" : "bg-white"}`}>
                     <SelectValue placeholder="Select leave type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sick">Sick Leave</SelectItem>
-                    <SelectItem value="vacation">Vacation Leave</SelectItem>
+                    <SelectItem value="sick">Sick Leave (ลาป่วย)</SelectItem>
+                    <SelectItem value="vacation">Vacation Leave (ลาพักร้อน)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -397,21 +403,21 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                 <Label className="flex items-center gap-2 text-muted-foreground">
                   <CalendarIcon className="h-4 w-4" /> เลือกวันที่ต้องการลา *
                 </Label>
-                
+                                
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant={"outline"}
                       className={cn(
-                        "w-full justify-start text-left font-normal h-12 rounded-xl border-input bg-background",
-                        !selectedDates?.length && "text-muted-foreground"
+                        "w-full justify-start text-left font-normal h-12 rounded-xl border-slate-200 bg-white hover:bg-slate-50 transition-colors",
+                        !selectedDates?.length && "text-slate-400"
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      <CalendarIcon className="mr-2 h-4 w-4 text-slate-500" />
                       {selectedDates && selectedDates.length > 0 ? (
-                        <span className="text-foreground font-medium truncate">
-                          เลือกแล้ว {selectedDates.length} วัน 
-                          <span className="text-xs text-muted-foreground ml-2 font-normal">
+                        <span className="text-slate-800 font-medium truncate">
+                          เลือกแล้ว <span className="text-sky-600 font-bold">{selectedDates.length}</span> วัน 
+                          <span className="text-xs text-slate-400 ml-2 font-normal">
                              ({[...selectedDates]
                                 .sort((a,b)=>a.getTime()-b.getTime())
                                 .map(d => format(d, "dd MMM", { locale: th }))
@@ -424,7 +430,7 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                     </Button>
                   </PopoverTrigger>
                   
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 border-slate-200 shadow-xl" align="start">
                     {/* @ts-ignore */}
                     <CalendarComponent
                       mode="multiple"
@@ -432,10 +438,10 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                       onSelect={handleDateSelect}
                       disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                       initialFocus
-                      className="pointer-events-auto bg-background rounded-md border shadow-md"
+                      className="pointer-events-auto bg-white rounded-md"
                       modifiersStyles={{
                         selected: {
-                          backgroundColor: "#06C755",
+                          backgroundColor: "#0ea5e9", // สีฟ้า TBS (sky-500)
                           color: "white",
                           borderRadius: "50%",
                         },
@@ -500,7 +506,11 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
               <Button
                 type="submit"
                 disabled={isSubmitting || isOverQuota || selectedDates.length === 0}
-                className="w-full h-12 text-lg font-semibold bg-[#06C755] hover:bg-[#05a647] text-white rounded-xl shadow-md disabled:opacity-50"
+                className={`w-full h-12 text-lg font-semibold text-white rounded-xl shadow-md transition-all 
+                    ${isSubmitting || isOverQuota || selectedDates.length === 0 
+                        ? "bg-slate-300 cursor-not-allowed" 
+                        : "bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 hover:shadow-lg active:scale-[0.98]"
+                    }`}
               >
                 {isSubmitting ? (
                   <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</>
