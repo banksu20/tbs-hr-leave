@@ -85,7 +85,7 @@ const handleCheckQuota = () => {
             </p>
         </div>
       `,
-      confirmButtonText: "รับทราบ",
+      confirmButtonText: "OK",
       confirmButtonColor: "#0ea5e9", // สีฟ้า TBS Style
       customClass: {
         popup: 'rounded-3xl shadow-xl', // ปรับมุมมนให้สวย
