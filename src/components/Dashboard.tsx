@@ -176,7 +176,7 @@ const Dashboard = () => {
           alt="TBS Marketing" 
           className="h-10 w-auto object-contain grayscale hover:grayscale-0 transition-all opacity-70 hover:opacity-100" 
         />
-        <span className="text-[10px] text-slate-400 mt-2">Powered by TBS Marketing</span>
+        <span className="text-[10px] text-slate-400 mt-2">© 2025{new Date().getFullYear() > 2025 ? ` - ${new Date().getFullYear()}` : ""} TBS Marketing All Rights Reserved.</span>
       </div>
 
       {/* Holidays Modal */}
