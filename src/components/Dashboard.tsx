@@ -75,28 +75,28 @@ const Dashboard = () => {
       subtitle: "Sick Leave",
       icon: Thermometer,
       onClick: handleSickLeave,
-      gradient: "from-red-500 to-orange-400",
+      gradient: "from-rose-500 to-red-400",
     },
     {
       title: "ลาพักร้อน",
       subtitle: "Vacation Leave",
       icon: Palmtree,
       onClick: handleVacationLeave,
-      gradient: "from-blue-500 to-cyan-400",
+      gradient: "from-sky-500 to-blue-400",
     },
     {
       title: "เช็ควันลา",
       subtitle: "My Leave Quota",
       icon: CalendarCheck,
       onClick: handleCheckQuota,
-      gradient: "from-purple-500 to-pink-400",
+      gradient: "from-amber-500 to-orange-400",
     },
     {
       title: "วันหยุดบริษัท",
       subtitle: "Company Holidays",
       icon: CalendarDays,
       onClick: handleCompanyHolidays,
-      gradient: "from-emerald-500 to-teal-400",
+      gradient: "from-emerald-500 to-green-400",
     },
   ];
 
@@ -108,23 +108,30 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#06C755] flex flex-col">
+<div className="min-h-screen bg-slate-50 flex flex-col">
+      
       {/* Header */}
-      <div className="bg-[#06C755] text-white py-6 px-4">
+      <div className="bg-white text-slate-800 py-6 px-4 shadow-sm relative overflow-hidden">
+        {/* (Optional) เพิ่มแถบสี Brand ด้านบนสุดตกแต่ง */}
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-500 via-amber-400 to-emerald-500"></div>
+
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">TBS Leave Management System</h1>
-            <p className="text-sm opacity-90 mt-1">
+             {/* เปลี่ยนสี Text ให้เข้มขึ้นเพราะพื้นขาว */}
+            <h1 className="text-2xl font-bold text-slate-800">TBS Leave System</h1>
+            <p className="text-sm text-slate-500 mt-1">
               {userName ? `สวัสดี, ${userName}` : "Leave Management System"}
             </p>
           </div>
+          
           {/* Leave Quota Badge */}
-          <div className={`px-3 py-2 rounded-xl ${getQuotaColor()} flex items-center gap-2`}>
+          {/* ปรับสี Badge ให้อ่อนลงเพื่อให้เข้ากับพื้นขาว */}
+          <div className={`px-3 py-2 rounded-xl border ${remainingDays !== null && remainingDays < 3 ? 'bg-red-50 border-red-100 text-red-600' : 'bg-sky-50 border-sky-100 text-sky-600'} flex items-center gap-2`}>
             <Calendar className="h-4 w-4" />
             {isQuotaLoading ? (
               <Skeleton className="h-4 w-12" />
             ) : remainingDays !== null ? (
-              <span className="text-sm font-semibold">{remainingDays} วัน</span>
+              <span className="text-sm font-bold">{remainingDays} วัน</span>
             ) : (
               <span className="text-sm">-</span>
             )}
@@ -133,43 +140,43 @@ const Dashboard = () => {
       </div>
 
       {/* Menu Grid */}
-      <div className="px-4 pb-6 -mt-2 flex-1">
-        <Card className="rounded-t-3xl shadow-lg border-none">
-          <CardContent className="pt-8 pb-6">
-            <div className="grid grid-cols-2 gap-4">
-              {menuItems.map((item, index) => (
-                <button
-                  key={index}
-                  onClick={item.onClick}
-                  className="group focus:outline-none"
+      <div className="px-4 pb-6 -mt-2 flex-1 mt-4"> {/* เพิ่ม mt-4 ให้ห่าง Header นิดนึง */}
+        {/* เปลี่ยน Card พื้นหลังเป็น Transparent หรือขาวล้วน */}
+        <div className="grid grid-cols-2 gap-4">
+            {menuItems.map((item, index) => (
+            <button
+                key={index}
+                onClick={item.onClick}
+                className="group focus:outline-none"
+            >
+                <div className="flex flex-col items-center p-4 rounded-2xl bg-white shadow-sm border border-slate-100 hover:shadow-md transition-all duration-200 active:scale-95 h-full">
+                {/* Icon Container */}
+                <div
+                    className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-3 shadow-md group-hover:scale-110 transition-transform`}
                 >
-                  <div className="flex flex-col items-center p-4 rounded-2xl bg-muted/30 hover:bg-muted/50 transition-all duration-200 active:scale-95">
-                    <div
-                      className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-3 shadow-lg group-hover:shadow-xl transition-shadow`}
-                    >
-                      <item.icon className="h-8 w-8 text-white" />
-                    </div>
-                    <span className="text-base font-semibold text-foreground">
-                      {item.title}
-                    </span>
-                    <span className="text-xs text-muted-foreground mt-0.5">
-                      {item.subtitle}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                    <item.icon className="h-7 w-7 text-white" />
+                </div>
+                <span className="text-base font-semibold text-slate-700">
+                    {item.title}
+                </span>
+                <span className="text-xs text-slate-400 mt-0.5">
+                    {item.subtitle}
+                </span>
+                </div>
+            </button>
+            ))}
+        </div>
       </div>
 
-      <div className="pb-8 flex flex-col items-center justify-center opacity-90">
+      {/* Logo Section */}
+      <div className="py-8 flex flex-col items-center justify-center">
+        {/* ✅ 4. โลโก้บนพื้นเทาอ่อน จะดูเด่นชัดขึ้น ไม่ต้องใส่กรอบขาวรองหลังแล้ว */}
         <img 
-          src={tbsLogo}  //
+          src={tbsLogo} 
           alt="TBS Marketing" 
-          className="h-10 w-auto object-contain bg-white/20 rounded-lg p-1" 
+          className="h-10 w-auto object-contain grayscale hover:grayscale-0 transition-all opacity-70 hover:opacity-100" 
         />
-        {/* <span className="text-[10px] text-white/60 mt-1">TBS Marketing</span> */}
+        <span className="text-[10px] text-slate-400 mt-2">Powered by TBS Marketing</span>
       </div>
 
       {/* Holidays Modal */}
