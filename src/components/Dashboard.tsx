@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Thermometer, Palmtree, CalendarCheck, CalendarDays, Calendar } from "lucide-react";
 import HolidaysModal from "./HolidaysModal";
 import { useLeaveQuota } from "@/hooks/useLeaveQuota";
+import tbsLogo from "@/image/TBS-Logo.png";
 
 const LIFF_ID = "2008617589-89gR1Y3Y";
 
@@ -107,7 +108,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#06C755]">
+    <div className="min-h-screen bg-[#06C755] flex flex-col">
       {/* Header */}
       <div className="bg-[#06C755] text-white py-6 px-4">
         <div className="flex items-center justify-between">
@@ -132,7 +133,7 @@ const Dashboard = () => {
       </div>
 
       {/* Menu Grid */}
-      <div className="px-4 pb-6 -mt-2">
+      <div className="px-4 pb-6 -mt-2 flex-1">
         <Card className="rounded-t-3xl shadow-lg border-none">
           <CardContent className="pt-8 pb-6">
             <div className="grid grid-cols-2 gap-4">
@@ -160,6 +161,15 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="pb-8 flex flex-col items-center justify-center opacity-90">
+        <img 
+          src={tbsLogo}  //
+          alt="TBS Marketing" 
+          className="h-10 w-auto object-contain bg-white/20 rounded-lg p-1" 
+        />
+        {/* <span className="text-[10px] text-white/60 mt-1">TBS Marketing</span> */}
       </div>
 
       {/* Holidays Modal */}
