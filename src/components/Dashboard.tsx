@@ -55,13 +55,42 @@ const Dashboard = () => {
     navigate("/leave-request?type=vacation");
   };
 
-  const handleCheckQuota = () => {
+const handleCheckQuota = () => {
+    // 1. ถ้าข้อมูลยังโหลดไม่เสร็จ ให้ขึ้น Loading
+    if (isQuotaLoading) {
+        Swal.fire({
+            title: 'กำลังตรวจสอบข้อมูล...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading() }
+        });
+        return;
+    }
+
+    // 2. แสดงข้อมูลวันลาคงเหลือ (ใช้ Theme สีฟ้า TBS)
     Swal.fire({
-      icon: "info",
-      title: "เช็ควันลา",
-      html: `<p style="font-size: 16px; line-height: 1.6;">หากต้องการตรวจสอบวันลาคงเหลือ<br/>กรุณาเลือก Menu <strong>'เช็ควันลา'</strong><br/>ในแชท LINE</p>`,
-      confirmButtonText: "ตกลง",
-      confirmButtonColor: "#06C755",
+      // เปลี่ยน icon เป็น question หรือ info
+      icon: remainingDays !== null ? "success" : "warning", 
+      title: "วันลาพักร้อนคงเหลือ",
+      html: `
+        <div style="display: flex; flex-direction: column; align-items: center; padding-top: 10px;">
+            <div style="font-size: 56px; font-weight: 800; color: #0ea5e9; line-height: 1;">
+                ${remainingDays !== null ? remainingDays : "-"}
+            </div>
+            <div style="font-size: 18px; color: #64748b; margin-top: 5px; font-weight: 500;">วัน</div>
+            
+            <div style="width: 100%; height: 1px; background-color: #e2e8f0; margin: 15px 0;"></div>
+            
+            <p style="font-size: 14px; color: #64748b;">
+                ชื่อผู้ใช้งาน: <strong style="color: #334155;">${userName || "ไม่ระบุ"}</strong>
+            </p>
+        </div>
+      `,
+      confirmButtonText: "รับทราบ",
+      confirmButtonColor: "#0ea5e9", // สีฟ้า TBS Style
+      customClass: {
+        popup: 'rounded-3xl shadow-xl', // ปรับมุมมนให้สวย
+        title: 'text-slate-700 font-bold'
+      }
     });
   };
 
