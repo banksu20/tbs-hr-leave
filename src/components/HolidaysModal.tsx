@@ -24,13 +24,29 @@ const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
   const [error, setError] = useState(false);
   const currentYear = new Date().getFullYear();
 
-  // 🛠️ ส่วนตั้งค่า: วันหยุดพิเศษของบริษัท (ถ้ามี) เพิ่มตรงนี้ได้เลย
-  // ระบบจะเอาไปรวมกับวันหยุดราชการให้อัตโนมัติ
-  const companyExtraHolidays: Holiday[] = [
-    // { date: `${currentYear}-12-25`, localName: "วันคริสต์มาส", name: "Christmas Day" },
+  // 🛡️ ข้อมูลสำรอง (Fallback) กรณี API ใช้งานไม่ได้
+  // จะได้ไม่ขึ้นหน้า Error ให้ user ตกใจ
+  const fallbackHolidays: Holiday[] = [
+    { date: `${currentYear}-01-01`, localName: "วันขึ้นปีใหม่", name: "New Year's Day" },
+    { date: `${currentYear}-02-12`, localName: "วันมาฆบูชา (ประมาณการ)", name: "Makha Bucha Day" },
+    { date: `${currentYear}-04-06`, localName: "วันจักรี", name: "Chakri Memorial Day" },
+    { date: `${currentYear}-04-13`, localName: "วันสงกรานต์", name: "Songkran Festival" },
+    { date: `${currentYear}-04-14`, localName: "วันสงกรานต์", name: "Songkran Festival" },
+    { date: `${currentYear}-04-15`, localName: "วันสงกรานต์", name: "Songkran Festival" },
+    { date: `${currentYear}-05-01`, localName: "วันแรงงานแห่งชาติ", name: "Labor Day" },
+    { date: `${currentYear}-05-04`, localName: "วันฉัตรมงคล", name: "Coronation Day" },
+    { date: `${currentYear}-06-03`, localName: "วันเฉลิมพระชนมพรรษาสมเด็จพระราชินี", name: "Queen's Birthday" },
+    { date: `${currentYear}-07-28`, localName: "วันเฉลิมพระชนมพรรษา ร.10", name: "King's Birthday" },
+    { date: `${currentYear}-08-12`, localName: "วันแม่แห่งชาติ", name: "Mother's Day" },
+    { date: `${currentYear}-10-13`, localName: "วันคล้ายวันสวรรคต ร.9", name: "King Bhumibol Memorial Day" },
+    { date: `${currentYear}-10-23`, localName: "วันปิยมหาราช", name: "Chulalongkorn Day" },
+    { date: `${currentYear}-12-05`, localName: "วันพ่อแห่งชาติ", name: "Father's Day" },
+    { date: `${currentYear}-12-10`, localName: "วันรัฐธรรมนูญ", name: "Constitution Day" },
+    { date: `${currentYear}-12-31`, localName: "วันสิ้นปี", name: "New Year's Eve" },
   ];
 
-  // ฟังก์ชันแปลงวันที่เป็นรูปแบบไทย (เช่น "2025-01-01" -> "1 ม.ค.")
+  const companyExtraHolidays: Holiday[] = [];
+
   const formatDateTh = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -52,24 +68,28 @@ const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
   const fetchHolidays = async () => {
     setLoading(true);
     setError(false);
+    
     try {
-      // ดึงข้อมูลจาก API ฟรี (Nager.Date)
-      const response = await fetch(`https://date.nager.at/api/v3/publicholidays/${currentYear}/TH`);
+      // ✅ แก้ไข: ใช้ Proxy (allorigins.win) เพื่อหลบ CORS Error
+      const targetUrl = `https://date.nager.at/api/v3/publicholidays/${currentYear}/TH`;
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+      
+      const response = await fetch(proxyUrl);
       
       if (!response.ok) throw new Error("API Error");
       
       const data = await response.json();
 
-      // รวมวันหยุดราชการ (API) + วันหยุดบริษัท (Manual)
+      // รวมวันหยุด + เรียงลำดับ
       const allHolidays = [...data, ...companyExtraHolidays];
-
-      // เรียงลำดับตามวันที่
       allHolidays.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       setHolidays(allHolidays);
     } catch (err) {
-      console.error("Failed to fetch holidays:", err);
-      setError(true);
+      console.warn("API Failed, using fallback data:", err);
+      // ✅ ถ้า API พัง ให้ใช้ข้อมูลสำรองแทน (User จะได้ไม่เจอ Error)
+      setHolidays(fallbackHolidays); 
+      // ไม่ต้อง Set Error เป็น true เพื่อให้หน้าจอแสดงผลได้ปกติ
     } finally {
       setLoading(false);
     }
@@ -90,11 +110,6 @@ const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
             <div className="flex flex-col justify-center items-center py-12 text-slate-400 gap-2">
               <Loader2 className="h-8 w-8 animate-spin text-[#06C755]" />
               <span className="text-xs">กำลังอัปเดตข้อมูล...</span>
-            </div>
-          ) : error ? (
-            <div className="flex flex-col justify-center items-center py-12 text-red-400 gap-2">
-              <AlertCircle className="h-8 w-8" />
-              <span className="text-xs">โหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่</span>
             </div>
           ) : (
             <div className="space-y-2 pb-4 pt-2">
@@ -129,8 +144,10 @@ const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-8 text-slate-400 text-sm">
-                  ไม่พบข้อมูลวันหยุด
+                // กรณีสุดวิสัยจริงๆ ที่ไม่มีข้อมูลเลย
+                <div className="flex flex-col justify-center items-center py-12 text-red-400 gap-2">
+                   <AlertCircle className="h-8 w-8" />
+                   <span className="text-xs">ไม่พบข้อมูลวันหยุด</span>
                 </div>
               )}
             </div>
