@@ -219,8 +219,9 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
-    if (!formData.department || !formData.leaveType || selectedDates.length === 0 || !formData.reason) {
+    // Validation - Reason ไม่บังคับสำหรับ vacation
+    const isReasonRequired = formData.leaveType !== "vacation";
+    if (!formData.department || !formData.leaveType || selectedDates.length === 0 || (isReasonRequired && !formData.reason)) {
       Swal.fire({
         icon: "warning",
         title: "Incomplete Form",
@@ -458,18 +459,20 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
                 )}
               </div>
 
-              {/* Reason */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-muted-foreground">
-                  <FileText className="h-4 w-4" /> Reason *
-                </Label>
-                <Textarea
-                  placeholder="Describe your reason..."
-                  value={formData.reason}
-                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                  className="min-h-[100px] resize-none"
-                />
-              </div>
+              {/* Reason - ซ่อนสำหรับ vacation */}
+              {formData.leaveType !== "vacation" && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-muted-foreground">
+                    <FileText className="h-4 w-4" /> Reason *
+                  </Label>
+                  <Textarea
+                    placeholder="Describe your reason..."
+                    value={formData.reason}
+                    onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                    className="min-h-[100px] resize-none"
+                  />
+                </div>
+              )}
 
               {/* Leave Quota Info */}
               <div className={`p-4 rounded-xl border ${isOverQuota ? "bg-destructive/10 border-destructive/30" : "bg-muted/50 border-border"}`}>
