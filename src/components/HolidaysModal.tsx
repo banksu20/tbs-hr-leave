@@ -70,7 +70,7 @@ const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
     setError(false);
     
     try {
-      // ✅ แก้ไข: ใช้ Proxy (allorigins.win) เพื่อหลบ CORS Error
+      // แก้ไข: ใช้ Proxy (allorigins.win) เพื่อหลบ CORS Error
       const targetUrl = `https://date.nager.at/api/v3/publicholidays/${currentYear}/TH`;
       const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
       

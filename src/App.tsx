@@ -11,6 +11,8 @@ import Index from "./pages/Index";
 import LeaveRequest from "./pages/LeaveRequest";
 import NotFound from "./pages/NotFound";
 
+
+
 const queryClient = new QueryClient();
 const LIFF_ID = "2008617589-89gR1Y3Y";
 
