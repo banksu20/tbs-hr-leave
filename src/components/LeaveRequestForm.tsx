@@ -390,7 +390,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="sick">Sick Leave (ลาป่วย)</SelectItem>
-                    <SelectItem value="vacation">Vacation Leave (ลาพักร้อน)</SelectItem>
+                    <SelectItem value="vacation">Annual Leave (ลาพักร้อน)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

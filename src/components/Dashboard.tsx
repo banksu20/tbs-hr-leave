@@ -108,7 +108,7 @@ const handleCheckQuota = () => {
     },
     {
       title: "ลาพักร้อน",
-      subtitle: "Vacation Leave",
+      subtitle: "Annual Leave",
       icon: Palmtree,
       onClick: handleVacationLeave,
       gradient: "from-sky-500 to-blue-400",

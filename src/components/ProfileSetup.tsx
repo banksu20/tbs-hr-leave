@@ -29,13 +29,11 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
       <Card className="w-full max-w-md shadow-lg border-t-4 border-t-blue-500">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl text-blue-600">
-            Initial Setup <br/> 
-            <span className="text-lg text-gray-500">ลงทะเบียนใช้งานครั้งแรก</span>
+            TBS Marketing <br/> 
+            <span className="text-lg text-gray-500">ลงทะเบียน</span>
           </CardTitle>
           <CardDescription className="mt-2">
             Please enter your name and department. This will be saved for your future leave requests.
-            <br/>
-            กรุณาระบุชื่อและแผนก ข้อมูลนี้จะถูกบันทึกไว้ใช้ในการลางานครั้งต่อไป
           </CardDescription>
         </CardHeader>
         <CardContent>
