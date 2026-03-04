@@ -69,7 +69,7 @@ const handleCheckQuota = () => {
     // 2. แสดงข้อมูลวันลาคงเหลือ (ใช้ Theme สีฟ้า TBS)
     Swal.fire({
       // เปลี่ยน icon เป็น question หรือ info
-      icon: remainingDays !== null ? "success" : "warning", 
+      icon: 'info',
       title: "วันลาพักร้อนคงเหลือ",
       html: `
         <div style="display: flex; flex-direction: column; align-items: center; padding-top: 10px;">
