@@ -31,6 +31,7 @@ const WEBHOOK_URL = "https://thirstless-ostensively-maryam.ngrok-free.dev/webhoo
 interface LeaveRequestFormProps {
   userId?: string;
   userName?: string;
+  department?: string;
   initialLeaveType?: string;
 }
 
@@ -42,7 +43,7 @@ interface FormData {
   reason: string;
 }
 
-const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFormProps) => {
+const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: LeaveRequestFormProps) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
@@ -65,13 +66,13 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
   const isLeaveTypeLocked = Boolean(defaultType);
 
 
-  const [formData, setFormData] = useState<FormData>({
-    userName: userName || "",
-    userId: userId || "",
-    department: localStorage.getItem("userDepartment") || "",
-    leaveType: defaultType === "sick" ? "sick" : defaultType === "vacation" ? "vacation" : "",
-    reason: "",
-  });
+    const [formData, setFormData] = useState<FormData>({
+        userName: userName || "",
+        userId: userId || "",
+        department: department || "",
+        leaveType: defaultType === "sick" ? "sick" : defaultType === "vacation" ? "vacation" : "",
+        reason: "",
+      });
 
 
   // State สำหรับ Multi-select dates
@@ -99,36 +100,31 @@ const LeaveRequestForm = ({ userId, userName, initialLeaveType }: LeaveRequestFo
   // เช็คว่าเกินโควต้าหรือไม่
   const isOverQuota = requestedDays > displayRemainingDays;
 
- // userEffect: ตรวจสอบ localStorage สำหรับ Department
   useEffect(() => {
-    const savedDepartment = localStorage.getItem("userDepartment");
-    if (savedDepartment){
-      setFormData((prev) => ({
-        ...prev, department: savedDepartment
-      }));
+    if (department) {
       setIsDepartmentLocked(true);
-    }else{
+    } else {
       setIsDepartmentLocked(false);
     }
-  },[])
+  }, [department]);
 
 
-  // Effect 1: อัปเดตฟอร์มเมื่อได้รับค่าจาก Props (App.tsx)
   useEffect(() => {
-    if (userId || userName || initialLeaveType) {
-      console.log("Props received:", { userId, userName, initialLeaveType });
+    if (userId || userName || department || initialLeaveType) { 
+      console.log("Props received:", { userId, userName, department, initialLeaveType });
       if (userId) setCurrentUserId(userId);
       setFormData((prev) => ({
         ...prev,
         userId: userId || prev.userId,
         userName: userName || prev.userName,
+        department: department || prev.department, 
         leaveType: initialLeaveType === "sick" ? "sick" : 
                    initialLeaveType === "vacation" ? "vacation" : 
                    prev.leaveType,
       }));
       setIsLoading(false);
     }
-  }, [userId, userName, initialLeaveType]);
+  }, [userId, userName, department, initialLeaveType]); 
 
   // Effect 2: (Backup) ถ้าไม่มี userId ส่งมา ให้ลอง Init LIFF เอง
   useEffect(() => {

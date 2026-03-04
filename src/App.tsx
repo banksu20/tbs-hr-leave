@@ -7,11 +7,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-import Index from "./pages/Index";
-import LeaveRequest from "./pages/LeaveRequest";
-import NotFound from "./pages/NotFound";
-// ✅ 1. Import หน้า RejectForm เข้ามา
-import RejectForm from "./pages/RejectForm";
+import Index from "@/pages/Index";
+import LeaveRequest from "@/pages/LeaveRequest";
+import NotFound from "@/pages/NotFound";
+import RejectForm from "@/pages/RejectForm";
+import ProfileSetup from "@/components/ProfileSetup"; 
 
 const queryClient = new QueryClient();
 const LIFF_ID = "2008617589-89gR1Y3Y";
@@ -19,10 +19,13 @@ const LIFF_ID = "2008617589-89gR1Y3Y";
 const App = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
 
-  // ⚡️ เช็ค URL ทันที! (Real-time Check)
-  // ไม่ว่าจะเข้าลิงก์ไหน ถ้ามี ?type=... ติดมา เราจะรู้ทันทีตรงนี้
+  const [localUser, setLocalUser] = useState<{name: string, department: string} | null>(() => {
+    const saved = localStorage.getItem("tbs_user_profile");
+    return saved ? JSON.parse(saved) : null;
+  });
+
   const params = new URLSearchParams(window.location.search);
-  const typeFromUrl = params.get("type"); // sick, vacation, etc.
+  const typeFromUrl = params.get("type");
 
   useEffect(() => {
     const initializeLiff = async () => {
@@ -39,11 +42,16 @@ const App = () => {
     initializeLiff();
   }, []);
 
-  // สร้าง Component ฟอร์มเตรียมไว้ (เพื่อลด code ซ้ำ)
+  const handleSaveProfile = (data: {name: string, department: string}) => {
+    localStorage.setItem("tbs_user_profile", JSON.stringify(data));
+    setLocalUser(data); 
+  };
+
   const LeaveRequestPage = () => (
     <LeaveRequest 
       userId={userProfile?.userId} 
-      userName={userProfile?.displayName}
+      userName={localUser?.name || userProfile?.displayName} 
+      department={localUser?.department} 
       initialLeaveType={typeFromUrl || ""} 
     />
   );
@@ -53,24 +61,43 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        
+        {/* ✅ ปรับ Router ให้อยู่ด้านนอก เพื่อไม่ให้หน้า Reject โดน Block */}
         <BrowserRouter>
           <Routes>
+            {/* 1. หน้า Reject Form ไม่ต้องเช็คข้อมูลประวัติ ทะลุเข้าได้เลย */}
+            <Route path="/reject-form" element={<RejectForm />} />
+
+            {/* 2. หน้า Dashboard หลัก (บังคับกรอกประวัติ) */}
             <Route 
               path="/" 
               element={
-                typeFromUrl ? <LeaveRequestPage /> : <Index />
+                !localUser ? (
+                  <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} />
+                ) : typeFromUrl ? (
+                  <LeaveRequestPage />
+                ) : (
+                  <Index />
+                )
               } 
             />
 
-            {/* เผื่อกรณีเข้าผ่านลิงก์ /leave-request โดยตรง */}
-            <Route path="/leave-request" element={<LeaveRequestPage />} />
-            
-            {/* ✅ 2. เพิ่ม Route สำหรับหน้ากรอกเหตุผลการปฏิเสธ */}
-            <Route path="/reject-form" element={<RejectForm />} />
-            
+            {/* 3. หน้าลางานตรงๆ (บังคับกรอกประวัติ) */}
+            <Route 
+              path="/leave-request" 
+              element={
+                !localUser ? (
+                  <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} />
+                ) : (
+                  <LeaveRequestPage />
+                )
+              } 
+            />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+
       </TooltipProvider>
     </QueryClientProvider>
   );
