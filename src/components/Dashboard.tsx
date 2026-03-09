@@ -53,7 +53,7 @@ const Dashboard = () => {
     useEffect(() => {
       if (userId) {
         // ยิง API ไปที่ n8n Webhook ที่คุณสร้างไว้เพื่อดึงข้อมูลจาก Google Sheet
-        fetch(`https://n8n-your-url.com/get-history?userId=${userId}`)
+        fetch(`https://n8n-your-url.com/get-leave-history?userId=${userId}`)
           .then(res => res.json())
           .then(data => {
             setLeaveHistory(data);
