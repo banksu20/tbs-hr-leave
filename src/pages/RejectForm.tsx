@@ -11,13 +11,15 @@ const WEBHOOK_SUBMIT_REJECT = "https://thirstless-ostensively-maryam.ngrok-free.
 
 export default function RejectForm() {
   const [searchParams] = useSearchParams();
+  // ✅ 1. เพิ่มการดึงค่า userId และ userName จาก URL
   const rowId = searchParams.get("row"); 
+  const userId = searchParams.get("userId");
+  const userName = searchParams.get("userName");
   
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // ✅ ใส่ LIFF ID เรียบร้อยแล้ว
     liff.init({ liffId: "2008617589-89gR1Y3Y" }).catch((err) => {
       console.error("LIFF Init failed", err);
     });
@@ -36,11 +38,13 @@ export default function RejectForm() {
         method: "POST",
         headers: { 
             "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true" // 💡 เพิ่มกันเหนียวสำหรับ ngrok
+            "ngrok-skip-browser-warning": "true" 
         },
         body: JSON.stringify({
           row: rowId,
           reason: reason,
+          // ✅ 2. แนบ userId กลับไปหา n8n ใน Body
+          userId: userId 
         }),
       });
 
@@ -72,9 +76,12 @@ export default function RejectForm() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-red-500">ปฏิเสธการลางาน</CardTitle>
+          {/* ✅ 3. (Optional) แสดงชื่อพนักงานที่กำลังจะถูกปฏิเสธให้หัวหน้าเห็นชัดเจนขึ้น */}
+          <CardTitle className="text-red-500">
+            ปฏิเสธการลางาน {userName ? `ของ ${userName}` : ""}
+          </CardTitle>
           <CardDescription>
-            กรุณาระบุเหตุผลที่ไม่ไม่อนุมัติการลางาน เพื่อแจ้งให้พนักงานทราบ
+            กรุณาระบุเหตุผลที่ไม่อนุมัติการลางาน เพื่อแจ้งให้พนักงานทราบ
           </CardDescription>
         </CardHeader>
         <CardContent>
