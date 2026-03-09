@@ -18,6 +18,9 @@ const Dashboard = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("");
 
+  const [leaveHistory, setLeaveHistory] = useState([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+
   // ดึงข้อมูล Leave Quota
   const { remainingDays, isLoading: isQuotaLoading } = useLeaveQuota(userId);
 
@@ -45,6 +48,21 @@ const Dashboard = () => {
       setShowHolidaysModal(true);
     }
   }, [searchParams]);
+
+
+    useEffect(() => {
+      if (userId) {
+        // ยิง API ไปที่ n8n Webhook ที่คุณสร้างไว้เพื่อดึงข้อมูลจาก Google Sheet
+        fetch(`https://n8n-your-url.com/get-history?userId=${userId}`)
+          .then(res => res.json())
+          .then(data => {
+            setLeaveHistory(data);
+            setIsHistoryLoading(false);
+          });
+      }
+    }, [userId]);
+
+
 
   const handleSickLeave = () => {
     navigate("/leave-request?type=sick");
@@ -196,6 +214,48 @@ const handleCheckQuota = () => {
             ))}
         </div>
       </div>
+
+            {/* Leave History Section */}
+    <div className="px-4 pb-10">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-slate-800">รายการลาล่าสุด</h3>
+        <span className="text-xs text-slate-500">3 รายการล่าสุด</span>
+      </div>
+
+      <div className="space-y-3">
+        {isHistoryLoading ? (
+          <Skeleton className="h-20 w-full rounded-2xl" />
+        ) : leaveHistory.length > 0 ? (
+          leaveHistory.map((item, index) => (
+            <div key={index} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {/* ไอคอนแสดงประเภทการลา */}
+                <div className={`p-2 rounded-xl ${item.type === 'ลาป่วย' ? 'bg-rose-50 text-rose-500' : 'bg-sky-50 text-sky-500'}`}>
+                  {item.type === 'ลาป่วย' ? <Thermometer className="h-5 w-5" /> : <Palmtree className="h-5 w-5" />}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">{item.type}</p>
+                  <p className="text-[11px] text-slate-400">{item.date}</p>
+                </div>
+              </div>
+
+              {/* Badge แสดงสถานะ */}
+              <span className={`px-3 py-1 rounded-full text-[10px] font-bold border 
+                ${item.status === 'Approved' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 
+                  item.status === 'Rejected' ? 'bg-rose-50 border-rose-100 text-rose-600' : 
+                  'bg-amber-50 border-amber-100 text-amber-600'}`}>
+                {item.status === 'Approved' ? 'อนุมัติแล้ว' : item.status === 'Rejected' ? 'ปฏิเสธ' : 'รอตรวจสอบ'}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-6 bg-white rounded-2xl border border-dashed border-slate-200">
+            <p className="text-sm text-slate-400">ไม่พบประวัติการลา</p>
+          </div>
+        )}
+      </div>
+    </div>
+
 
       {/* Logo Section */}
       <div className="py-8 flex flex-col items-center justify-center">
