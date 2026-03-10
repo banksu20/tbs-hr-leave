@@ -54,7 +54,7 @@ const Dashboard = () => {
   const handleCheckQuota = () => {
     if (isQuotaLoading) return;
     Swal.fire({
-      title: "Leave Quota Summary",
+      title: "วันลาคงเหลือของคุณ",
       html: `
         <div style="padding: 10px 0;">
           <div style="display: flex; justify-content: space-around; margin-bottom: 20px;">
