@@ -39,7 +39,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
           </div>
           
           <CardDescription className="text-slate-500 text-sm leading-relaxed px-4">
-            Please enter your name and department. This will be saved for your future leave requests.
+            Please enter your name and department.
           </CardDescription>
         </CardHeader>
 
