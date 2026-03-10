@@ -449,7 +449,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
                 {/* ข้อความสรุปสีเขียวด้านล่าง */}
                 {selectedDates && selectedDates.length > 0 && (
-                  <p className="text-sm text-[#06C755] mt-1 ml-1">
+                  <p className="text-sm font-medium text-[#06C755] mt-1 ml-1">
                     * คุณเลือกวันลาทั้งหมด <b>{selectedDates.length}</b> วัน
                   </p>
                 )}
@@ -480,7 +480,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   {isQuotaLoading ? (
                     <Skeleton className="h-5 w-16" />
                   ) : (
-                    <span className={`font-bold ${displayRemainingDays < 3 ? "text-destructive" : "text-foreground"}`}>
+                    <span className={`font-medium ${displayRemainingDays < 3 ? "text-destructive" : "text-foreground"}`}>
                       {displayRemainingDays} วัน
                     </span>
                   )}
