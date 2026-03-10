@@ -350,7 +350,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 <Label className="flex items-center gap-2 text-slate-600">
                   <User className="h-4 w-4" /> User Name
                 </Label>
-                <Input value={formData.userName} readOnly className="bg-slate-50 border-slate-200 text-slate-600" />
+                <Input value={formData.userName} readOnly className="bg-slate-50 border-slate-200 font-medium text-slate-600" />
               </div>
 
               {/* Department */}
@@ -363,7 +363,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   onValueChange={handleDepartmentChange}
                   disabled={isDepartmentLocked}
                 >
-                  <SelectTrigger className={isDepartmentLocked ? "bg-muted/50" : ""}>
+                  <SelectTrigger className={isDepartmentLocked ? "font-medium bg-muted/50" : "font-medium"}>
                     <SelectValue placeholder="Select department" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="IT">IT</SelectItem>
@@ -385,7 +385,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   onValueChange={(val) => setFormData({ ...formData, leaveType: val })}
                   disabled={isLeaveTypeLocked}
                 >
-                  <SelectTrigger className={`border-slate-200 ${isLeaveTypeLocked ? "bg-slate-50" : "bg-white"}`}>
+                  <SelectTrigger className={`font-medium border-slate-200 ${isLeaveTypeLocked ? "bg-slate-50" : "bg-white"}`}>
                     <SelectValue placeholder="Select leave type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -475,7 +475,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">วันลาคงเหลือ:</span>
+                    <span className="text-sm font-medium text-muted-foreground">วันลาคงเหลือ:</span>
                   </div>
                   {isQuotaLoading ? (
                     <Skeleton className="h-5 w-16" />
