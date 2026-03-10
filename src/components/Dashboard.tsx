@@ -50,18 +50,22 @@ const Dashboard = () => {
   }, [searchParams]);
 
 
-    useEffect(() => {
-      if (userId) {
-        // ยิง API ไปที่ n8n Webhook ที่คุณสร้างไว้เพื่อดึงข้อมูลจาก Google Sheet
-        fetch(`https://thirstless-ostensively-maryam.ngrok-free.dev/webhook/get-leave-history?userId=${userId}`)
-          .then(res => res.json())
-          .then(data => {
-            setLeaveHistory(data);
-            setIsHistoryLoading(false);
-          });
-          
-      }
-    }, [userId]);
+useEffect(() => {
+  if (userId) {
+    setIsHistoryLoading(true); // เริ่มโหลด
+    fetch(`https://thirstless-ostensively-maryam.ngrok-free.dev/webhook/get-leave-history?userId=${userId}`)
+      .then(res => res.json())
+      .then(data => {
+        // n8n จะส่งกลับมาเป็น Array [{type: '...', date: '...', status: '...'}, ...]
+        setLeaveHistory(Array.isArray(data) ? data : []); 
+        setIsHistoryLoading(false);
+      })
+      .catch(err => {
+        console.error("Fetch history failed:", err);
+        setIsHistoryLoading(false);
+      });
+  }
+}, [userId]);
 
 
 
