@@ -4,6 +4,7 @@ const QUOTA_API_URL = "https://thirstless-ostensively-maryam.ngrok-free.dev/webh
 
 interface UseLeaveQuotaResult {
   remainingDays: number | null;
+  sickRemaining: number | null;
   isLoading: boolean;
   error: string | null;
   refetch: () => void;
@@ -11,6 +12,7 @@ interface UseLeaveQuotaResult {
 
 export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
   const [remainingDays, setRemainingDays] = useState<number | null>(null);
+  const [sickRemaining, setSickRemaining] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +35,11 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
       }
 
       const data = await response.json();
+
       setRemainingDays(data.remainingDays ?? null);
+      setSickRemaining(data.sickRemaining ?? null);
+
+
     } catch (err: any) {
       console.error("Failed to fetch leave quota:", err);
       setError(err.message || "Failed to load quota");
@@ -46,5 +52,5 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
     fetchQuota();
   }, [userId]);
 
-  return { remainingDays, isLoading, error, refetch: fetchQuota };
+  return { remainingDays, sickRemaining, isLoading, error, refetch: fetchQuota };
 };
