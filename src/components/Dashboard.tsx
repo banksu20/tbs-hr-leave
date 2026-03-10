@@ -102,14 +102,14 @@ const Dashboard = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-medium text-slate-800"><TbsTextLogo /> Leave System</h1>
-            <p className="text-sm text-slate-500 mt-1">{userName ? `Hi, ${userName}` : "Welcome"}</p>
+            <p className="text-sm font-medium text-slate-500 mt-1">{userName ? `Hi, ${userName}` : "Welcome"}</p>
           </div>
           <div className="flex gap-2">
             <div className="bg-sky-50 border border-sky-100 px-2 py-1.5 rounded-xl flex items-center gap-1.5">
               <Palmtree className="h-3.5 w-3.5 text-sky-500" />
               <div className="flex flex-col leading-none">
                 <span className="text-[10px] uppercase font-medium text-sky-400">Annual</span>
-                <span className="text-sm font-extralight text-sky-700">{remainingDays} d</span>
+                <span className="text-sm font-medium text-sky-700">{remainingDays} d</span>
               </div>
             </div>
             <div className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl flex items-center gap-2">
@@ -118,7 +118,7 @@ const Dashboard = () => {
               </div >
               <div className="flex flex-col leading-none">
                 <span className="text-[10px] uppercase font-medium text-rose-400">Sick</span>
-                <span className="text-sm font-extralight text-rose-700">{sickRemaining} d</span>
+                <span className="text-sm font-medium text-rose-700">{sickRemaining} d</span>
               </div>
             </div>
           </div>
@@ -132,8 +132,8 @@ const Dashboard = () => {
             <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-3 shadow-md`}>
               <item.icon className="h-7 w-7 text-white" />
             </div>
-            <span className="text-base font-semimedium text-slate-700">{item.title}</span>
-            <span className="text-xs text-slate-400">{item.subtitle}</span>
+            <span className="text-base font-medium text-slate-700">{item.title}</span>
+            <span className="text-xs font-light text-slate-400">{item.subtitle}</span>
           </button>
         ))}
       </div>
@@ -181,10 +181,12 @@ const Dashboard = () => {
                   </div>
 
                   {/* Status Badge ทรงแคปซูล */}
-                  <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tight border shadow-sm ${
-                    isApproved ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 
-                    isRejected ? 'bg-rose-50 border-rose-100 text-rose-600' : 
-                    'bg-amber-50 border-amber-100 text-amber-600'
+                  <div className={`px-4 py-1.5 rounded-full text-[10px] uppercase tracking-wide border shadow-sm ${
+                    isApproved 
+                      ? 'bg-emerald-50 border-emerald-100 text-emerald-700 font-bold' 
+                      : isRejected 
+                      ? 'bg-rose-50 border-rose-100 text-rose-700 font-bold' 
+                      : 'bg-amber-50 border-amber-200 text-amber-700 font-semibold'
                   }`}>
                     {isApproved ? 'อนุมัติแล้ว' : isRejected ? 'ปฏิเสธ' : 'รอตรวจสอบ'}
                   </div>
