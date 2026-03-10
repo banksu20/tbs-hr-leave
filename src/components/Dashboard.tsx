@@ -86,6 +86,14 @@ const Dashboard = () => {
     { title: "วันหยุดบริษัท", subtitle: "Company Holidays", icon: CalendarDays, gradient: "from-emerald-500 to-green-400", onClick: () => setShowHolidaysModal(true) },
   ];
 
+  const TbsTextLogo = () => (
+    <>
+      <span style={{ color: "#25D6F7" }}>T</span>
+      <span style={{ color: "#FFA100" }}>B</span>
+      <span style={{ color: "#5BD825" }}>S</span>
+    </>
+  )
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
@@ -93,7 +101,7 @@ const Dashboard = () => {
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-500 via-amber-400 to-emerald-500"></div>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">TBS Leave System</h1>
+            <h1 className="text-2xl font-bold text-slate-800"><TbsTextLogo /> Leave System</h1>
             <p className="text-sm text-slate-500 mt-1">{userName ? `Hi, ${userName}` : "Welcome"}</p>
           </div>
           <div className="flex gap-2">
@@ -130,37 +138,68 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* History */}
-      <div className="px-4 mt-8 pb-10 flex-1">
-        <h3 className="text-lg font-bold text-slate-800 mb-4">รายการลาล่าสุด</h3>
-        <div className="space-y-3">
-          {isHistoryLoading ? <Skeleton className="h-20 w-full rounded-2xl" /> : 
-            leaveHistory.length > 0 ? leaveHistory.map((item: any, i) => {
+      {/* History Section */}
+      <div className="px-4 mt-10 pb-10 flex-1">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-6 bg-sky-500 rounded-full"></div>
+            <h3 className="text-lg font-bold text-slate-800">รายการลาล่าสุด</h3>
+          </div>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">3 items</span>
+        </div>
+
+        <div className="space-y-4">
+          {isHistoryLoading ? (
+            <Skeleton className="h-24 w-full rounded-[2rem]" />
+          ) : leaveHistory.length > 0 ? (
+            leaveHistory.map((item: any, i) => {
+              // ตรวจสอบเงื่อนไขประเภทและสถานะ
               const isSick = item.type.includes('ป่วย') || item.type.toLowerCase().includes('sick');
               const isApproved = item.status.includes('Approved');
               const isRejected = item.status.includes('Rejected');
 
               return (
-                <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-xl ${isSick ? 'bg-rose-50 text-rose-500' : 'bg-sky-50 text-sky-500'}`}>
-                      {isSick ? <Thermometer className="h-5 w-5" /> : <Palmtree className="h-5 w-5" />}
+                <div 
+                  key={i} 
+                  className="group bg-white p-5 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between transition-all hover:shadow-md hover:border-sky-100 active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Icon พร้อมพื้นหลัง Soft Color */}
+                    <div className={`p-3.5 rounded-2xl transition-transform group-hover:scale-110 ${
+                      isSick ? 'bg-rose-50 text-rose-500' : 'bg-sky-50 text-sky-500'
+                    }`}>
+                      {isSick ? <Thermometer className="h-6 w-6" /> : <Palmtree className="h-6 w-6" />}
                     </div>
+
                     <div>
-                      <p className="text-sm font-semibold text-slate-800">{item.type}</p>
-                      <p className="text-[11px] text-slate-400">{item.date}</p>
+                      <p className="text-base font-bold text-slate-800 leading-none mb-1.5">{item.type}</p>
+                      <div className="flex items-center gap-1 text-slate-400">
+                        <Calendar className="h-3 w-3" />
+                        <p className="text-[11px] font-medium">{item.date}</p>
+                      </div>
                     </div>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${
+
+                  {/* Status Badge ทรงแคปซูล */}
+                  <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tight border shadow-sm ${
                     isApproved ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 
-                    isRejected ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-amber-50 border-amber-100 text-amber-600'
+                    isRejected ? 'bg-rose-50 border-rose-100 text-rose-600' : 
+                    'bg-amber-50 border-amber-100 text-amber-600'
                   }`}>
-                    {isApproved ? 'อนุมัติแล้ว' : isRejected ? 'ปฏิเสธ' : 'รอตรวจสอบ'}
-                  </span>
+                    {isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Pending'}
+                  </div>
                 </div>
               );
-            }) : <div className="text-center py-6 text-slate-400 text-sm">ไม่พบประวัติการลา</div>
-          }
+            })
+          ) : (
+            /* Empty State */
+            <div className="text-center py-12 bg-white rounded-[2.5rem] border border-dashed border-slate-200">
+              <div className="bg-slate-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                <CalendarCheck className="h-6 w-6 text-slate-300" />
+              </div>
+              <p className="text-sm font-medium text-slate-400">ไม่พบประวัติการลาของคุณ</p>
+            </div>
+          )}
         </div>
       </div>
 
