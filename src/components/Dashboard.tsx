@@ -109,7 +109,7 @@ const Dashboard = () => {
               <Palmtree className="h-3.5 w-3.5 text-sky-500" />
               <div className="flex flex-col leading-none">
                 <span className="text-[10px] uppercase font-medium text-sky-400">Annual</span>
-                <span className="text-sm font-black text-sky-700">{remainingDays} d</span>
+                <span className="text-sm font-extralight text-sky-700">{remainingDays} d</span>
               </div>
             </div>
             <div className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl flex items-center gap-2">
@@ -118,7 +118,7 @@ const Dashboard = () => {
               </div >
               <div className="flex flex-col leading-none">
                 <span className="text-[10px] uppercase font-medium text-rose-400">Sick</span>
-                <span className="text-sm font-black text-rose-700">{sickRemaining} d</span>
+                <span className="text-sm font-extralight text-rose-700">{sickRemaining} d</span>
               </div>
             </div>
           </div>

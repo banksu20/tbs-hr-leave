@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anuphan:wght@100..700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -99,15 +99,23 @@ All colors MUST be HSL.
 @layer base {
   body {
     @apply font-sans;
-    /* ปรับความหนาเริ่มต้นให้บางลงเป็นระดับ Light (300) หรือ Regular (400) */
-    font-weight: 300; 
-    /* ช่วยให้ฟอนต์บน Mobile และ Mac ดูเรียบเนียนขึ้น */
+    /* 1. ✅ ปรับค่าพื้นฐานเป็น 200 (ExtraLight) ตามที่ต้องการ */
+    font-weight: 200; 
+    
+    /* 2. ✅ เพิ่มตัวช่วยให้อ่านง่ายบนมือถือและจอความละเอียดต่ำ */
+    letter-spacing: 0.01em; 
+    line-height: 1.6;
+    
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    
+    /* ปรับสีตัวอักษรไม่ให้จางเกินไปเมื่อใช้ความหนา 200 */
+    @apply text-slate-900; 
   }
 
-  /* สำหรับหัวข้อที่ต้องการความเด่นแต่ไม่หนาจนเกินไป */
-  h1, h2, h3 {
-    font-weight: 600; /* เปลี่ยนจากตัวหนาจัด (Bold/700) เป็น Semi-bold (600) */
+  /* 3. ✅ ปรับหัวข้อให้ดูเด่นแต่ยังคงความสะอาด (ใช้ 400 หรือ 500) */
+  h1, h2, h3, .font-bold {
+    font-weight: 500; /* Medium: หนาขึ้นมานิดนึงเพื่อแยกหัวข้อออกจากเนื้อหา */
+    letter-spacing: -0.01em;
   }
 }

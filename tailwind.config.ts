@@ -66,7 +66,7 @@ export default {
       },
       fontFamily: {
         // เพิ่มบรรทัดนี้ลงไป
-        sans: ['"Kanit"', "sans-serif"],
+        sans: ['"Anuphan"', "sans-serif"],
       },
       keyframes: {
         "accordion-down": {
