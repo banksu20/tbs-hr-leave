@@ -99,11 +99,19 @@ const Dashboard = () => {
           <div className="flex gap-2">
             <div className="bg-sky-50 border border-sky-100 px-2 py-1.5 rounded-xl flex items-center gap-1.5">
               <Palmtree className="h-3.5 w-3.5 text-sky-500" />
-              <span className="text-xs font-bold text-sky-700">{isQuotaLoading ? ".." : remainingDays}</span>
+              <div className="flex flex-col leading-none">
+                <span className="text-[10px] uppercase font-bold text-sky-400">Annual</span>
+                <span className="text-sm font-black text-sky-700">{remainingDays} d</span>
+              </div>
             </div>
-            <div className="bg-rose-50 border border-rose-100 px-2 py-1.5 rounded-xl flex items-center gap-1.5">
-              <Thermometer className="h-3.5 w-3.5 text-rose-500" />
-              <span className="text-xs font-bold text-rose-700">{isQuotaLoading ? ".." : sickRemaining}</span>
+            <div className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl flex items-center gap-2">
+              <div className="relative">
+                <Thermometer className="h-4 w-4 text-rose-500" />
+              </div >
+              <div className="flex flex-col leading-none">
+                <span className="text-[10px] uppercase font-bold text-rose-400">Sick</span>
+                <span className="text-sm font-black text-rose-700">{sickRemaining} d</span>
+              </div>
             </div>
           </div>
         </div>
