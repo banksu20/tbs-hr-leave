@@ -47,9 +47,9 @@ export default function RejectForm() {
           row: rowId,
           reason: reason,
           userId: userId,
-          col: col,
-          days: days,
-          type: type,
+          col: searchParams.get("col"),
+          days: searchParams.get("days"),
+          type: searchParams.get("type"),
         }),
       });
 
