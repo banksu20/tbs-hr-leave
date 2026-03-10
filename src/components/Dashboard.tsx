@@ -181,7 +181,7 @@ const Dashboard = () => {
                   </div>
 
                   {/* Status Badge ทรงแคปซูล */}
-                  <div className={`px-4 py-1.5 rounded-full text-[10px] uppercase tracking-wide border shadow-sm ${
+                  <div className={`px-4 py-1.5 rounded-full text-[14px] uppercase tracking-wide border shadow-sm ${
                     isApproved 
                       ? 'bg-emerald-50 border-emerald-100 text-emerald-700 font-bold' 
                       : isRejected 
