@@ -11,10 +11,13 @@ const WEBHOOK_SUBMIT_REJECT = "https://thirstless-ostensively-maryam.ngrok-free.
 
 export default function RejectForm() {
   const [searchParams] = useSearchParams();
-  // ✅ 1. เพิ่มการดึงค่า userId และ userName จาก URL
   const rowId = searchParams.get("row"); 
   const userId = searchParams.get("userId");
   const userName = searchParams.get("userName");
+  const col = searchParams.get("col");
+  const days = searchParams.get("days");
+  const type = searchParams.get("type");
+
   
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,8 +46,10 @@ export default function RejectForm() {
         body: JSON.stringify({
           row: rowId,
           reason: reason,
-          // ✅ 2. แนบ userId กลับไปหา n8n ใน Body
-          userId: userId 
+          userId: userId,
+          col: col,
+          days: days,
+          type: type,
         }),
       });
 
