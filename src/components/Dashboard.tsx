@@ -186,7 +186,7 @@ const Dashboard = () => {
                     isRejected ? 'bg-rose-50 border-rose-100 text-rose-600' : 
                     'bg-amber-50 border-amber-100 text-amber-600'
                   }`}>
-                    {isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Pending'}
+                    {isApproved ? 'อนุมัติแล้ว' : isRejected ? 'ปฏิเสธ' : 'รอตรวจสอบ'}
                   </div>
                 </div>
               );
