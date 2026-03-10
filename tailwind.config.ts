@@ -66,7 +66,7 @@ export default {
       },
       fontFamily: {
         // เพิ่มบรรทัดนี้ลงไป
-        sans: ['"IBM Plex Sans Thai"', "sans-serif"],
+        sans: ['"Kanit"', "sans-serif"],
       },
       keyframes: {
         "accordion-down": {
