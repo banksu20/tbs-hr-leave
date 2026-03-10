@@ -101,14 +101,14 @@ const Dashboard = () => {
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-500 via-amber-400 to-emerald-500"></div>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800"><TbsTextLogo /> Leave System</h1>
+            <h1 className="text-2xl font-medium text-slate-800"><TbsTextLogo /> Leave System</h1>
             <p className="text-sm text-slate-500 mt-1">{userName ? `Hi, ${userName}` : "Welcome"}</p>
           </div>
           <div className="flex gap-2">
             <div className="bg-sky-50 border border-sky-100 px-2 py-1.5 rounded-xl flex items-center gap-1.5">
               <Palmtree className="h-3.5 w-3.5 text-sky-500" />
               <div className="flex flex-col leading-none">
-                <span className="text-[10px] uppercase font-bold text-sky-400">Annual</span>
+                <span className="text-[10px] uppercase font-medium text-sky-400">Annual</span>
                 <span className="text-sm font-black text-sky-700">{remainingDays} d</span>
               </div>
             </div>
@@ -117,7 +117,7 @@ const Dashboard = () => {
                 <Thermometer className="h-4 w-4 text-rose-500" />
               </div >
               <div className="flex flex-col leading-none">
-                <span className="text-[10px] uppercase font-bold text-rose-400">Sick</span>
+                <span className="text-[10px] uppercase font-medium text-rose-400">Sick</span>
                 <span className="text-sm font-black text-rose-700">{sickRemaining} d</span>
               </div>
             </div>
@@ -132,7 +132,7 @@ const Dashboard = () => {
             <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-3 shadow-md`}>
               <item.icon className="h-7 w-7 text-white" />
             </div>
-            <span className="text-base font-semibold text-slate-700">{item.title}</span>
+            <span className="text-base font-semimedium text-slate-700">{item.title}</span>
             <span className="text-xs text-slate-400">{item.subtitle}</span>
           </button>
         ))}
@@ -143,9 +143,9 @@ const Dashboard = () => {
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
             <div className="w-1 h-6 bg-sky-500 rounded-full"></div>
-            <h3 className="text-lg font-bold text-slate-800">รายการลาล่าสุด</h3>
+            <h3 className="text-lg font-medium text-slate-800">รายการลาล่าสุด</h3>
           </div>
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">3 items</span>
+          <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">3 items</span>
         </div>
 
         <div className="space-y-4">
@@ -172,7 +172,7 @@ const Dashboard = () => {
                     </div>
 
                     <div>
-                      <p className="text-base font-bold text-slate-800 leading-none mb-1.5">{item.type}</p>
+                      <p className="text-base font-medium text-slate-800 leading-none mb-1.5">{item.type}</p>
                       <div className="flex items-center gap-1 text-slate-400">
                         <Calendar className="h-3 w-3" />
                         <p className="text-[11px] font-medium">{item.date}</p>

@@ -97,12 +97,17 @@ All colors MUST be HSL.
 }
 
 @layer base {
-  * {
-    @apply border-border;
+  body {
+    @apply font-sans;
+    /* ปรับความหนาเริ่มต้นให้บางลงเป็นระดับ Light (300) หรือ Regular (400) */
+    font-weight: 300; 
+    /* ช่วยให้ฟอนต์บน Mobile และ Mac ดูเรียบเนียนขึ้น */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  body {
-    @apply bg-background text-foreground;
-    @apply font-sans;
+  /* สำหรับหัวข้อที่ต้องการความเด่นแต่ไม่หนาจนเกินไป */
+  h1, h2, h3 {
+    font-weight: 600; /* เปลี่ยนจากตัวหนาจัด (Bold/700) เป็น Semi-bold (600) */
   }
 }
