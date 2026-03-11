@@ -18,6 +18,7 @@ const Dashboard = () => {
   const [userName, setUserName] = useState<string>("");
   const [leaveHistory, setLeaveHistory] = useState([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  const [registeredName, setRegisteredName] = useState<string | null>(null);
 
   // ดึงข้อมูล Leave Quota (รองรับทั้ง Annual และ Sick)
   const { remainingDays, sickRemaining, isLoading: isQuotaLoading } = useLeaveQuota(userId);
@@ -30,6 +31,8 @@ const Dashboard = () => {
           const profile = await liff.getProfile();
           setUserId(profile.userId);
           setUserName(profile.displayName);
+
+          fetchRegisteredName(profile.userId);
         }
       } catch (err) { console.error("LIFF error:", err); }
     };
@@ -50,6 +53,23 @@ const Dashboard = () => {
         .catch(() => setIsHistoryLoading(false));
     }
   }, [userId]);
+
+
+  const fetchRegisteredName = async (id: string) => {
+    try {
+      const res = await fetch(`https://thirstless-ostensively-maryam.ngrok-free.dev/webhook/check-user?userId=${id}`, {
+        headers: { "ngrok-skip-browser-warning": "true" }
+      });
+      const data = await res.json();
+      if(data.found) {
+        setRegisteredName(data.name);
+      }
+  }catch (err) {
+    console.error("Error fetching registered name:", err);
+  }
+}
+
+
 
   const handleCheckQuota = () => {
     if (isQuotaLoading) return;
@@ -95,7 +115,7 @@ const Dashboard = () => {
         <div>
           <h1 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.25em] mb-1">Personal Dashboard</h1>
           <p className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            Hi, <span className="text-[#00B5E2] capitalize">{userName}</span>
+            Hi, <span className="text-[#00B5E2] capitalize">{registeredName || userName || "Guest"}</span>
           </p>
         </div>
           <div className="flex gap-2">
