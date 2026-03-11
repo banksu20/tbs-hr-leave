@@ -50,6 +50,8 @@ export default function RejectForm() {
           col: searchParams.get("col"),
           days: searchParams.get("days"),
           type: searchParams.get("type"),
+          takenRow: searchParams.get("takenRow"),
+          remainRow: searchParams.get("remainRow"),
         }),
       });
 
