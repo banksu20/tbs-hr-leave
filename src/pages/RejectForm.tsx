@@ -29,6 +29,7 @@ export default function RejectForm() {
   const type = searchParams.get("type");
   const takenRow = searchParams.get("takenRow");
   const remainRow = searchParams.get("remainRow");
+  const leaveReason = searchParams.get("leaveReason") || searchParams.get("reason");
 
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -122,7 +123,7 @@ export default function RejectForm() {
               <div className="col-span-2 font-medium text-slate-700">{days || "-"} Day(s)</div>
 
               <div className="text-slate-500">Reason:</div>
-              <div className="col-span-2 font-medium text-slate-700">{reason || "-"}</div>
+              <div className="col-span-2 font-medium text-slate-700">{leaveReason || "-"}</div>
             </div>
           </div>
 
