@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Loader2, Calendar as CalendarIcon, User, FileText, ArrowLeft, AlertTriangle } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, User, FileText, ArrowLeft, AlertTriangle, Clock } from "lucide-react";
 import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -59,28 +59,25 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   // ดึงข้อมูล Leave Quota
   const { remainingDays, isLoading: isQuotaLoading } = useLeaveQuota(currentUserId || null);
   const [error, setError] = useState<string | null>(null);
-
   const [isDepartmentLocked, setIsDepartmentLocked] = useState(false);
-
-  // ตรวจสอบว่าต้อง Lock Leave Type หรือไม่
   const isLeaveTypeLocked = Boolean(defaultType);
 
-
-    const [formData, setFormData] = useState<FormData>({
-        userName: userName || "",
-        userId: userId || "",
-        department: department || "",
-        leaveType: defaultType === "sick" ? "sick" : defaultType === "vacation" ? "vacation" : "",
-        reason: "",
-      });
-
+  const [formData, setFormData] = useState<FormData>({
+    userName: userName || "",
+    userId: userId || "",
+    department: department || "",
+    leaveType: defaultType === "sick" ? "sick" : defaultType === "vacation" ? "vacation" : "",
+    reason: "",
+  });
 
   // State สำหรับ Multi-select dates
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  
+  // ✅ State สำหรับเลือกลาครึ่งวัน
+  const [isHalfDay, setIsHalfDay] = useState(false);
 
-
-  // คำนวณจำนวนวันลาจากวันที่เลือก
-  const requestedDays = selectedDates.length;
+  // ✅ คำนวณจำนวนวันลา (ถ้าเลือกครึ่งวันจะเป็น 0.5)
+  const requestedDays = (selectedDates.length === 1 && isHalfDay) ? 0.5 : selectedDates.length;
 
   // หา Start Date และ End Date จากวันที่เลือก
   const { startDateTime, endDateTime } = useMemo(() => {
@@ -94,24 +91,16 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     };
   }, [selectedDates]);
 
-  // ใช้ค่า Default 10 วัน ถ้าไม่มีข้อมูลจาก API
   const displayRemainingDays = remainingDays ?? 10;
-
-  // เช็คว่าเกินโควต้าหรือไม่
   const isOverQuota = requestedDays > displayRemainingDays;
 
   useEffect(() => {
-    if (department) {
-      setIsDepartmentLocked(true);
-    } else {
-      setIsDepartmentLocked(false);
-    }
+    if (department) setIsDepartmentLocked(true);
+    else setIsDepartmentLocked(false);
   }, [department]);
-
 
   useEffect(() => {
     if (userId || userName || department || initialLeaveType) { 
-      console.log("Props received:", { userId, userName, department, initialLeaveType });
       if (userId) setCurrentUserId(userId);
       setFormData((prev) => ({
         ...prev,
@@ -126,12 +115,9 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     }
   }, [userId, userName, department, initialLeaveType]); 
 
-  // Effect 2: (Backup) ถ้าไม่มี userId ส่งมา ให้ลอง Init LIFF เอง
   useEffect(() => {
     const initializeLiff = async () => {
-      // ถ้ามี userId อยู่แล้ว ไม่ต้องทำอะไร
       if (userId) return;
-
       try {
         await liff.init({ liffId: LIFF_ID });
         if (liff.isLoggedIn()) {
@@ -143,81 +129,43 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
             userId: profile.userId,
           }));
         } else {
-          // ถ้าเปิดใน Browser นอก LINE จะให้ Login
            liff.login();
         }
       } catch (err) {
-        console.error("LIFF initialization failed:", err);
         setError("Failed to initialize LINE LIFF.");
       } finally {
         setIsLoading(false);
       }
     };
-
     initializeLiff();
   }, [userId]);
 
-
-  useEffect(() => {
-    if (!isQuotaLoading && (remainingDays === null || remainingDays === undefined) && isDepartmentLocked) {
-      console.log("User deleted from Sheet -> Clearing LocalStorage");
-      
-      localStorage.removeItem("userDepartment"); // ลบความจำ
-      setIsDepartmentLocked(false); // ปลดล็อค
-      setFormData(prev => ({ ...prev, department: "" })); // เคลียร์หน้าจอ
-      
-      // (Optional) แจ้งเตือนเพื่อให้ผู้ใช้รู้ตัว
-      Swal.fire({
-        icon: 'info',
-        title: 'อัปเดตข้อมูล',
-        text: 'ไม่พบข้อมูลของคุณในระบบ',
-        timer: 2000,
-        showConfirmButton: false
-      });
-    }
-  }, [isQuotaLoading, remainingDays, isDepartmentLocked]);
-
-
-// ฟังก์ชันเมื่อมีการจิ้มเลือกวันที่
+  // ฟังก์ชันเมื่อมีการจิ้มเลือกวันที่
   const handleDateSelect = (dates: Date[] | undefined) => {
     const safeDates = dates || [];
     setSelectedDates(safeDates);
 
-    if (safeDates.length > 0) {
-      // เรียงวันที่จากน้อยไปมาก
-      const sortedDates = [...safeDates].sort((a, b) => a.getTime() - b.getTime());
-      
-      setFormData((prev) => ({
-        ...prev,
-        startDateTime: sortedDates[0].toISOString(), // วันแรก
-        endDateTime: sortedDates[sortedDates.length - 1].toISOString(), // วันสุดท้าย
-        leaveDays: safeDates.length // ✅ ส่งจำนวนวันที่จิ้มจริงไปด้วย
-      }));
-    } else {
-      // กรณีเอาออกหมด
-      setFormData((prev) => ({ ...prev, startDateTime: "", endDateTime: "", leaveDays: 0 }));
+    // ✅ ถ้าไม่ได้เลือกแค่วันเดียว ให้ปิดโหมดครึ่งวันทิ้งไปเลย (บังคับเต็มวัน)
+    if (safeDates.length !== 1) {
+      setIsHalfDay(false);
     }
   };
 
+  const handleDepartmentChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, department: value }));
+    localStorage.setItem("userDepartment", value); 
+  };
 
-  
-  // Handle Department Change
-    const handleDepartmentChange = (value: string) => {
-      setFormData((prev) => ({ ...prev, department: value }));
-      localStorage.setItem("userDepartment", value); // บันทึกไว้ ครั้งหน้ามาจะได้จำได้
-    };
-  // Handle Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation - Reason ไม่บังคับสำหรับ vacation
     const isReasonRequired = formData.leaveType !== "vacation";
     if (!formData.department || !formData.leaveType || selectedDates.length === 0 || (isReasonRequired && !formData.reason)) {
       Swal.fire({
         icon: "warning",
         title: "Incomplete Form",
         text: "Please fill in all required fields and select at least one leave date.",
-        confirmButtonColor: "#06C755",
+        confirmButtonColor: "#00B5E2",
       });
       return;
     }
@@ -238,10 +186,11 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
           leaveType: formData.leaveType,
           startDateTime: startDateTime,
           endDateTime: endDateTime,
-          leaveDays: selectedDates.length,
+          leaveDays: requestedDays, // ✅ ส่ง 0.5 หรือจำนวนเต็มไปให้ n8n
           selectedDates: selectedDates.map(d => format(d, "yyyy-MM-dd")),
           reason: formData.reason,
           submittedAt: new Date().toISOString(),
+          isHalfDay: isHalfDay // ส่ง flag เผื่อให้ n8n รู้ว่าเป็นครึ่งวัน
         }),
       });
 
@@ -255,39 +204,34 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
         icon: "success",
         title: "Request Submitted!",
         text: result.message || "Your leave request has been sent successfully.",
-        confirmButtonColor: "#06C755",
+        confirmButtonColor: "#00B5E2",
       });
 
-      navigate("/"); // กลับหน้าแรก
+      navigate("/"); 
 
-      // Reset Form (แต่เก็บชื่อไว้)
-      setFormData((prev) => ({
-        ...prev,
-        reason: "",
-      }));
+      setFormData((prev) => ({ ...prev, reason: "" }));
       setSelectedDates([]);
+      setIsHalfDay(false);
 
       if (liff.isInClient()) {
         liff.closeWindow();
       }
     } catch (err: any) {
-      console.error("Submission failed:", err);
       await Swal.fire({
         icon: "error",
         title: "Submission Failed",
         text: err.message || "Failed to submit your request.",
-        confirmButtonColor: "#06C755",
+        confirmButtonColor: "#00B5E2",
       });
-      navigate("/")
+      navigate("/");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Render Loading
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#06C755] flex items-center justify-center">
+      <div className="min-h-screen bg-[#00B5E2] flex items-center justify-center">
         <div className="text-center text-white">
           <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4" />
           <p className="text-lg font-medium">Loading...</p>
@@ -296,14 +240,13 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     );
   }
 
-  // Render Error
   if (error) {
     return (
-      <div className="min-h-screen bg-[#06C755] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#00B5E2] flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <p className="text-destructive mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()} className="bg-[#06C755]">
+            <Button onClick={() => window.location.reload()} className="bg-[#00B5E2]">
               Retry
             </Button>
           </CardContent>
@@ -312,20 +255,13 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     );
   }
 
-  // Render Form
   return (
-// ✅ 1. เปลี่ยนพื้นหลังหลักเป็นสีเทาอ่อน (Clean Look)
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      
-      {/* Header (TBS Style) */}
       <div className="bg-white text-slate-800 py-6 px-4 shadow-sm relative overflow-hidden">
-        {/* แถบสี Brand ด้านบน */}
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-500 via-amber-400 to-emerald-500"></div>
-
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/")}
-            // ปรับสีปุ่ม Back ให้เข้ากับพื้นขาว
             className="p-2 -ml-2 rounded-full hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-800"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -337,12 +273,10 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
         </div>
       </div>
 
-      {/* Form Card */}
       <div className="px-4 pb-6 -mt-2 mt-4 flex-1">
         <Card className="rounded-2xl shadow-sm border border-slate-200">
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* User Name */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-slate-600">
                   <User className="h-4 w-4" /> User Name
@@ -350,18 +284,14 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 <Input value={formData.userName} readOnly className="bg-slate-50 border-slate-200 font-medium text-slate-600" />
               </div>
 
-              {/* Department */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-muted-foreground">
                   <FileText className="h-4 w-4" /> Department *
                 </Label>
-                <Select
-                  value={formData.department}
-                  onValueChange={handleDepartmentChange}
-                  disabled={isDepartmentLocked}
-                >
+                <Select value={formData.department} onValueChange={handleDepartmentChange} disabled={isDepartmentLocked}>
                   <SelectTrigger className={isDepartmentLocked ? "font-medium bg-muted/50" : "font-medium"}>
-                    <SelectValue placeholder="Select department" /></SelectTrigger>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="IT">IT</SelectItem>
                     <SelectItem value="SEO">SEO</SelectItem>
@@ -372,16 +302,11 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 </Select>
               </div>
 
-              {/* Leave Type */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-slate-600">
                   <FileText className="h-4 w-4" /> Leave Type *
                 </Label>
-                <Select
-                  value={formData.leaveType}
-                  onValueChange={(val) => setFormData({ ...formData, leaveType: val })}
-                  disabled={isLeaveTypeLocked}
-                >
+                <Select value={formData.leaveType} onValueChange={(val) => setFormData({ ...formData, leaveType: val })} disabled={isLeaveTypeLocked}>
                   <SelectTrigger className={`font-medium border-slate-200 ${isLeaveTypeLocked ? "bg-slate-50" : "bg-white"}`}>
                     <SelectValue placeholder="Select leave type" />
                   </SelectTrigger>
@@ -392,7 +317,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 </Select>
               </div>
 
-              {/* Multi-select Calendar (แก้ไขเป็นแบบ Popover ซ่อนปฏิทิน) */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-muted-foreground">
                   <CalendarIcon className="h-4 w-4" /> เลือกวันที่ต้องการลา *
@@ -412,7 +336,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                         <span className="text-slate-800 font-medium truncate">
                           เลือกแล้ว <span className="text-sky-600 font-bold">{selectedDates.length}</span> วัน 
                           <span className="text-xs text-slate-400 ml-2 font-normal">
-                             ({[...selectedDates]
+                              ({[...selectedDates]
                                 .sort((a,b)=>a.getTime()-b.getTime())
                                 .map(d => format(d, "dd MMM", { locale: th }))
                                 .join(", ")})
@@ -435,7 +359,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                       className="pointer-events-auto bg-white rounded-md"
                       modifiersStyles={{
                         selected: {
-                          backgroundColor: "#0ea5e9", // สีฟ้า TBS (sky-500)
+                          backgroundColor: "#0ea5e9",
                           color: "white",
                           borderRadius: "50%",
                         },
@@ -444,15 +368,41 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   </PopoverContent>
                 </Popover>
 
-                {/* ข้อความสรุปสีเขียวด้านล่าง */}
+                {/* ✅ เพิ่มส่วนเลือก เต็มวัน/ครึ่งวัน จะโผล่มาเฉพาะเมื่อเลือกแค่วันเดียว */}
+                {selectedDates.length === 1 && (
+                  <div className="mt-4 p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-3">
+                    <Label className="flex items-center gap-2 text-slate-600 text-xs uppercase tracking-wider font-bold">
+                      <Clock className="h-3 w-3" /> ระยะเวลา (Duration)
+                    </Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={!isHalfDay ? "default" : "outline"}
+                        className={cn("flex-1 rounded-lg", !isHalfDay ? "bg-sky-500 hover:bg-sky-600 text-white" : "text-slate-500")}
+                        onClick={() => setIsHalfDay(false)}
+                      >
+                        เต็มวัน (1 วัน)
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={isHalfDay ? "default" : "outline"}
+                        className={cn("flex-1 rounded-lg", isHalfDay ? "bg-amber-500 hover:bg-amber-600 text-white" : "text-slate-500")}
+                        onClick={() => setIsHalfDay(true)}
+                      >
+                        ครึ่งวัน (0.5 วัน)
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {/* ---------------------------------------------------- */}
+
                 {selectedDates && selectedDates.length > 0 && (
-                  <p className="text-sm font-medium text-[#06C755] mt-1 ml-1">
-                    * คุณเลือกวันลาทั้งหมด <b>{selectedDates.length}</b> วัน
+                  <p className="text-sm font-medium text-slate-600 mt-2 ml-1">
+                    * สรุปการขอลา: <b className={isHalfDay ? "text-amber-500" : "text-sky-500"}>{requestedDays}</b> วัน
                   </p>
                 )}
               </div>
 
-              {/* Reason - ซ่อนสำหรับ vacation */}
               {formData.leaveType !== "vacation" && (
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-muted-foreground">
@@ -467,7 +417,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 </div>
               )}
 
-              {/* Leave Quota Info */}
               <div className={`p-4 rounded-xl border ${isOverQuota ? "bg-destructive/10 border-destructive/30" : "bg-muted/50 border-border"}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -477,19 +426,11 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   {isQuotaLoading ? (
                     <Skeleton className="h-5 w-16" />
                   ) : (
-                    <span className={`font-medium ${displayRemainingDays < 3 ? "text-destructive" : "text-foreground"}`}>
+                    <span className={`font-medium ${displayRemainingDays < requestedDays ? "text-destructive" : "text-foreground"}`}>
                       {displayRemainingDays} วัน
                     </span>
                   )}
                 </div>
-                {/* {requestedDays > 0 && (
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
-                    <span className="text-sm text-muted-foreground">จำนวนวันที่ขอลา:</span>
-                    <span className={`font-bold ${isOverQuota ? "text-destructive" : "text-foreground"}`}>
-                      {requestedDays} วัน
-                    </span>
-                  </div>
-                )} */}
                 {isOverQuota && (
                   <div className="flex items-center gap-2 mt-3 text-destructive">
                     <AlertTriangle className="h-4 w-4" />
@@ -498,7 +439,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 )}
               </div>
 
-              {/* Submit */}
               <Button
                 type="submit"
                 disabled={isSubmitting || isOverQuota || selectedDates.length === 0}
