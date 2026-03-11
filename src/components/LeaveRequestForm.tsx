@@ -158,12 +158,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   }, [userId]);
 
 
-  // ✅ Effect 3: Auto-Reset (ฉบับแก้ไข: ลบเฉพาะคนที่ถูกจำค่าไว้ แต่หาไม่เจอใน Sheet)
   useEffect(() => {
-    // เงื่อนไข:
-    // 1. โหลดข้อมูลเสร็จแล้ว (!isQuotaLoading)
-    // 2. ไม่เจอข้อมูลวันลา (แสดงว่าไม่มีชื่อใน Sheet)
-    // 3. **สำคัญ:** สถานะต้องเป็น "ล็อค" อยู่ (isDepartmentLocked) -> แปลว่าระบบจำค่าผิด
     if (!isQuotaLoading && (remainingDays === null || remainingDays === undefined) && isDepartmentLocked) {
       console.log("User deleted from Sheet -> Clearing LocalStorage");
       
@@ -175,7 +170,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       Swal.fire({
         icon: 'info',
         title: 'อัปเดตข้อมูล',
-        text: 'ไม่พบข้อมูลของคุณในระบบ กรุณาระบุแผนกใหม่อีกครั้ง',
+        text: 'ไม่พบข้อมูลของคุณในระบบ',
         timer: 2000,
         showConfirmButton: false
       });
@@ -262,6 +257,8 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
         text: result.message || "Your leave request has been sent successfully.",
         confirmButtonColor: "#06C755",
       });
+
+      navigate("/"); // กลับหน้าแรก
 
       // Reset Form (แต่เก็บชื่อไว้)
       setFormData((prev) => ({
