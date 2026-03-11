@@ -112,12 +112,22 @@ const Dashboard = () => {
       <div className="bg-white py-6 px-4 shadow-sm relative">
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-500 via-amber-400 to-emerald-500"></div>
         <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.25em] mb-1">Personal Dashboard</h1>
-          <p className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            Hi, <span className="text-[#00B5E2] capitalize">{registeredName || userName || "Guest"}</span>
-          </p>
-        </div>
+          <div className="flex flex-col">
+              <p className="text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                Hi, <span className="text-[#00B5E2] capitalize">{registeredName || "User"}</span>
+              </p>
+              
+              <div className="flex items-center gap-1.5 mt-1">
+                <div className="bg-[#06C755] p-0.5 rounded-sm">
+                  <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 fill-white">
+                    <path d="M24 10.304c0-4.579-4.82-8.304-10.741-8.304-5.922 0-10.74 3.725-10.74 8.304 0 4.104 3.821 7.535 8.985 8.196.349.075.824.23.943.528.108.272.071.699.035 1.047l-.151 1.043c-.046.323-.211 1.263 1.053.69 1.263-.574 6.817-4.014 9.303-6.87 1.83-2.107 2.313-3.816 2.313-5.634z"/>
+                  </svg>
+                </div>
+                <p className="text-xs font-medium text-slate-400 italic">
+                  {userName || "Guest Account"}
+                </p>
+              </div>
+            </div>
           <div className="flex gap-2">
             <div className="bg-sky-50 border border-sky-100 px-2 py-1.5 rounded-xl flex items-center gap-1.5">
               <Palmtree className="h-3.5 w-3.5 text-sky-500" />
