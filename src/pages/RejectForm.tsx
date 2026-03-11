@@ -120,6 +120,9 @@ export default function RejectForm() {
               
               <div className="text-slate-500">Duration:</div>
               <div className="col-span-2 font-medium text-slate-700">{days || "-"} Day(s)</div>
+
+              <div className="text-slate-500">Reason:</div>
+              <div className="col-span-2 font-medium text-slate-700">{reason || "-"}</div>
             </div>
           </div>
 
