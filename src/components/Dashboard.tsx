@@ -86,24 +86,18 @@ const Dashboard = () => {
     { title: "วันหยุดบริษัท", subtitle: "Company Holidays", icon: CalendarDays, gradient: "from-emerald-500 to-green-400", onClick: () => setShowHolidaysModal(true) },
   ];
 
-  const TbsTextLogo = () => (
-    <>
-      <span style={{ color: "#25D6F7" }}>T</span>
-      <span style={{ color: "#FFA100" }}>B</span>
-      <span style={{ color: "#5BD825" }}>S</span>
-    </>
-  )
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
       <div className="bg-white py-6 px-4 shadow-sm relative">
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-500 via-amber-400 to-emerald-500"></div>
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-medium text-slate-800"><TbsTextLogo /> Leave System</h1>
-            <p className="text-sm font-medium text-slate-500 mt-1">{userName ? `Hi, ${userName}` : "Welcome"}</p>
-          </div>
+        <div>
+          <h1 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.25em] mb-1">Personal Dashboard</h1>
+          <p className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            Hi, <span className="text-[#00B5E2] capitalize">{userName}</span>
+          </p>
+        </div>
           <div className="flex gap-2">
             <div className="bg-sky-50 border border-sky-100 px-2 py-1.5 rounded-xl flex items-center gap-1.5">
               <Palmtree className="h-3.5 w-3.5 text-sky-500" />
