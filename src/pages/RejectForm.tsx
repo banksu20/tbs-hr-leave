@@ -30,6 +30,7 @@ export default function RejectForm() {
   const takenRow = searchParams.get("takenRow");
   const remainRow = searchParams.get("remainRow");
   const leaveReason = searchParams.get("leaveReason") || searchParams.get("reason");
+  const dbId = searchParams.get("dbId") || "";
 
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,6 +65,7 @@ export default function RejectForm() {
           type: type,
           takenRow: takenRow,
           remainRow: remainRow,
+          dbId: dbId,
         }),
       });
 
