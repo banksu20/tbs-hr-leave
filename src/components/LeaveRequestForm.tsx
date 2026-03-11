@@ -381,7 +381,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                         className={cn("flex-1 rounded-lg", !isHalfDay ? "bg-sky-500 hover:bg-sky-600 text-white" : "text-slate-500")}
                         onClick={() => setIsHalfDay(false)}
                       >
-                        เต็มวัน (1 วัน)
+                        Full Day
                       </Button>
                       <Button
                         type="button"
@@ -389,7 +389,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                         className={cn("flex-1 rounded-lg", isHalfDay ? "bg-amber-500 hover:bg-amber-600 text-white" : "text-slate-500")}
                         onClick={() => setIsHalfDay(true)}
                       >
-                        ครึ่งวัน (0.5 วัน)
+                        Half Day
                       </Button>
                     </div>
                   </div>
@@ -398,7 +398,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
                 {selectedDates && selectedDates.length > 0 && (
                   <p className="text-sm font-medium text-slate-600 mt-2 ml-1">
-                    * สรุปการขอลา: <b className={isHalfDay ? "text-amber-500" : "text-sky-500"}>{requestedDays}</b> วัน
+                    * สรุปการขอลา: <b className={isHalfDay ? "text-amber-500" : "text-sky-500"}>{requestedDays}</b> วัน ({isHalfDay ? "ครึ่งวัน" : "เต็มวัน"})
                   </p>
                 )}
               </div>
