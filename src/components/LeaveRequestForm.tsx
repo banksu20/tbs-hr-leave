@@ -394,11 +394,14 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                     </div>
                   </div>
                 )}
-                {/* ---------------------------------------------------- */}
 
                 {selectedDates && selectedDates.length > 0 && (
                   <p className="text-sm font-medium text-slate-600 mt-2 ml-1">
-                    * สรุปการขอลา: <b className={isHalfDay ? "text-amber-500" : "text-sky-500"}>{requestedDays}</b> วัน ({isHalfDay ? "ครึ่งวัน" : "เต็มวัน"})
+                    * Total duration (สรุปการขอลา): <b className={isHalfDay ? "text-amber-500" : "text-sky-500"}>
+                      {selectedDates.length > 1 
+                        ? `${requestedDays} Day(s) (วัน)` 
+                        : (isHalfDay ? "Half Day (ครึ่งวัน)" : "Full Day (เต็มวัน)")}
+                    </b>
                   </p>
                 )}
               </div>
