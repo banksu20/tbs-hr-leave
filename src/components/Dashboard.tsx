@@ -19,7 +19,7 @@ const Dashboard = () => {
   const [registeredName, setRegisteredName] = useState<string | null>(null);
 
   // ดึงข้อมูล Leave Quota
-  const { remainingDays, sickRemaining, isLoading: isQuotaLoading } = useLeaveQuota(userId);
+  const { remainingDays, sickRemaining, annualTotal, sickTotal, isLoading: isQuotaLoading } = useLeaveQuota(userId);
 
   const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
 
@@ -76,7 +76,7 @@ const Dashboard = () => {
         <div className="flex items-start justify-between">
           <div className="flex flex-col">
             <p className="text-[13px] font-semibold text-slate-400 tracking-wider uppercase mb-1">
-              Welcome back
+              TBS Marketing
             </p>
             <p className="text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-2">
               <span className="text-[#00B5E2] capitalize">{registeredName || "User"}</span>
@@ -97,22 +97,6 @@ const Dashboard = () => {
 
       {/* Quota & Holiday Grid */}
       <div className="px-4 mt-6 grid grid-cols-2 gap-3">
-        {/* Annual Quota Card */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-sky-100 relative overflow-hidden">
-          <div className="absolute -right-4 -top-4 opacity-[0.03]">
-            <Palmtree className="w-24 h-24 text-sky-500" />
-          </div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="bg-sky-50 p-2 rounded-xl text-sky-500">
-              <Palmtree className="h-4 w-4" />
-            </div>
-            <span className="text-xs font-bold text-sky-700 uppercase tracking-wide">พักร้อน</span>
-          </div>
-          <div className="flex items-baseline gap-1">
-            {isQuotaLoading ? <Skeleton className="h-8 w-12" /> : <span className="text-3xl font-extrabold text-slate-800">{remainingDays}</span>}
-            <span className="text-sm font-medium text-slate-400">วัน</span>
-          </div>
-        </div>
 
         {/* Sick Quota Card */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100 relative overflow-hidden">
@@ -126,10 +110,30 @@ const Dashboard = () => {
             <span className="text-xs font-bold text-rose-700 uppercase tracking-wide">ลาป่วย</span>
           </div>
           <div className="flex items-baseline gap-1">
-            {isQuotaLoading ? <Skeleton className="h-8 w-12" /> : <span className="text-3xl font-extrabold text-slate-800">{sickRemaining}</span>}
+            {isQuotaLoading ? <Skeleton className="h-8 w-12" /> : <span className="text-3xl font-extrabold text-slate-800">{sickRemaining} / {sickTotal}</span>}
             <span className="text-sm font-medium text-slate-400">วัน</span>
           </div>
         </div>
+
+
+        {/* Annual Quota Card */}
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-sky-100 relative overflow-hidden">
+          <div className="absolute -right-4 -top-4 opacity-[0.03]">
+            <Palmtree className="w-24 h-24 text-sky-500" />
+          </div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="bg-sky-50 p-2 rounded-xl text-sky-500">
+              <Palmtree className="h-4 w-4" />
+            </div>
+            <span className="text-xs font-bold text-sky-700 uppercase tracking-wide">พักร้อน</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            {isQuotaLoading ? <Skeleton className="h-8 w-12" /> : <span className="text-3xl font-extrabold text-slate-800">{remainingDays} / {annualTotal}</span>}
+            <span className="text-sm font-medium text-slate-400">วัน</span>
+          </div>
+        </div>
+
+        
 
         {/* Full width Company Holiday Button */}
         <button 
@@ -218,7 +222,7 @@ const Dashboard = () => {
 
       {/* Footer */}
       <div className="py-6 flex flex-col items-center border-t border-slate-100 bg-white mt-auto">
-        <img src={tbsLogo} alt="TBS Logo" className="h-8 w-auto opacity-70 grayscale" />
+        <img src={tbsLogo} alt="TBS Logo" className="h-8 w-auto" />
         <span className="text-[10px] font-medium text-slate-400 mt-2 tracking-wide">
           © {new Date().getFullYear()} TBS MARKETING
         </span>

@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 
-const QUOTA_API_URL = "https://thirstless-ostensively-maryam.ngrok-free.dev/webhook/get-quota";
+const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
+const QUOTA_API_URL = `${N8N_URL}/webhook/get-quota`;
 
 interface UseLeaveQuotaResult {
   remainingDays: number | null;
   sickRemaining: number | null;
+  annualTotal: number | null; 
+  sickTotal: number | null;   
   isLoading: boolean;
   error: string | null;
   refetch: () => void;
@@ -13,6 +16,11 @@ interface UseLeaveQuotaResult {
 export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
   const [remainingDays, setRemainingDays] = useState<number | null>(null);
   const [sickRemaining, setSickRemaining] = useState<number | null>(null);
+  
+  // 🌟 จุดที่ 3: สร้าง State มารับค่า Total
+  const [annualTotal, setAnnualTotal] = useState<number | null>(null);
+  const [sickTotal, setSickTotal] = useState<number | null>(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,7 +46,9 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
 
       setRemainingDays(data.remainingDays ?? null);
       setSickRemaining(data.sickRemaining ?? null);
-
+      
+      setAnnualTotal(data.annualTotal ?? null);
+      setSickTotal(data.sickTotal ?? null);
 
     } catch (err: any) {
       console.error("Failed to fetch leave quota:", err);
@@ -52,5 +62,13 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
     fetchQuota();
   }, [userId]);
 
-  return { remainingDays, sickRemaining, isLoading, error, refetch: fetchQuota };
+  return { 
+    remainingDays, 
+    sickRemaining, 
+    annualTotal, 
+    sickTotal, 
+    isLoading, 
+    error, 
+    refetch: fetchQuota 
+  };
 };
