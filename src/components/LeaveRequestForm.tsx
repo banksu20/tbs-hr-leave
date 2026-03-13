@@ -24,9 +24,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 
 // ค่า Config
-const LIFF_ID = "2008617589-89gR1Y3Y";
-const WEBHOOK_URL = "https://thirstless-ostensively-maryam.ngrok-free.dev/webhook/submit-leave";
 
+const LIFF_ID = import.meta.env.VITE_LIFF_ID || "2008617589-89gR1Y3Y";
+
+const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://thirstless-ostensively-maryam.ngrok-free.dev";
 // Interface
 interface LeaveRequestFormProps {
   userId?: string;
@@ -173,7 +174,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(WEBHOOK_URL, {
+      const response = await fetch(`${N8N_URL}/webhook/submit-leave`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

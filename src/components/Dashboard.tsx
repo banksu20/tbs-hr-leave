@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import liff from "@line/liff";
-import Swal from "sweetalert2";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Thermometer, Palmtree, CalendarCheck, CalendarDays, Calendar } from "lucide-react";
+import { Thermometer, Palmtree, CalendarDays, Calendar, CheckCircle2, Clock, XCircle } from "lucide-react";
 import HolidaysModal from "./HolidaysModal";
 import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 import tbsLogo from "@/image/TBS-Logo.png";
@@ -11,7 +10,6 @@ import tbsLogo from "@/image/TBS-Logo.png";
 const LIFF_ID = "2008617589-89gR1Y3Y";
 
 const Dashboard = () => {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [showHolidaysModal, setShowHolidaysModal] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -20,8 +18,10 @@ const Dashboard = () => {
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [registeredName, setRegisteredName] = useState<string | null>(null);
 
-  // ดึงข้อมูล Leave Quota (รองรับทั้ง Annual และ Sick)
+  // ดึงข้อมูล Leave Quota
   const { remainingDays, sickRemaining, isLoading: isQuotaLoading } = useLeaveQuota(userId);
+
+  const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
 
   useEffect(() => {
     const initLiff = async () => {
@@ -31,7 +31,6 @@ const Dashboard = () => {
           const profile = await liff.getProfile();
           setUserId(profile.userId);
           setUserName(profile.displayName);
-
           fetchRegisteredName(profile.userId);
         }
       } catch (err) { console.error("LIFF error:", err); }
@@ -42,7 +41,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (userId) {
       setIsHistoryLoading(true);
-      fetch(`https://thirstless-ostensively-maryam.ngrok-free.dev/webhook/get-leave-history?userId=${userId}`, {
+      fetch(`${N8N_URL}/webhook/get-leave-history?userId=${userId}`, {
         headers: { "ngrok-skip-browser-warning": "true" }
       })
         .then(res => res.json())
@@ -54,10 +53,9 @@ const Dashboard = () => {
     }
   }, [userId]);
 
-
   const fetchRegisteredName = async (id: string) => {
     try {
-      const res = await fetch(`https://thirstless-ostensively-maryam.ngrok-free.dev/webhook/check-user?userId=${id}`, {
+      const res = await fetch(`${N8N_URL}/webhook/check-user?userId=${id}`, {
         headers: { "ngrok-skip-browser-warning": "true" }
       });
       const data = await res.json();
@@ -69,119 +67,108 @@ const Dashboard = () => {
   }
 }
 
-
-
-  const handleCheckQuota = () => {
-    if (isQuotaLoading) return;
-    Swal.fire({
-      title: "วันลาคงเหลือของคุณ",
-      html: `
-        <div style="padding: 10px 0;">
-          <div style="display: flex; justify-content: space-around; margin-bottom: 20px;">
-            <div>
-              <div style="font-size: 32px; font-weight: 800; color: #0ea5e9;">${remainingDays ?? 0}</div>
-              <div style="font-size: 11px; color: #64748b; font-weight: 600;">ANNUAL (DAYS)</div>
-            </div>
-            <div style="width: 1px; background: #e2e8f0;"></div>
-            <div>
-              <div style="font-size: 32px; font-weight: 800; color: #f43f5e;">${sickRemaining ?? 0}</div>
-              <div style="font-size: 11px; color: #64748b; font-weight: 600;">SICK (DAYS)</div>
-            </div>
-          </div>
-          <div style="font-size: 13px; color: #94a3b8; background: #f8fafc; padding: 10px; border-radius: 12px;">
-             User: <strong>${userName || "Guest"}</strong>
-          </div>
-        </div>
-      `,
-      confirmButtonText: "Close",
-      confirmButtonColor: "#0ea5e9",
-      customClass: { popup: 'rounded-3xl shadow-xl' }
-    });
-  };
-
-  const menuItems = [
-    { title: "ลาป่วย", subtitle: "Sick Leave", icon: Thermometer, gradient: "from-rose-500 to-red-400", onClick: () => navigate("/leave-request?type=sick") },
-    { title: "ลาพักร้อน", subtitle: "Annual Leave", icon: Palmtree, gradient: "from-sky-500 to-blue-400", onClick: () => navigate("/leave-request?type=vacation") },
-    { title: "เช็ควันลา", subtitle: "My Leave Quota", icon: CalendarCheck, gradient: "from-amber-500 to-orange-400", onClick: handleCheckQuota },
-    { title: "วันหยุดบริษัท", subtitle: "Company Holidays", icon: CalendarDays, gradient: "from-emerald-500 to-green-400", onClick: () => setShowHolidaysModal(true) },
-  ];
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Header */}
-      <div className="bg-white py-6 px-4 shadow-sm relative">
+      {/* Header Profile */}
+      <div className="bg-white py-6 px-5 shadow-sm relative rounded-b-3xl">
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-500 via-amber-400 to-emerald-500"></div>
-        <div className="flex items-center justify-between">
+        
+        <div className="flex items-start justify-between">
           <div className="flex flex-col">
-              <p className="text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                Hi, <span className="text-[#00B5E2] capitalize">{registeredName || "User"}</span>
-              </p>
-              
-              <div className="flex items-center gap-1.5 mt-1">
-              <div className="bg-[#06C755] p-1 rounded-[4px] flex items-center justify-center shadow-sm">
-                <svg 
-                  viewBox="0 0 24 24" 
-                  className="h-3 w-3 fill-white" 
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path d="M24 10.304c0-4.579-4.82-8.304-10.741-8.304-5.922 0-10.74 3.725-10.74 8.304 0 4.104 3.821 7.535 8.985 8.196.349.075.824.23.943.528.108.272.071.699.035 1.047l-.151 1.043c-.046.323-.211 1.263 1.053.69 1.263-.574 6.817-4.014 9.303-6.87 1.83-2.107 2.313-3.816 2.313-5.634zM8.593 13.06H6.84a.201.201 0 0 1-.201-.201V7.614c0-.111.09-.201.201-.201h.23c.111 0 .201.09.201.201V12.63h1.322c.111 0 .201.09.201.201v.028a.201.201 0 0 1-.201.201zm2.932-5.446h.23c.111 0 .201.09.201.201v5.245a.201.201 0 0 1-.201.201h-.23a.201.201 0 0 1-.201-.201V7.815a.201.201 0 0 1 .201-.201zm4.721 5.446h-.226a.201.201 0 0 1-.161-.08l-2.072-2.885v2.764c0 .111-.09.201-.201.201h-.23a.201.201 0 0 1-.201-.201V7.614c0-.111.09-.201.201-.201h.226c.067 0 .13.033.167.09l2.066 2.875V7.614c0-.111.09-.201.201-.201h.23c.111 0 .201.09.201.201v5.245a.201.201 0 0 1-.201.201zm3.876-2.576h-1.322V10.23h1.322c.111 0 .201.09.201.201v.028a.201.201 0 0 1-.201.201h-1.322v1.54h1.322c.111 0 .201.09.201.201v.028a.201.201 0 0 1-.201.201h-1.553a.201.201 0 0 1-.201-.201V7.614c0-.111.09-.201.201-.201h1.553c.111 0 .201.09.201.201v.028a.201.201 0 0 1-.201.201h-1.322v1.517h1.322c.111 0 .201.09.201.201v.028a.201.201 0 0 1-.201.201z" />
+            <p className="text-[13px] font-semibold text-slate-400 tracking-wider uppercase mb-1">
+              Welcome back
+            </p>
+            <p className="text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-2">
+              <span className="text-[#00B5E2] capitalize">{registeredName || "User"}</span>
+            </p>
+            <div className="inline-flex items-center gap-2 bg-slate-100 px-2.5 py-1 rounded-lg w-fit">
+              <div className="bg-[#06C755] p-1 rounded-md shadow-sm">
+                <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 fill-white" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M24 10.304c0-4.579-4.82-8.304-10.741-8.304-5.922 0-10.74 3.725-10.74 8.304 0 4.104 3.821 7.535 8.985 8.196.349.075.824.23.943.528.108.272.071.699.035 1.047l-.151 1.043c-.046.323-.211 1.263 1.053.69 1.263-.574 6.817-4.014 9.303-6.87 1.83-2.107 2.313-3.816 2.313-5.634z" />
                 </svg>
               </div>
-                <p className="text-xs font-medium text-slate-400 italic">
-                  {userName || "Guest Account"}
-                </p>
-              </div>
-            </div>
-          <div className="flex gap-2">
-            <div className="bg-sky-50 border border-sky-100 px-2 py-1.5 rounded-xl flex items-center gap-1.5">
-              <Palmtree className="h-3.5 w-3.5 text-sky-500" />
-              <div className="flex flex-col leading-none">
-                <span className="text-[10px] uppercase font-medium text-sky-400">Annual</span>
-                <span className="text-sm font-medium text-sky-700">{remainingDays} d</span>
-              </div>
-            </div>
-            <div className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl flex items-center gap-2">
-              <div className="relative">
-                <Thermometer className="h-4 w-4 text-rose-500" />
-              </div >
-              <div className="flex flex-col leading-none">
-                <span className="text-[10px] uppercase font-medium text-rose-400">Sick</span>
-                <span className="text-sm font-medium text-rose-700">{sickRemaining} d</span>
-              </div>
+              <span className="text-xs font-medium text-slate-500 truncate max-w-[120px]">
+                {userName || "Loading..."}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Menu Grid */}
-      <div className="px-4 grid grid-cols-2 gap-4 mt-6">
-        {menuItems.map((item, i) => (
-          <button key={i} onClick={item.onClick} className="flex flex-col items-center p-4 rounded-2xl bg-white shadow-sm border border-slate-100 active:scale-95 transition-all">
-            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-3 shadow-md`}>
-              <item.icon className="h-7 w-7 text-white" />
+      {/* Quota & Holiday Grid */}
+      <div className="px-4 mt-6 grid grid-cols-2 gap-3">
+        {/* Annual Quota Card */}
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-sky-100 relative overflow-hidden">
+          <div className="absolute -right-4 -top-4 opacity-[0.03]">
+            <Palmtree className="w-24 h-24 text-sky-500" />
+          </div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="bg-sky-50 p-2 rounded-xl text-sky-500">
+              <Palmtree className="h-4 w-4" />
             </div>
-            <span className="text-base font-medium text-slate-700">{item.title}</span>
-            <span className="text-xs font-light text-slate-400">{item.subtitle}</span>
-          </button>
-        ))}
+            <span className="text-xs font-bold text-sky-700 uppercase tracking-wide">พักร้อน</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            {isQuotaLoading ? <Skeleton className="h-8 w-12" /> : <span className="text-3xl font-extrabold text-slate-800">{remainingDays}</span>}
+            <span className="text-sm font-medium text-slate-400">วัน</span>
+          </div>
+        </div>
+
+        {/* Sick Quota Card */}
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100 relative overflow-hidden">
+          <div className="absolute -right-4 -top-4 opacity-[0.03]">
+            <Thermometer className="w-24 h-24 text-rose-500" />
+          </div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="bg-rose-50 p-2 rounded-xl text-rose-500">
+              <Thermometer className="h-4 w-4" />
+            </div>
+            <span className="text-xs font-bold text-rose-700 uppercase tracking-wide">ลาป่วย</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            {isQuotaLoading ? <Skeleton className="h-8 w-12" /> : <span className="text-3xl font-extrabold text-slate-800">{sickRemaining}</span>}
+            <span className="text-sm font-medium text-slate-400">วัน</span>
+          </div>
+        </div>
+
+        {/* Full width Company Holiday Button */}
+        <button 
+          onClick={() => setShowHolidaysModal(true)}
+          className="col-span-2 bg-gradient-to-r from-emerald-500 to-teal-400 p-4 rounded-2xl shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform"
+        >
+          <div className="flex items-center gap-3">
+            <div className="bg-white/20 p-2.5 rounded-xl">
+              <CalendarDays className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-sm font-bold text-white">ปฏิทินวันหยุดบริษัท</span>
+              <span className="text-[11px] font-medium text-emerald-50">Company Holidays</span>
+            </div>
+          </div>
+          <div className="bg-white/20 px-3 py-1.5 rounded-full">
+            <span className="text-xs font-semibold text-white">ดูปฏิทิน</span>
+          </div>
+        </button>
       </div>
 
       {/* History Section */}
-      <div className="px-4 mt-10 pb-10 flex-1">
-        <div className="flex items-center justify-between mb-5">
+      <div className="px-4 mt-8 pb-10 flex-1">
+        <div className="flex items-center justify-between mb-4 px-1">
           <div className="flex items-center gap-2">
-            <div className="w-1 h-6 bg-sky-500 rounded-full"></div>
-            <h3 className="text-lg font-medium text-slate-800">รายการลาล่าสุด</h3>
+            <h3 className="text-[15px] font-bold text-slate-800 uppercase tracking-wide">ประวัติการลาล่าสุด</h3>
           </div>
-          <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">3 items</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-200/50 px-2 py-1 rounded-md">
+            5 Items
+          </span> 
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {isHistoryLoading ? (
-            <Skeleton className="h-24 w-full rounded-[2rem]" />
+            Array(3).fill(0).map((_, i) => (
+              <Skeleton key={i} className="h-[76px] w-full rounded-[1.25rem]" />
+            ))
           ) : leaveHistory.length > 0 ? (
             leaveHistory.map((item: any, i) => {
-              // ตรวจสอบเงื่อนไขประเภทและสถานะ
               const isSick = item.type.includes('ป่วย') || item.type.toLowerCase().includes('sick');
               const isApproved = item.status.includes('Approved');
               const isRejected = item.status.includes('Rejected');
@@ -189,53 +176,52 @@ const Dashboard = () => {
               return (
                 <div 
                   key={i} 
-                  className="group bg-white p-5 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between transition-all hover:shadow-md hover:border-sky-100 active:scale-[0.98]"
+                  className="bg-white p-4 rounded-[1.25rem] shadow-sm border border-slate-100 flex items-center justify-between relative overflow-hidden"
                 >
-                  <div className="flex items-center gap-4">
-                    {/* Icon พร้อมพื้นหลัง Soft Color */}
-                    <div className={`p-3.5 rounded-2xl transition-transform group-hover:scale-110 ${
-                      isSick ? 'bg-rose-50 text-rose-500' : 'bg-sky-50 text-sky-500'
-                    }`}>
-                      {isSick ? <Thermometer className="h-6 w-6" /> : <Palmtree className="h-6 w-6" />}
+                  {/* แถบสีบอกสถานะด้านซ้ายสุด */}
+                  <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isApproved ? 'bg-emerald-400' : isRejected ? 'bg-rose-400' : 'bg-amber-400'}`}></div>
+                  
+                  <div className="flex items-center gap-3.5 pl-2">
+                    <div className={`p-2.5 rounded-xl ${isSick ? 'bg-rose-50 text-rose-500' : 'bg-sky-50 text-sky-500'}`}>
+                      {isSick ? <Thermometer className="h-5 w-5" /> : <Palmtree className="h-5 w-5" />}
                     </div>
-
                     <div>
-                      <p className="text-base font-medium text-slate-800 leading-none mb-1.5">{item.type}</p>
-                      <div className="flex items-center gap-1 text-slate-400">
+                      <p className="text-[15px] font-bold text-slate-800 leading-none mb-1.5">{item.type}</p>
+                      <div className="flex items-center gap-1.5 text-slate-500">
                         <Calendar className="h-3 w-3" />
                         <p className="text-[11px] font-medium">{item.date}</p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Status Badge ทรงแคปซูล */}
-                  <div className={`px-4 py-1.5 rounded-full text-[14px] uppercase tracking-wide border shadow-sm ${
-                    isApproved 
-                      ? 'bg-emerald-50 border-emerald-100 text-emerald-700 font-bold' 
-                      : isRejected 
-                      ? 'bg-rose-50 border-rose-100 text-rose-700 font-bold' 
-                      : 'bg-amber-50 border-amber-200 text-amber-700 font-semibold'
-                  }`}>
-                    {isApproved ? 'อนุมัติแล้ว' : isRejected ? 'ปฏิเสธ' : 'รอตรวจสอบ'}
+                  <div className="flex flex-col items-end gap-1">
+                    <div className={`flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider ${
+                      isApproved ? 'text-emerald-600' : isRejected ? 'text-rose-600' : 'text-amber-600'
+                    }`}>
+                      {isApproved ? <CheckCircle2 className="w-3.5 h-3.5" /> : isRejected ? <XCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
+                      {isApproved ? 'อนุมัติ' : isRejected ? 'ปฏิเสธ' : 'รอตรวจ'}
+                    </div>
                   </div>
                 </div>
               );
             })
           ) : (
-            /* Empty State */
-            <div className="text-center py-12 bg-white rounded-[2.5rem] border border-dashed border-slate-200">
+            <div className="text-center py-10 bg-white rounded-[1.5rem] border border-dashed border-slate-200 mt-2">
               <div className="bg-slate-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                <CalendarCheck className="h-6 w-6 text-slate-300" />
+                <CalendarDays className="h-5 w-5 text-slate-300" />
               </div>
-              <p className="text-sm font-medium text-slate-400">ไม่พบประวัติการลาของคุณ</p>
+              <p className="text-[13px] font-medium text-slate-400">ยังไม่มีประวัติการลางาน</p>
             </div>
           )}
         </div>
       </div>
 
-      <div className="py-8 flex flex-col items-center">
-        <img src={tbsLogo} alt="TBS Logo" className="h-10 w-auto opacity-80" />
-        <span className="text-[10px] text-slate-400 mt-2">© 2025 - {new Date().getFullYear()} TBS Marketing</span>
+      {/* Footer */}
+      <div className="py-6 flex flex-col items-center border-t border-slate-100 bg-white mt-auto">
+        <img src={tbsLogo} alt="TBS Logo" className="h-8 w-auto opacity-70 grayscale" />
+        <span className="text-[10px] font-medium text-slate-400 mt-2 tracking-wide">
+          © {new Date().getFullYear()} TBS MARKETING
+        </span>
       </div>
 
       <HolidaysModal open={showHolidaysModal} onOpenChange={setShowHolidaysModal} />
