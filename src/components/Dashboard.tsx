@@ -19,7 +19,7 @@ const Dashboard = () => {
   const [registeredName, setRegisteredName] = useState<string | null>(null);
 
   // ดึงข้อมูล Leave Quota
-  const { remainingDays, sickRemaining, annualTotal, sickTotal, isLoading: isQuotaLoading } = useLeaveQuota(userId);
+  const { remainingDays, sickRemaining, annualTotal, sickTaken, sickTotal, isLoading: isQuotaLoading } = useLeaveQuota(userId);
 
   const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
 
@@ -110,7 +110,11 @@ const Dashboard = () => {
             <span className="text-xs font-bold text-rose-700 uppercase tracking-wide">ลาป่วย</span>
           </div>
           <div className="flex items-baseline gap-1">
-            {isQuotaLoading ? <Skeleton className="h-8 w-12" /> : <span className="text-3xl font-extrabold text-slate-800">{sickRemaining} / {sickTotal}</span>}
+            {isQuotaLoading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <span className="text-3xl font-extrabold text-slate-800">{sickTaken || 0}</span>
+              )}
             <span className="text-sm font-medium text-slate-400">วัน</span>
           </div>
         </div>

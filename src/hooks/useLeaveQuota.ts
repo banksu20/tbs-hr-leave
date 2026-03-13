@@ -7,7 +7,8 @@ interface UseLeaveQuotaResult {
   remainingDays: number | null;
   sickRemaining: number | null;
   annualTotal: number | null; 
-  sickTotal: number | null;   
+  sickTotal: number | null; 
+  sickTaken: number | null; 
   isLoading: boolean;
   error: string | null;
   refetch: () => void;
@@ -17,9 +18,9 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
   const [remainingDays, setRemainingDays] = useState<number | null>(null);
   const [sickRemaining, setSickRemaining] = useState<number | null>(null);
   
-  // 🌟 จุดที่ 3: สร้าง State มารับค่า Total
   const [annualTotal, setAnnualTotal] = useState<number | null>(null);
   const [sickTotal, setSickTotal] = useState<number | null>(null);
+  const [sickTaken, setSickTaken] = useState<number | null>(null); // 🌟 2. สร้าง State มารับค่าที่ใช้ไปแล้ว
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +50,7 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
       
       setAnnualTotal(data.annualTotal ?? null);
       setSickTotal(data.sickTotal ?? null);
+      setSickTaken(data.sickTaken ?? null); 
 
     } catch (err: any) {
       console.error("Failed to fetch leave quota:", err);
@@ -67,6 +69,7 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
     sickRemaining, 
     annualTotal, 
     sickTotal, 
+    sickTaken, 
     isLoading, 
     error, 
     refetch: fetchQuota 
