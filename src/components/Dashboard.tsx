@@ -27,13 +27,19 @@ const Dashboard = () => {
     const initLiff = async () => {
       try {
         await liff.init({ liffId: LIFF_ID });
-        if (liff.isLoggedIn()) {
-          const profile = await liff.getProfile();
-          setUserId(profile.userId);
-          setUserName(profile.displayName);
-          fetchRegisteredName(profile.userId);
+
+        if(!liff.isLoggedIn()){
+          liff.login();
+          return;
         }
-      } catch (err) { console.error("LIFF error:", err); }
+        const profile = await liff.getProfile();
+        setUserId(profile.userId);
+        setUserName(profile.displayName);
+        fetchRegisteredName(profile.userId);
+
+      } catch (err) { 
+        console.error("LIFF error:", err); 
+      }
     };
     initLiff();
   }, []);
