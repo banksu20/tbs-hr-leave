@@ -46,9 +46,9 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
           <div className="flex justify-center mb-2">
             <img src={tbsLogo} alt="TBS Marketing Logo" className="h-16 w-auto object-contain" />
           </div>
-          <CardDescription className="text-slate-600 text-md leading-relaxed px-4">
+          <CardDescription className="text-slate-400 text-sm leading-relaxed px-4">
             ระบุข้อมูลของคุณเพื่อเริ่มต้นใช้งานระบบวันลา<br/>
-            <span className="text-slate-600 text-[14px] mt-1 block">
+            <span className="text-slate-500 text-[13px] mt-1 block">
               Please enter your full name and nickname to set up your profile.
             </span>
           </CardDescription>
