@@ -47,8 +47,10 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
             <img src={tbsLogo} alt="TBS Marketing Logo" className="h-16 w-auto object-contain" />
           </div>
           <CardDescription className="text-slate-500 text-sm leading-relaxed px-4">
-            Please enter your full name and nickname.<br/>
-            กรุณากรอกชื่อจริง นามสกุล และชื่อเล่น
+            ระบุข้อมูลของคุณเพื่อเริ่มต้นใช้งานระบบวันลา<br/>
+            <span className="text-slate-400 text-[13px] mt-1 block">
+              Please enter your full name and nickname to set up your profile.
+            </span>
           </CardDescription>
         </CardHeader>
 
