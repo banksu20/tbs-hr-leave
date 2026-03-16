@@ -30,7 +30,7 @@ export default function RejectForm() {
   const takenRow = searchParams.get("takenRow");
   const remainRow = searchParams.get("remainRow");
   const leaveReason = searchParams.get("leaveReason") || searchParams.get("reason");
-  const dbId = searchParams.get("dbId") || "";
+  const dbId = searchParams.get("db_id") || "";
   
   // 🌟 เพิ่มตัวรับค่า วันที่ลา จาก URL
   const leaveDate = searchParams.get("leaveDate");
