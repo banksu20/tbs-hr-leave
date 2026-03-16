@@ -31,6 +31,9 @@ export default function RejectForm() {
   const remainRow = searchParams.get("remainRow");
   const leaveReason = searchParams.get("leaveReason") || searchParams.get("reason");
   const dbId = searchParams.get("dbId") || "";
+  
+  // 🌟 เพิ่มตัวรับค่า วันที่ลา จาก URL
+  const leaveDate = searchParams.get("leaveDate");
 
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -112,7 +115,7 @@ export default function RejectForm() {
         </CardHeader>
         
         <CardContent>
-          {/* 📋 กล่องสรุปข้อมูล (ช่วยให้ CM ตรวจสอบก่อนพิมพ์) */}
+          {/* 📋 กล่องสรุปข้อมูล (เพิ่มวันที่) */}
           <div className="bg-slate-100 rounded-lg p-3 mb-5 border border-slate-200">
             <div className="grid grid-cols-3 gap-2 text-sm">
               <div className="text-slate-500">Employee:</div>
@@ -120,6 +123,10 @@ export default function RejectForm() {
               
               <div className="text-slate-500">Leave Type:</div>
               <div className="col-span-2 font-medium text-slate-700">{formatLeaveType(type)}</div>
+              
+              {/* 🌟 แสดงวันที่ */}
+              <div className="text-slate-500">Date:</div>
+              <div className="col-span-2 font-medium text-slate-700">{leaveDate ? leaveDate.replace(/to/g, 'ถึง') : "-"}</div>
               
               <div className="text-slate-500">Duration:</div>
               <div className="col-span-2 font-medium text-slate-700">{days || "-"} Day(s)</div>
