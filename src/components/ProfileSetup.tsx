@@ -3,7 +3,6 @@ import tbsLogo from "@/image/TBS-Logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
-import { User, Building, Smile } from "lucide-react";
 
 interface ProfileSetupProps {
   defaultName: string;
@@ -56,11 +55,11 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
             
-            {/* 🌟 ช่องที่ 1 & 2: ชื่อจริง - นามสกุล (จัดให้อยู่บรรทัดเดียวกัน) */}
+            {/* ช่องที่ 1 & 2: ชื่อจริง - นามสกุล */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
-                  <User className="w-4 h-4 text-blue-500" /> ชื่อจริง
+                <label className="text-sm font-semibold text-slate-700">
+                  ชื่อจริง
                 </label>
                 <Input 
                   placeholder="First Name" 
@@ -70,7 +69,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
                 />
               </div>
               <div className="space-y-2">
-                <label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                <label className="text-sm font-semibold text-slate-700">
                   นามสกุล
                 </label>
                 <Input 
@@ -82,10 +81,10 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
               </div>
             </div>
 
-            {/* 🌟 ช่องที่ 3: ชื่อเล่น */}
+            {/* ช่องที่ 3: ชื่อเล่น */}
             <div className="space-y-2">
-              <label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
-                <Smile className="w-4 h-4 text-blue-500" /> ชื่อเล่น (Nickname)
+              <label className="text-sm font-semibold text-slate-700">
+                ชื่อเล่น (Nickname)
               </label>
               <Input 
                 placeholder="Nickname" 
@@ -97,8 +96,8 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
 
             {/* Select Department */}
             <div className="space-y-2 pt-2">
-              <label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
-                <Building className="w-4 h-4 text-blue-500" /> แผนก (Department)
+              <label className="text-sm font-semibold text-slate-700">
+                แผนก (Department)
               </label>
               <select
                 value={department}
