@@ -13,7 +13,7 @@ interface ProfileSetupProps {
 }
 
 export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps) {
-  const [name, setName] = useState(defaultName || "");
+  const [name, setName] = useState("");
   const [department, setDepartment] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
