@@ -173,8 +173,7 @@ const Dashboard = () => {
             <h3 className="text-[15px] font-bold text-slate-800 uppercase tracking-wide">ประวัติการลาล่าสุด</h3>
           </div>
           <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-200/50 px-2 py-1 rounded-md">
-            {/* 🌟 แก้ไข: ให้โชว์จำนวนทั้งหมดแบบออโต้ แทนคำว่า 5 Items เฉยๆ */}
-            {leaveHistory.length} Items 
+            จำนวนการลา {leaveHistory.length} ครั้ง
           </span> 
         </div>
 
@@ -185,7 +184,6 @@ const Dashboard = () => {
             ))
           ) : leaveHistory.length > 0 ? (
             <>
-              {/* 🌟 แก้ไข: เพิ่ม .slice(0, visibleCount) เข้ามา เพื่อกั๊กโชว์แค่จำนวนที่กำหนด */}
               {leaveHistory.slice(0, countItems).map((item: any, i) => {
                 const isSick = item.type.includes('ป่วย') || item.type.toLowerCase().includes('sick');
                 const isApproved = item.status.includes('Approved');
@@ -196,7 +194,6 @@ const Dashboard = () => {
                     key={i} 
                     className="bg-white p-4 rounded-[1.25rem] shadow-sm border border-slate-100 flex items-center justify-between relative overflow-hidden"
                   >
-                    {/* แถบสีบอกสถานะด้านซ้ายสุด */}
                     <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isApproved ? 'bg-emerald-400' : isRejected ? 'bg-rose-400' : 'bg-amber-400'}`}></div>
                     
                     <div className="flex items-center gap-3.5 pl-2">
@@ -224,16 +221,26 @@ const Dashboard = () => {
                 );
               })}
 
-              {/* 🌟 เพิ่มเข้ามา: ปุ่ม "ดูประวัติเพิ่มเติม" จะโชว์ขึ้นมาเฉพาะเมื่อยังมีข้อมูลให้โชว์อีก */}
-              {countItems < leaveHistory.length && (
-                <button 
-                  onClick={() => setCountItems(prev => prev + 5)} // เพิ่มขึ้นทีละ 5
-                  className="w-full mt-3 py-3 rounded-xl bg-sky-50 text-sky-600 font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+              <div className="flex gap-2 w-full mt-3">
+                {countItems < leaveHistory.length && (
+                  <button 
+                    onClick={() => setCountItems(prev => prev + 5)} // เพิ่มขึ้นทีละ 5
+                    className="w-full mt-3 py-3 rounded-xl bg-sky-50 text-sky-600 font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                  >
+                    <CalendarDays className="w-4 h-4" />
+                    ดูประวัติเพิ่มเติม
+                  </button>
+              )}
+
+              {countItems > 5 && (
+                <button
+                  onClick={() => setCountItems(5)}
+                  className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-500 font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
                 >
-                  <CalendarDays className="w-4 h-4" />
-                  ดูประวัติเพิ่มเติม
+                  แสดงน้อยลง
                 </button>
               )}
+              </div>
             </>
           ) : (
             <div className="text-center py-10 bg-white rounded-[1.5rem] border border-dashed border-slate-200 mt-2">
