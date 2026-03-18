@@ -31,6 +31,8 @@ const App = () => {
   const params = new URLSearchParams(window.location.search);
   const typeFromUrl = params.get("type");
 
+  const { language, toggleLanguage } = useLanguage();
+
   useEffect(() => {
     const initializeLiffAndCheckUser = async () => {
       try {
@@ -102,7 +104,17 @@ const App = () => {
     />
   );
 
-  // ✅ 3. โชว์หน้าจอ Loading ระหว่างรอคุยกับ Google Sheets
+  const LanguageToggleBtn = () => (
+    <button
+      onClick={toggleLanguage}
+      className="fixed top-4 right-4 z-50 bg-white/80 backdrop-blur-md shadow-sm border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full text-[11px] font-bold hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+    >
+      {language === 'th' ? '🇹🇭 TH' : '🇬🇧 EN'}
+    </button>
+  );
+
+
+  // โชว์หน้าจอ Loading ระหว่างรอดึงข้อมูล Google Sheets
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
@@ -117,6 +129,9 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
+
+        <LanguageToggleBtn />
+
         <BrowserRouter>
           <Routes>
             <Route path="/reject-form" element={<RejectForm />} />
