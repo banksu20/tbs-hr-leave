@@ -348,7 +348,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-muted-foreground">
-                  <FileText className="h-4 w-4" /> Department *
+                  <FileText className="h-4 w-4" /> Department
                 </Label>
                 <Select value={formData.department} onValueChange={handleDepartmentChange} disabled={isDepartmentLocked}>
                   <SelectTrigger className={isDepartmentLocked ? "font-medium bg-muted/50" : "font-medium"}>
@@ -366,7 +366,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-slate-600">
-                  <FileText className="h-4 w-4" /> Leave Type *
+                  <FileText className="h-4 w-4" /> Leave Type
                 </Label>
                 <Select value={formData.leaveType} onValueChange={(val) => setFormData({ ...formData, leaveType: val })} disabled={isLeaveTypeLocked}>
                   <SelectTrigger className={`font-medium border-slate-200 ${isLeaveTypeLocked ? "bg-slate-50" : "bg-white"}`}>
@@ -381,7 +381,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-muted-foreground">
-                  <CalendarIcon className="h-4 w-4" /> เลือกวันที่ต้องการลา *
+                  <CalendarIcon className="h-4 w-4" /> เลือกวันที่ต้องการลา 
                 </Label>
                                 
                 <Popover>
@@ -447,7 +447,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   </PopoverContent>
                 </Popover>
 
-                {/* ✅ เพิ่มส่วนเลือก เต็มวัน/ครึ่งวัน จะโผล่มาเฉพาะเมื่อเลือกแค่วันเดียว */}
+                {/* เพิ่มส่วนเลือก เต็มวัน/ครึ่งวัน จะโผล่มาเฉพาะเมื่อเลือกแค่วันเดียว */}
                 {selectedDates.length === 1 && (
                   <div className="mt-4 p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-3">
                     <Label className="flex items-center gap-2 text-slate-600 text-xs uppercase tracking-wider font-bold">
@@ -488,7 +488,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
               {formData.leaveType !== "vacation" && (
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-muted-foreground">
-                    <FileText className="h-4 w-4" /> Reason *
+                    <FileText className="h-4 w-4" /> Reason
                   </Label>
                   <Textarea
                     placeholder="Describe your reason..."
