@@ -115,7 +115,7 @@ export default function RejectForm() {
         onClick={toggleLanguage}
         className="absolute top-4 right-4 z-50 bg-white/80 backdrop-blur-md shadow-sm border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full text-[11px] font-bold hover:bg-slate-100 transition-colors flex items-center gap-1.5"
       >
-        {language === 'th' ? '🇹🇭 TH' : '🇬🇧 EN'}
+        {language === 'th' ? 'TH' : 'EN'}
       </button>
 
       <Card className="w-full max-w-md shadow-lg border-t-4 border-t-red-500">
@@ -149,7 +149,12 @@ export default function RejectForm() {
               
               <div className="text-slate-500">{t('leave_duration')}</div>
               <div className="col-span-2 font-medium text-slate-700">
-                {days || "-"} {t('days')}
+                {days === "0.5" 
+                  ? t('half_day') 
+                  : days === "1" 
+                    ? `1 ${t('days')} (${t('full_day')})` 
+                    : `${days || "-"} ${t('days')}`
+                }
               </div>
 
               <div className="text-slate-500">{t('leave_reason')}</div>
