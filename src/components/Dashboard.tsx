@@ -17,6 +17,7 @@ const Dashboard = () => {
   const [leaveHistory, setLeaveHistory] = useState([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [registeredName, setRegisteredName] = useState<string | null>(null);
+  const [countItems, setCountItems] = useState(5);
 
   // ดึงข้อมูล Leave Quota
   const { remainingDays, sickRemaining, annualTotal, sickTaken, sickTotal, isLoading: isQuotaLoading } = useLeaveQuota(userId);
@@ -172,7 +173,8 @@ const Dashboard = () => {
             <h3 className="text-[15px] font-bold text-slate-800 uppercase tracking-wide">ประวัติการลาล่าสุด</h3>
           </div>
           <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-200/50 px-2 py-1 rounded-md">
-            5 Items
+            {/* 🌟 แก้ไข: ให้โชว์จำนวนทั้งหมดแบบออโต้ แทนคำว่า 5 Items เฉยๆ */}
+            {leaveHistory.length} Items 
           </span> 
         </div>
 
@@ -182,43 +184,57 @@ const Dashboard = () => {
               <Skeleton key={i} className="h-[76px] w-full rounded-[1.25rem]" />
             ))
           ) : leaveHistory.length > 0 ? (
-            leaveHistory.map((item: any, i) => {
-              const isSick = item.type.includes('ป่วย') || item.type.toLowerCase().includes('sick');
-              const isApproved = item.status.includes('Approved');
-              const isRejected = item.status.includes('Rejected');
+            <>
+              {/* 🌟 แก้ไข: เพิ่ม .slice(0, visibleCount) เข้ามา เพื่อกั๊กโชว์แค่จำนวนที่กำหนด */}
+              {leaveHistory.slice(0, countItems).map((item: any, i) => {
+                const isSick = item.type.includes('ป่วย') || item.type.toLowerCase().includes('sick');
+                const isApproved = item.status.includes('Approved');
+                const isRejected = item.status.includes('Rejected');
 
-              return (
-                <div 
-                  key={i} 
-                  className="bg-white p-4 rounded-[1.25rem] shadow-sm border border-slate-100 flex items-center justify-between relative overflow-hidden"
-                >
-                  {/* แถบสีบอกสถานะด้านซ้ายสุด */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isApproved ? 'bg-emerald-400' : isRejected ? 'bg-rose-400' : 'bg-amber-400'}`}></div>
-                  
-                  <div className="flex items-center gap-3.5 pl-2">
-                    <div className={`p-2.5 rounded-xl ${isSick ? 'bg-rose-50 text-rose-500' : 'bg-sky-50 text-sky-500'}`}>
-                      {isSick ? <Thermometer className="h-5 w-5" /> : <Palmtree className="h-5 w-5" />}
+                return (
+                  <div 
+                    key={i} 
+                    className="bg-white p-4 rounded-[1.25rem] shadow-sm border border-slate-100 flex items-center justify-between relative overflow-hidden"
+                  >
+                    {/* แถบสีบอกสถานะด้านซ้ายสุด */}
+                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isApproved ? 'bg-emerald-400' : isRejected ? 'bg-rose-400' : 'bg-amber-400'}`}></div>
+                    
+                    <div className="flex items-center gap-3.5 pl-2">
+                      <div className={`p-2.5 rounded-xl ${isSick ? 'bg-rose-50 text-rose-500' : 'bg-sky-50 text-sky-500'}`}>
+                        {isSick ? <Thermometer className="h-5 w-5" /> : <Palmtree className="h-5 w-5" />}
+                      </div>
+                      <div>
+                        <p className="text-[15px] font-bold text-slate-800 leading-none mb-1.5">{item.type}</p>
+                        <div className="flex items-center gap-1.5 text-slate-500">
+                          <Calendar className="h-3 w-3" />
+                          <p className="text-[11px] font-medium">{item.date}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[15px] font-bold text-slate-800 leading-none mb-1.5">{item.type}</p>
-                      <div className="flex items-center gap-1.5 text-slate-500">
-                        <Calendar className="h-3 w-3" />
-                        <p className="text-[11px] font-medium">{item.date}</p>
+
+                    <div className="flex flex-col items-end gap-1">
+                      <div className={`flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider ${
+                        isApproved ? 'text-emerald-600' : isRejected ? 'text-rose-600' : 'text-amber-600'
+                      }`}>
+                        {isApproved ? <CheckCircle2 className="w-3.5 h-3.5" /> : isRejected ? <XCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
+                        {isApproved ? 'อนุมัติ' : isRejected ? 'ปฏิเสธ' : 'รอตรวจ'}
                       </div>
                     </div>
                   </div>
+                );
+              })}
 
-                  <div className="flex flex-col items-end gap-1">
-                    <div className={`flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider ${
-                      isApproved ? 'text-emerald-600' : isRejected ? 'text-rose-600' : 'text-amber-600'
-                    }`}>
-                      {isApproved ? <CheckCircle2 className="w-3.5 h-3.5" /> : isRejected ? <XCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
-                      {isApproved ? 'อนุมัติ' : isRejected ? 'ปฏิเสธ' : 'รอตรวจ'}
-                    </div>
-                  </div>
-                </div>
-              );
-            })
+              {/* 🌟 เพิ่มเข้ามา: ปุ่ม "ดูประวัติเพิ่มเติม" จะโชว์ขึ้นมาเฉพาะเมื่อยังมีข้อมูลให้โชว์อีก */}
+              {countItems < leaveHistory.length && (
+                <button 
+                  onClick={() => setCountItems(prev => prev + 5)} // เพิ่มขึ้นทีละ 5
+                  className="w-full mt-3 py-3 rounded-xl bg-sky-50 text-sky-600 font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                >
+                  <CalendarDays className="w-4 h-4" />
+                  ดูประวัติเพิ่มเติม
+                </button>
+              )}
+            </>
           ) : (
             <div className="text-center py-10 bg-white rounded-[1.5rem] border border-dashed border-slate-200 mt-2">
               <div className="bg-slate-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
