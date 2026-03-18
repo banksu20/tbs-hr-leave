@@ -22,12 +22,13 @@ import { Loader2, Calendar as CalendarIcon, User, FileText, ArrowLeft, AlertTria
 import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+// 🌟 1. Import ตัวเปลี่ยนภาษา
+import { useLanguage } from "@/hooks/useLanguage";
 
 // ค่า Config
-
 const LIFF_ID = import.meta.env.VITE_LIFF_ID || "2008617589-89gR1Y3Y";
-
 const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://thirstless-ostensively-maryam.ngrok-free.dev";
+
 // Interface
 interface LeaveRequestFormProps {
   userId?: string;
@@ -48,6 +49,9 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
+  // 🌟 2. ดึงฟังก์ชัน t() มาใช้งาน
+  const { t } = useLanguage();
+
   // Logic การเลือกประเภทการลา (จาก Props หรือ URL)
   const typeFromUrl = searchParams.get("type") || "";
   const defaultType = initialLeaveType || typeFromUrl;
@@ -71,19 +75,12 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     reason: "",
   });
 
-  // State สำหรับ Multi-select dates
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
-  
-  // State สำหรับเลือกลาครึ่งวัน
   const [isHalfDay, setIsHalfDay] = useState(false);
 
-  // คำนวณจำนวนวันลา (ถ้าเลือกครึ่งวันจะเป็น 0.5)
   const requestedDays = (selectedDates.length === 1 && isHalfDay) ? 0.5 : selectedDates.length;
-
   const [takenDates, setTakenDates] = useState<Date[]>([]);
 
-
-  // หา Start Date และ End Date จากวันที่เลือก
   const { startDateTime, endDateTime } = useMemo(() => {
     if (selectedDates.length === 0) {
       return { startDateTime: "", endDateTime: "" };
@@ -144,8 +141,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     initializeLiff();
   }, [userId]);
 
-
-  // ดึงข้อมูลประวัติการลา เพื่อเอามาบล็อกในปฏิทินไม่ให้เลือกซ้ำ
   useEffect(() => {
     if (currentUserId) {
       fetch(`${N8N_URL}/webhook/get-leave-history?userId=${currentUserId}`, {
@@ -157,13 +152,11 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
           const disabledDatesArray: Date[] = [];
           
           data.forEach(item => {
-            // ข้ามใบลาที่ถูก "ปฏิเสธ" (ให้สามารถกดลาซ้ำได้)
             if (item.status && (item.status.includes('Rejected') || item.status.includes('ปฏิเสธ'))) return;
 
             const dateStr = item.date;
             if (!dateStr) return;
 
-            // ฟังก์ชันแปลงข้อความ (19-Mar-26) ให้เป็น Date Object
             const parseDateString = (str: string) => {
               const parts = str.trim().split('-');
               if(parts.length === 3) {
@@ -178,7 +171,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
             };
 
             if (dateStr.includes(' ถึง ')) {
-              // กรณีลาระยะยาว (Multi-day)
               const [startStr, endStr] = dateStr.split(' ถึง ');
               const startDate = parseDateString(startStr);
               const endDate = parseDateString(endStr);
@@ -187,7 +179,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 disabledDatesArray.push(new Date(dt));
               }
             } else {
-              // กรณีลาวันเดียว (Single-day)
               disabledDatesArray.push(parseDateString(dateStr));
             }
           });
@@ -199,15 +190,10 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     }
   }, [currentUserId]);
 
-
-
-
-  // ฟังก์ชันเมื่อมีการจิ้มเลือกวันที่
   const handleDateSelect = (dates: Date[] | undefined) => {
     const safeDates = dates || [];
     setSelectedDates(safeDates);
 
-    // ✅ ถ้าไม่ได้เลือกแค่วันเดียว ให้ปิดโหมดครึ่งวันทิ้งไปเลย (บังคับเต็มวัน)
     if (safeDates.length !== 1) {
       setIsHalfDay(false);
     }
@@ -232,7 +218,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       return;
     }
 
-    // ถ้าเกิน 09:00 น.ไม่ให้ส่งข้อมูล
     if (formData.leaveType === "sick") {
       const now = new Date();
       const hasToday = selectedDates.some(d => {
@@ -268,11 +253,11 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
           leaveType: formData.leaveType,
           startDateTime: startDateTime,
           endDateTime: endDateTime,
-          leaveDays: requestedDays, // ✅ ส่ง 0.5 หรือจำนวนเต็มไปให้ n8n
+          leaveDays: requestedDays, 
           selectedDates: selectedDates.map(d => format(d, "yyyy-MM-dd")),
           reason: formData.reason,
           submittedAt: new Date().toISOString(),
-          isHalfDay: isHalfDay // ส่ง flag เผื่อให้ n8n รู้ว่าเป็นครึ่งวัน
+          isHalfDay: isHalfDay 
         }),
       });
 
@@ -349,8 +334,9 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
+            {/* 🌟 3. ใช้ t() แทนข้อความแข็งๆ */}
             <h1 className="text-2xl font-bold text-slate-800">Leave Request</h1>
-            <p className="text-sm text-slate-500">Submit your leave application</p>
+            <p className="text-sm text-slate-500">{t('submit_leave')}</p>
           </div>
         </div>
       </div>
@@ -393,15 +379,16 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                     <SelectValue placeholder="Select leave type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sick">Sick Leave (ลาป่วย)</SelectItem>
-                    <SelectItem value="vacation">Annual Leave (ลาพักร้อน)</SelectItem>
+                    {/* 🌟 4. แปลประเภทลา */}
+                    <SelectItem value="sick">{t('sick_leave')}</SelectItem>
+                    <SelectItem value="vacation">{t('annual_leave')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-muted-foreground">
-                  <CalendarIcon className="h-4 w-4" /> เลือกวันที่ต้องการลา 
+                  <CalendarIcon className="h-4 w-4" /> {t('select_date')}
                 </Label>
                                 
                 <Popover>
@@ -425,7 +412,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                           </span>
                         </span>
                       ) : (
-                        <span>กดเพื่อเลือกวันที่</span>
+                        <span>{t('select_date')}</span>
                       )}
                     </Button>
                   </PopoverTrigger>
@@ -437,21 +424,15 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                       selected={selectedDates}
                       onSelect={handleDateSelect}
                       disabled={(date) => {
-                        // ปิดไม่ให้เลือกวันในอดีต
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         const isPast = date < today;
-                        
-                        // ปิดวันเสาร์ (6) และ วันอาทิตย์ (0)
                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                        
-                        // ปิดวันที่เคยลาไปแล้ว (รอตรวจ หรือ อนุมัติแล้ว)
                         const isTaken = takenDates.some(takenDate => 
                           takenDate.getDate() === date.getDate() &&
                           takenDate.getMonth() === date.getMonth() &&
                           takenDate.getFullYear() === date.getFullYear()
                         );
-
                         return isPast || isWeekend || isTaken;
                       }}
                       initialFocus
@@ -467,11 +448,10 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   </PopoverContent>
                 </Popover>
 
-                {/* เพิ่มส่วนเลือก เต็มวัน/ครึ่งวัน จะโผล่มาเฉพาะเมื่อเลือกแค่วันเดียว */}
                 {selectedDates.length === 1 && (
                   <div className="mt-4 p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-3">
                     <Label className="flex items-center gap-2 text-slate-600 text-xs uppercase tracking-wider font-bold">
-                      <Clock className="h-3 w-3" /> ระยะเวลา (Duration)
+                      <Clock className="h-3 w-3" /> {t('duration')}
                     </Label>
                     <div className="flex gap-2">
                       <Button
@@ -480,7 +460,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                         className={cn("flex-1 rounded-lg", !isHalfDay ? "bg-sky-500 hover:bg-sky-600 text-white" : "text-slate-500")}
                         onClick={() => setIsHalfDay(false)}
                       >
-                        Full Day
+                        {t('full_day')}
                       </Button>
                       <Button
                         type="button"
@@ -488,7 +468,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                         className={cn("flex-1 rounded-lg", isHalfDay ? "bg-amber-500 hover:bg-amber-600 text-white" : "text-slate-500")}
                         onClick={() => setIsHalfDay(true)}
                       >
-                        Half Day
+                        {t('half_day')}
                       </Button>
                     </div>
                   </div>
@@ -496,10 +476,10 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
                 {selectedDates && selectedDates.length > 0 && (
                   <p className="text-sm font-medium text-slate-600 mt-2 ml-1">
-                    * Total duration (สรุปการขอลา): <b className={isHalfDay ? "text-amber-500" : "text-sky-500"}>
+                    * Total duration: <b className={isHalfDay ? "text-amber-500" : "text-sky-500"}>
                       {selectedDates.length > 1 
-                        ? `${requestedDays} Day(s) (วัน)` 
-                        : (isHalfDay ? "Half Day (ครึ่งวัน)" : "Full Day (เต็มวัน)")}
+                        ? `${requestedDays} ${t('days')}` 
+                        : (isHalfDay ? t('half_day') : t('full_day'))}
                     </b>
                   </p>
                 )}
@@ -508,7 +488,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
               {formData.leaveType !== "vacation" && (
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-muted-foreground">
-                    <FileText className="h-4 w-4" /> Reason
+                    <FileText className="h-4 w-4" /> {t('reason')}
                   </Label>
                   <Textarea
                     placeholder="Describe your reason..."
@@ -523,13 +503,13 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm font-medium text-muted-foreground">วันลาคงเหลือ:</span>
+                    <span className="text-sm font-medium text-muted-foreground">{t('remaining_quota')}:</span>
                   </div>
                   {isQuotaLoading ? (
                     <Skeleton className="h-5 w-16" />
                   ) : (
                     <span className={`font-medium ${displayRemainingDays < requestedDays ? "text-destructive" : "text-foreground"}`}>
-                      {displayRemainingDays} วัน
+                      {displayRemainingDays} {t('days')}
                     </span>
                   )}
                 </div>
@@ -553,7 +533,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 {isSubmitting ? (
                   <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</>
                 ) : (
-                  "Submit Request"
+                  t('submit_btn')
                 )}
               </Button>
             </form>
