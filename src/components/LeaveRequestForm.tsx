@@ -232,6 +232,26 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       return;
     }
 
+    // ถ้าเกิน 09:00 น.ไม่ให้ส่งข้อมูล
+    if (formData.leaveType === "sick") {
+      const now = new Date();
+      const hasToday = selectedDates.some(d => {
+        return d.getDate() === now.getDate() && 
+               d.getMonth() === now.getMonth() && 
+               d.getFullYear() === now.getFullYear();
+      });
+
+      if (hasToday && now.getHours() >= 9) {
+        Swal.fire({
+          icon: "error",
+          title: "ไม่อนุญาตให้ทำรายการ",
+          text: "ไม่สามารถลาได้แล้ว กรุณาแจ้งกับหัวหน้าโดยตรงครับ",
+          confirmButtonColor: "#FF334B",
+        });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
