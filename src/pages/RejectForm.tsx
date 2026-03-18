@@ -7,15 +7,25 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { toast } from "@/hooks/use-toast";
 import liff from "@line/liff";
 
+//  1. Import ระบบภาษา
+import { useLanguage } from "@/hooks/useLanguage";
+
 const WEBHOOK_SUBMIT_REJECT = "https://thirstless-ostensively-maryam.ngrok-free.dev/webhook/submit-reject";
 
 // ฟังก์ชันแปลงประเภทการลาให้เป็น 2 ภาษา
-const formatLeaveType = (type: string | null) => {
+const formatLeaveType = (type: string | null, language: string) => {
   if (!type) return "-";
   const t = type.toLowerCase();
-  if (t.includes('sick')) return 'Sick Leave (ลาป่วย)';
-  if (t.includes('vacation') || t.includes('annual')) return 'Annual Leave (ลาพักร้อน)';
-  if (t.includes('personal')) return 'Personal Leave (ลากิจ)';
+  
+  if (language === 'th') {
+    if (t.includes('sick')) return 'ลาป่วย';
+    if (t.includes('vacation') || t.includes('annual')) return 'ลาพักร้อน';
+    if (t.includes('personal')) return 'ลากิจ';
+  } else {
+    if (t.includes('sick')) return 'Sick Leave';
+    if (t.includes('vacation') || t.includes('annual')) return 'Annual Leave';
+    if (t.includes('personal')) return 'Personal Leave';
+  }
   return type;
 };
 
@@ -31,12 +41,13 @@ export default function RejectForm() {
   const remainRow = searchParams.get("remainRow");
   const leaveReason = searchParams.get("leaveReason") || searchParams.get("reason");
   const dbId = searchParams.get("db_id") || "";
-  
-  // 🌟 เพิ่มตัวรับค่า วันที่ลา จาก URL
   const leaveDate = searchParams.get("leaveDate");
 
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  //  2. ดึงฟังก์ชัน t() และสลับภาษามาใช้
+  const { language, toggleLanguage, t } = useLanguage();
 
   useEffect(() => {
     liff.init({ liffId: "2008617589-89gR1Y3Y" }).catch((err) => {
@@ -47,7 +58,7 @@ export default function RejectForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reason.trim()) {
-      toast({ title: "Please enter a reason / กรุณาระบุเหตุผล", variant: "destructive" });
+      toast({ title: t('enter_reason_alert'), variant: "destructive" });
       return;
     }
 
@@ -74,17 +85,16 @@ export default function RejectForm() {
 
       if (!res.ok) throw new Error("Failed to submit");
 
-      toast({ title: "Submitted successfully" });
-      
       if (liff.isInClient()) {
+        toast({ title: "Success" });
         liff.closeWindow();
       } else {
-        alert("Success! You can close this window. (ส่งข้อมูลสำเร็จ กรุณาปิดหน้าต่างนี้)");
+        alert(t('success_alert'));
       }
 
     } catch (error) {
       console.error(error);
-      toast({ title: "Error / เกิดข้อผิดพลาด", variant: "destructive" });
+      toast({ title: "Error", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -97,41 +107,52 @@ export default function RejectForm() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative">
+      
+      {/*  ปุ่มเปลี่ยนภาษาแบบลอย มุมขวาบน */}
+      <button
+        type="button"
+        onClick={toggleLanguage}
+        className="absolute top-4 right-4 z-50 bg-white/80 backdrop-blur-md shadow-sm border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full text-[11px] font-bold hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+      >
+        {language === 'th' ? '🇹🇭 TH' : '🇬🇧 EN'}
+      </button>
+
       <Card className="w-full max-w-md shadow-lg border-t-4 border-t-red-500">
         <CardHeader className="pb-4">
           <div className="flex justify-between items-center mb-2">
             <span className="text-xs font-bold tracking-wider text-slate-400 uppercase">TBS Marketing</span>
-            <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-md font-medium">Reject Action</span>
+            <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-md font-medium">{t('reject_action')}</span>
           </div>
           <CardTitle className="text-xl text-slate-800">
-            Reject Leave Request
-            <span className="block text-base font-normal text-slate-600 mt-1">ปฏิเสธการลางาน</span>
+            {t('reject_title')}
           </CardTitle>
           <CardDescription className="text-slate-500 mt-2">
-            Please specify the reason for not approving this request. <br/>
-            กรุณาระบุเหตุผลที่ไม่อนุมัติ เพื่อแจ้งให้พนักงานทราบ
+            {t('reject_desc')}
           </CardDescription>
         </CardHeader>
         
         <CardContent>
-          {/* 📋 กล่องสรุปข้อมูล (เพิ่มวันที่) */}
+          {/* 📋 กล่องสรุปข้อมูล */}
           <div className="bg-slate-100 rounded-lg p-3 mb-5 border border-slate-200">
             <div className="grid grid-cols-3 gap-2 text-sm">
-              <div className="text-slate-500">Employee:</div>
+              <div className="text-slate-500">{t('emp_name')}</div>
               <div className="col-span-2 font-medium text-slate-700">{userName || "-"}</div>
               
-              <div className="text-slate-500">Leave Type:</div>
-              <div className="col-span-2 font-medium text-slate-700">{formatLeaveType(type)}</div>
+              <div className="text-slate-500">{t('leave_type')}</div>
+              <div className="col-span-2 font-medium text-slate-700">{formatLeaveType(type, language)}</div>
               
-              {/* 🌟 แสดงวันที่ */}
-              <div className="text-slate-500">Date:</div>
-              <div className="col-span-2 font-medium text-slate-700">{leaveDate ? leaveDate.replace(/to/g, 'ถึง') : "-"}</div>
+              <div className="text-slate-500">{t('leave_date')}</div>
+              <div className="col-span-2 font-medium text-slate-700">
+                {leaveDate ? leaveDate.replace(/to/g, language === 'th' ? 'ถึง' : 'to') : "-"}
+              </div>
               
-              <div className="text-slate-500">Duration:</div>
-              <div className="col-span-2 font-medium text-slate-700">{days || "-"} Day(s)</div>
+              <div className="text-slate-500">{t('leave_duration')}</div>
+              <div className="col-span-2 font-medium text-slate-700">
+                {days || "-"} {t('days')}
+              </div>
 
-              <div className="text-slate-500">Reason:</div>
+              <div className="text-slate-500">{t('leave_reason')}</div>
               <div className="col-span-2 font-medium text-slate-700">{leaveReason || "-"}</div>
             </div>
           </div>
@@ -139,10 +160,10 @@ export default function RejectForm() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-700">
-                Reason / เหตุผล <span className="text-red-500">*</span>
+                {t('reason_label')} <span className="text-red-500">*</span>
               </label>
               <Textarea
-                placeholder="Enter the reason for rejection here... / กรุณาใส่เหตุผลที่ไม่อนุมัติที่นี่..."
+                placeholder={t('reject_reason_placeholder')} 
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 className="min-h-[100px] resize-none focus-visible:ring-red-500"
@@ -156,7 +177,7 @@ export default function RejectForm() {
                 className="w-full text-slate-600 border-slate-300 hover:bg-slate-100"
                 onClick={handleCancel}
               >
-                Cancel / ยกเลิก
+                {t('cancel_btn')}
               </Button>
               <Button 
                 type="submit" 
@@ -164,7 +185,7 @@ export default function RejectForm() {
                 className="w-full bg-red-600 hover:bg-red-700"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Submitting..." : "Confirm Reject / ยืนยัน"}
+                {isSubmitting ? "..." : t('confirm_reject_btn')}
               </Button>
             </div>
           </form>

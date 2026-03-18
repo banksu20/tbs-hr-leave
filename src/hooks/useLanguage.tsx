@@ -1,9 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-// กำหนดประเภทภาษาที่มี
 type Language = 'th' | 'en';
 
-// สร้างโครงสร้าง Context
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
@@ -11,7 +9,6 @@ interface LanguageContextType {
   t: (key: keyof typeof translations['th']) => string; // ฟังก์ชันสำหรับแปลคำ
 }
 
-// ดิกชันนารีเก็บคำแปล
 const translations = {
   th: {
     // Dashboard
@@ -47,6 +44,22 @@ const translations = {
     'quota_exceeded': 'จำนวนวันที่ขอลาเกินโควต้าที่เหลือ',
     'submit_btn': 'ส่งคำขอลางาน',
     'submitting': 'กำลังส่งข้อมูล...',
+
+    // Reject Form
+    'reject_action': 'รายการปฏิเสธ',
+    'reject_title': 'ปฏิเสธการลางาน',
+    'reject_desc': 'กรุณาระบุเหตุผลที่ไม่อนุมัติ เพื่อแจ้งให้พนักงานทราบ',
+    'emp_name': 'พนักงาน:',
+    'leave_date': 'วันที่:',
+    'leave_duration': 'จำนวนวัน:',
+    'leave_reason': 'เหตุผลการลา:',
+    'reason_label': 'เหตุผลที่ปฏิเสธ',
+
+    'reject_reason_placeholder': 'กรุณาใส่เหตุผลที่ไม่อนุมัติที่นี่...',
+    'cancel_btn': 'ยกเลิก',
+    'confirm_reject_btn': 'ยืนยันการปฏิเสธ',
+    'enter_reason_alert': 'กรุณาระบุเหตุผล',
+    'success_alert': 'ส่งข้อมูลสำเร็จ กรุณาปิดหน้าต่างนี้',
   },
   en: {
     // Dashboard
@@ -82,13 +95,28 @@ const translations = {
     'quota_exceeded': 'Requested days exceed remaining quota',
     'submit_btn': 'Submit Request',
     'submitting': 'Submitting...',
+
+    // Reject Form
+    'reject_action': 'Reject Action',
+    'reject_title': 'Reject Leave Request',
+    'reject_desc': 'Please specify the reason for not approving this request.',
+    'emp_name': 'Employee:',
+    'leave_date': 'Date:',
+    'leave_duration': 'Duration:',
+    'leave_reason': 'Reason:',
+    'reason_label': 'Reason for rejection',
+
+    'reject_reason_placeholder': 'Enter the reason for rejection here...',
+    'cancel_btn': 'Cancel',
+    'confirm_reject_btn': 'Confirm Reject',
+    'enter_reason_alert': 'Please enter a reason',
+    'success_alert': 'Success! You can close this window.',
   }
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // ดึงค่าภาษาเดิมที่เคยเลือกไว้ ถ้าไม่มีให้เริ่มที่ 'th'
   const [language, setLanguageState] = useState<Language>(() => {
     const savedLang = localStorage.getItem('app_language');
     return (savedLang === 'en' || savedLang === 'th') ? savedLang : 'th';
@@ -103,7 +131,6 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setLanguage(language === 'th' ? 'en' : 'th');
   };
 
-  // ฟังก์ชันแปลภาษา (ถ้าหาคำไม่เจอ ให้โชว์คีย์นั้นๆ ไปเลย)
   const t = (key: keyof typeof translations['th']) => {
     return translations[language][key] || key;
   };
