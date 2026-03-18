@@ -301,46 +301,48 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="min-h-[100dvh] bg-slate-50 flex flex-col font-sans relative">
       
-      {/* Header สไตล์คล้ายหน้า Dashboard */}
-      <div className="bg-white text-slate-800 py-6 px-5 shadow-sm relative overflow-hidden rounded-b-3xl z-10">
+      {/* Header */}
+      <div className="bg-white text-slate-800 py-6 px-4 md:px-6 shadow-sm relative overflow-hidden rounded-b-3xl z-10 shrink-0">
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-500 via-amber-400 to-emerald-500"></div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button 
             type="button"
             onClick={() => navigate("/")} 
-            className="p-2 -ml-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors text-slate-600"
+            className="p-2.5 -ml-1 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors text-slate-600 active:scale-95"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">{t('leave_request')}</h1>
+            <h1 className="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight">{t('leave_request')}</h1>
             <p className="text-xs font-medium text-slate-500 mt-0.5">{t('submit_leave')}</p>
           </div>
         </div>
       </div>
 
-      <div className="px-4 pb-8 mt-6 flex-1">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Form Content Area (เพิ่ม padding-bottom เยอะๆ เผื่อที่ให้ Sticky Footer) */}
+      <div className="px-4 pb-40 md:px-6 md:max-w-2xl md:mx-auto w-full mt-4 flex-1">
+        <form id="leave-form" onSubmit={handleSubmit} className="space-y-4">
           
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+          {/* 1. ข้อมูลส่วนตัวพนักงาน */}
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
             
             <div className="space-y-1.5">
-              <Label className="flex items-center gap-2 text-slate-500 font-semibold text-sm">
+              <Label className="flex items-center gap-2 text-slate-500 font-semibold text-xs uppercase tracking-wider">
                 <User className="h-4 w-4 text-sky-500" /> {t('user_name')}
               </Label>
-              <div className="px-4 py-3.5 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-bold">
+              <div className="px-4 py-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-bold text-sm">
                 {formData.userName}
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="flex items-center gap-2 text-slate-500 font-semibold text-sm">
+              <Label className="flex items-center gap-2 text-slate-500 font-semibold text-xs uppercase tracking-wider">
                 <FileText className="h-4 w-4 text-sky-500" /> {t('department')}
               </Label>
               <Select value={formData.department} onValueChange={handleDepartmentChange} disabled={isDepartmentLocked}>
-                <SelectTrigger className={`h-12 rounded-xl ${isDepartmentLocked ? "font-bold bg-slate-50 border-slate-100 text-slate-700" : "font-bold border-slate-200"}`}>
+                <SelectTrigger className={`h-12 rounded-xl text-sm ${isDepartmentLocked ? "font-bold bg-slate-50 border-slate-100 text-slate-700" : "font-bold border-slate-200"}`}>
                   <SelectValue placeholder={`-- ${t('department')} --`} />
                 </SelectTrigger>
                 <SelectContent>
@@ -354,22 +356,22 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
             </div>
           </div>
 
-          <div className={`p-5 rounded-2xl shadow-sm border transition-colors duration-300 ${
-            formData.leaveType === 'sick' ? 'bg-rose-50/50 border-rose-100' : 
-            formData.leaveType === 'vacation' ? 'bg-sky-50/50 border-sky-100' : 
+          {/* 2. รายละเอียดการลา */}
+          <div className={`p-4 rounded-2xl shadow-sm border transition-colors duration-300 ${
+            formData.leaveType === 'sick' ? 'bg-rose-50/60 border-rose-100' : 
+            formData.leaveType === 'vacation' ? 'bg-sky-50/60 border-sky-100' : 
             'bg-white border-slate-100'
           }`}>
-
-            <div className="space-y-5">
+            <div className="space-y-4">
               
-              {/* เลือกประเภทการลา */}
+              {/* ประเภทการลา */}
               <div className="space-y-1.5">
-                <Label className="flex items-center gap-2 text-slate-700 font-semibold text-sm">
+                <Label className="flex items-center gap-2 text-slate-700 font-semibold text-xs uppercase tracking-wider">
                   <FileText className="h-4 w-4" /> {t('leave_type')}
                 </Label>
                 <Select value={formData.leaveType} onValueChange={(val) => setFormData({ ...formData, leaveType: val })} disabled={isLeaveTypeLocked}>
-                  <SelectTrigger className={`h-12 rounded-xl font-bold border-slate-200 bg-white shadow-sm ${
-                    formData.leaveType === 'sick' ? 'text-rose-600' : formData.leaveType === 'vacation' ? 'text-sky-600' : 'text-slate-700'
+                  <SelectTrigger className={`h-12 rounded-xl font-bold border-white bg-white shadow-sm text-sm ${
+                    formData.leaveType === 'sick' ? 'text-rose-600 ring-1 ring-rose-100' : formData.leaveType === 'vacation' ? 'text-sky-600 ring-1 ring-sky-100' : 'text-slate-700 border-slate-200'
                   }`}>
                     <SelectValue placeholder={`-- ${t('leave_type')} --`} />
                   </SelectTrigger>
@@ -382,24 +384,24 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
               {/* เลือกวันที่ */}
               <div className="space-y-1.5">
-                <Label className="flex items-center gap-2 text-slate-700 font-semibold text-sm">
+                <Label className="flex items-center gap-2 text-slate-700 font-semibold text-xs uppercase tracking-wider">
                   <CalendarIcon className="h-4 w-4" /> {t('select_date')}
                 </Label>
-                                
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant={"outline"}
                       className={cn(
-                        "w-full justify-start text-left font-normal h-12 rounded-xl border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-colors",
-                        !selectedDates?.length && "text-slate-400"
+                        "w-full justify-start text-left font-normal h-12 rounded-xl bg-white border-white shadow-sm text-sm hover:bg-slate-50 transition-colors",
+                        !selectedDates?.length && "text-slate-400",
+                        formData.leaveType === 'sick' ? 'ring-1 ring-rose-100' : formData.leaveType === 'vacation' ? 'ring-1 ring-sky-100' : 'border-slate-200'
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4 text-slate-500" />
+                      <CalendarIcon className="mr-2 h-4 w-4 text-slate-400" />
                       {selectedDates && selectedDates.length > 0 ? (
                         <span className="text-slate-800 font-medium truncate">
                           {t('selected')} <span className="text-sky-600 font-bold">{selectedDates.length}</span> {t('days')}
-                          <span className="text-xs text-slate-400 ml-2 font-normal">
+                          <span className="text-[10px] text-slate-400 ml-1.5 font-normal">
                               ({[...selectedDates]
                                 .sort((a,b)=>a.getTime()-b.getTime())
                                 .map(d => format(d, "dd MMM", { locale: language === 'th' ? th : undefined }))
@@ -411,8 +413,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                       )}
                     </Button>
                   </PopoverTrigger>
-                  
-                  <PopoverContent className="w-auto p-0 border-slate-200 shadow-xl" align="start">
+                  <PopoverContent className="w-auto p-0 border-slate-200 shadow-2xl rounded-2xl" align="center">
                     {/* @ts-ignore */}
                     <CalendarComponent
                       mode="multiple"
@@ -431,12 +432,12 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                         return isPast || isWeekend || isTaken;
                       }}
                       initialFocus
-                      className="pointer-events-auto bg-white rounded-md"
+                      className="pointer-events-auto bg-white rounded-2xl p-3"
                       modifiersStyles={{
                         selected: {
-                          backgroundColor: formData.leaveType === 'sick' ? "#f43f5e" : "#0ea5e9", // สีปฏิทินเปลี่ยนตามประเภทการลา
+                          backgroundColor: formData.leaveType === 'sick' ? "#f43f5e" : "#0ea5e9",
                           color: "white",
-                          borderRadius: "50%",
+                          borderRadius: "12px", // เปลี่ยนจากวงกลมเป็นสี่เหลี่ยมขอบมนให้ดูโมเดิร์น
                         },
                       }}
                     />
@@ -445,15 +446,15 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
                 {/* เลือก ครึ่งวัน/เต็มวัน */}
                 {selectedDates.length === 1 && (
-                  <div className="mt-3 pt-3 border-t border-slate-200/60 space-y-3">
-                    <Label className="flex items-center gap-2 text-slate-600 text-xs uppercase tracking-wider font-bold">
+                  <div className="mt-3 pt-3 border-t border-slate-200/50 space-y-2.5 animate-in fade-in slide-in-from-top-2">
+                    <Label className="flex items-center gap-2 text-slate-500 text-[10px] uppercase tracking-wider font-bold">
                       <Clock className="h-3 w-3" /> {t('duration')}
                     </Label>
                     <div className="flex gap-2">
                       <Button
                         type="button"
                         variant={!isHalfDay ? "default" : "outline"}
-                        className={cn("flex-1 rounded-xl shadow-sm", !isHalfDay ? (formData.leaveType === 'sick' ? "bg-rose-500 hover:bg-rose-600 text-white" : "bg-sky-500 hover:bg-sky-600 text-white") : "text-slate-500 bg-white border-slate-200")}
+                        className={cn("flex-1 h-10 rounded-xl shadow-sm text-xs font-bold", !isHalfDay ? (formData.leaveType === 'sick' ? "bg-rose-500 hover:bg-rose-600 text-white" : "bg-sky-500 hover:bg-sky-600 text-white") : "text-slate-500 bg-white border-slate-200")}
                         onClick={() => setIsHalfDay(false)}
                       >
                         {t('full_day')}
@@ -461,7 +462,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                       <Button
                         type="button"
                         variant={isHalfDay ? "default" : "outline"}
-                        className={cn("flex-1 rounded-xl shadow-sm", isHalfDay ? "bg-amber-500 hover:bg-amber-600 text-white" : "text-slate-500 bg-white border-slate-200")}
+                        className={cn("flex-1 h-10 rounded-xl shadow-sm text-xs font-bold", isHalfDay ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent" : "text-slate-500 bg-white border-slate-200")}
                         onClick={() => setIsHalfDay(true)}
                       >
                         {t('half_day')}
@@ -469,85 +470,72 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                     </div>
                   </div>
                 )}
-
-                {/* สรุปจำนวนวัน */}
-                {selectedDates && selectedDates.length > 0 && (
-                  <p className="text-sm font-medium text-slate-600 mt-2 ml-1">
-                    * {t('total_duration')} <b className={isHalfDay ? "text-amber-500" : (formData.leaveType === 'sick' ? "text-rose-500" : "text-sky-500")}>
-                      {selectedDates.length > 1 
-                        ? `${requestedDays} ${t('days')}` 
-                        : (isHalfDay ? t('half_day') : t('full_day'))}
-                    </b>
-                  </p>
-                )}
               </div>
 
               {/* กล่องเหตุผล */}
               {formData.leaveType !== "vacation" && (
-                <div className="space-y-1.5">
-                  <Label className="flex items-center gap-2 text-slate-700 font-semibold text-sm">
+                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                  <Label className="flex items-center gap-2 text-slate-700 font-semibold text-xs uppercase tracking-wider">
                     <FileText className="h-4 w-4" /> {t('reason')}
                   </Label>
                   <Textarea
                     placeholder={t('reason_placeholder')}
                     value={formData.reason}
                     onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                    className="min-h-[100px] resize-none rounded-xl border-slate-200 bg-white shadow-sm"
+                    className={`min-h-[80px] resize-none rounded-xl bg-white shadow-sm text-sm border-white ${formData.leaveType === 'sick' ? 'ring-1 ring-rose-100 focus-visible:ring-rose-400' : 'border-slate-200 focus-visible:ring-sky-400'}`}
                   />
                 </div>
               )}
             </div>
           </div>
-
-          <div className="space-y-4 pt-2">
-            
-            {/* กล่องบอกวันลาคงเหลือ */}
-            <div className={`p-4 rounded-2xl border flex items-center justify-between shadow-sm transition-colors ${
-              isOverQuota ? "bg-rose-50 border-rose-200" : "bg-slate-800 border-slate-800 text-white"
-            }`}>
-              <div className="flex items-center gap-2">
-                <CalendarIcon className={`h-5 w-5 ${isOverQuota ? "text-rose-500" : "text-slate-300"}`} />
-                <span className={`text-sm font-semibold ${isOverQuota ? "text-rose-700" : "text-slate-200"}`}>{t('remaining_quota')}</span>
-              </div>
-              <div className="text-right">
-                {isQuotaLoading ? (
-                  <Skeleton className="h-6 w-16 bg-slate-600/50" />
-                ) : (
-                  <span className={`text-2xl font-extrabold ${isOverQuota ? "text-rose-600" : "text-white"}`}>
-                    {displayRemainingDays} <span className="text-sm font-medium opacity-80">{t('days')}</span>
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {isOverQuota && (
-              <div className="flex items-center justify-center gap-2 text-rose-500 bg-rose-50 p-2.5 rounded-xl border border-rose-100">
-                <AlertTriangle className="h-4 w-4" />
-                <span className="text-xs font-bold">{t('quota_exceeded')}</span>
-              </div>
-            )}
-
-            {/* ปุ่มกดลางาน */}
-            <Button
-              type="submit"
-              disabled={isSubmitting || isOverQuota || selectedDates.length === 0}
-              className={`w-full h-14 text-lg font-bold text-white rounded-2xl shadow-lg transition-all 
-                  ${isSubmitting || isOverQuota || selectedDates.length === 0 
-                      ? "bg-slate-200 text-slate-400 shadow-none cursor-not-allowed" 
-                      : formData.leaveType === 'sick' 
-                        ? "bg-gradient-to-r from-rose-500 to-pink-600 hover:shadow-rose-500/30"
-                        : "bg-gradient-to-r from-sky-500 to-blue-600 hover:shadow-sky-500/30"
-                  }`}
-            >
-              {isSubmitting ? (
-                <><Loader2 className="mr-2 h-6 w-6 animate-spin" /> {t('submitting')}</>
-              ) : (
-                t('submit_btn')
-              )}
-            </Button>
-
-          </div>
         </form>
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 md:px-6 md:py-5 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-50">
+        <div className="max-w-2xl mx-auto space-y-3">
+          
+          {/* กล่องโควต้า (เล็กและกระชับขึ้น) */}
+          <div className={`px-4 py-2.5 rounded-xl border flex items-center justify-between transition-colors ${
+            isOverQuota ? "bg-rose-50 border-rose-200" : "bg-slate-800 border-slate-800 text-white"
+          }`}>
+            <div className="flex items-center gap-2">
+              <CalendarIcon className={`h-4 w-4 ${isOverQuota ? "text-rose-500" : "text-slate-400"}`} />
+              <span className={`text-xs font-semibold uppercase tracking-wider ${isOverQuota ? "text-rose-700" : "text-slate-300"}`}>{t('remaining_quota')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {isQuotaLoading ? (
+                <Skeleton className="h-5 w-12 bg-slate-600/50 rounded-md" />
+              ) : (
+                <>
+                  {isOverQuota && <AlertTriangle className="h-4 w-4 text-rose-500 animate-pulse" />}
+                  <span className={`text-lg font-extrabold ${isOverQuota ? "text-rose-600" : "text-white"}`}>
+                    {displayRemainingDays} <span className="text-[10px] font-medium opacity-80 uppercase ml-0.5">{t('days')}</span>
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ปุ่มกดลางาน */}
+          <Button
+            type="submit"
+            form="leave-form" /* สำคัญ! เชื่อมปุ่มที่อยู่ข้างนอกแบบฟอร์มเข้ากับ tag <form> ด้านบน */
+            disabled={isSubmitting || isOverQuota || selectedDates.length === 0}
+            className={`w-full h-12 md:h-14 text-base font-bold text-white rounded-xl shadow-md transition-all active:scale-[0.98]
+                ${isSubmitting || isOverQuota || selectedDates.length === 0 
+                    ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed" 
+                    : formData.leaveType === 'sick' 
+                      ? "bg-gradient-to-r from-rose-500 to-pink-600 hover:shadow-rose-500/30"
+                      : "bg-gradient-to-r from-sky-500 to-blue-600 hover:shadow-sky-500/30"
+                }`}
+          >
+            {isSubmitting ? (
+              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t('submitting')}</>
+            ) : (
+              t('submit_btn')
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
