@@ -74,11 +74,14 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   // State สำหรับ Multi-select dates
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   
-  // ✅ State สำหรับเลือกลาครึ่งวัน
+  // State สำหรับเลือกลาครึ่งวัน
   const [isHalfDay, setIsHalfDay] = useState(false);
 
-  // ✅ คำนวณจำนวนวันลา (ถ้าเลือกครึ่งวันจะเป็น 0.5)
+  // คำนวณจำนวนวันลา (ถ้าเลือกครึ่งวันจะเป็น 0.5)
   const requestedDays = (selectedDates.length === 1 && isHalfDay) ? 0.5 : selectedDates.length;
+
+  const [takenDates, setTakenDates] = useState<Date[]>([]);
+
 
   // หา Start Date และ End Date จากวันที่เลือก
   const { startDateTime, endDateTime } = useMemo(() => {
@@ -140,6 +143,64 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     };
     initializeLiff();
   }, [userId]);
+
+
+  // ดึงข้อมูลประวัติการลา เพื่อเอามาบล็อกในปฏิทินไม่ให้เลือกซ้ำ
+  useEffect(() => {
+    if (currentUserId) {
+      fetch(`${N8N_URL}/webhook/get-leave-history?userId=${currentUserId}`, {
+        headers: { "ngrok-skip-browser-warning": "true" }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const disabledDatesArray: Date[] = [];
+          
+          data.forEach(item => {
+            // ข้ามใบลาที่ถูก "ปฏิเสธ" (ให้สามารถกดลาซ้ำได้)
+            if (item.status && (item.status.includes('Rejected') || item.status.includes('ปฏิเสธ'))) return;
+
+            const dateStr = item.date;
+            if (!dateStr) return;
+
+            // ฟังก์ชันแปลงข้อความ (19-Mar-26) ให้เป็น Date Object
+            const parseDateString = (str: string) => {
+              const parts = str.trim().split('-');
+              if(parts.length === 3) {
+                  const d = parseInt(parts[0]);
+                  const mStr = parts[1].substring(0,3);
+                  const y = parseInt(parts[2]);
+                  const year = y < 100 ? 2000 + y : y;
+                  const months: any = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+                  return new Date(year, months[mStr], d);
+              }
+              return new Date(str); 
+            };
+
+            if (dateStr.includes(' ถึง ')) {
+              // กรณีลาระยะยาว (Multi-day)
+              const [startStr, endStr] = dateStr.split(' ถึง ');
+              const startDate = parseDateString(startStr);
+              const endDate = parseDateString(endStr);
+              
+              for (let dt = new Date(startDate); dt <= endDate; dt.setDate(dt.getDate() + 1)) {
+                disabledDatesArray.push(new Date(dt));
+              }
+            } else {
+              // กรณีลาวันเดียว (Single-day)
+              disabledDatesArray.push(parseDateString(dateStr));
+            }
+          });
+          
+          setTakenDates(disabledDatesArray);
+        }
+      })
+      .catch(console.error);
+    }
+  }, [currentUserId]);
+
+
+
 
   // ฟังก์ชันเมื่อมีการจิ้มเลือกวันที่
   const handleDateSelect = (dates: Date[] | undefined) => {
@@ -355,7 +416,24 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                       mode="multiple"
                       selected={selectedDates}
                       onSelect={handleDateSelect}
-                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      disabled={(date) => {
+                        // ปิดไม่ให้เลือกวันในอดีต
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const isPast = date < today;
+                        
+                        // ปิดวันเสาร์ (6) และ วันอาทิตย์ (0)
+                        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                        
+                        // ปิดวันที่เคยลาไปแล้ว (รอตรวจ หรือ อนุมัติแล้ว)
+                        const isTaken = takenDates.some(takenDate => 
+                          takenDate.getDate() === date.getDate() &&
+                          takenDate.getMonth() === date.getMonth() &&
+                          takenDate.getFullYear() === date.getFullYear()
+                        );
+
+                        return isPast || isWeekend || isTaken;
+                      }}
                       initialFocus
                       className="pointer-events-auto bg-white rounded-md"
                       modifiersStyles={{
