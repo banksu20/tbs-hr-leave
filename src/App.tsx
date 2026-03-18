@@ -14,6 +14,9 @@ import NotFound from "@/pages/NotFound";
 import RejectForm from "@/pages/RejectForm";
 import ProfileSetup from "@/components/ProfileSetup"; 
 
+import { useLanguage } from "./hooks/useLanguage";
+
+
 const queryClient = new QueryClient();
 const LIFF_ID = "2008617589-89gR1Y3Y";
 
