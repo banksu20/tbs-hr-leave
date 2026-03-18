@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import liff from "@line/liff";
 import Swal from "sweetalert2";
 import { format } from "date-fns";
-import { th } from "date-fns/locale";
+import { th, enUS } from "date-fns/locale"; // 🌟 เพิ่ม enUS สำหรับจัดฟอร์แมตวันที่ตามภาษา
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,14 +22,11 @@ import { Loader2, Calendar as CalendarIcon, User, FileText, ArrowLeft, AlertTria
 import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-// 🌟 1. Import ตัวเปลี่ยนภาษา
 import { useLanguage } from "@/hooks/useLanguage";
 
-// ค่า Config
 const LIFF_ID = import.meta.env.VITE_LIFF_ID || "2008617589-89gR1Y3Y";
 const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://thirstless-ostensively-maryam.ngrok-free.dev";
 
-// Interface
 interface LeaveRequestFormProps {
   userId?: string;
   userName?: string;
@@ -48,20 +45,15 @@ interface FormData {
 const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: LeaveRequestFormProps) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
-  // 🌟 2. ดึงฟังก์ชัน t() มาใช้งาน
-  const { t } = useLanguage();
+  const { language, t } = useLanguage(); // 🌟 ดึง language มาใช้เช็ค locale
 
-  // Logic การเลือกประเภทการลา (จาก Props หรือ URL)
   const typeFromUrl = searchParams.get("type") || "";
   const defaultType = initialLeaveType || typeFromUrl;
 
-  // State
   const [isLoading, setIsLoading] = useState(!userId); 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(userId || "");
 
-  // ดึงข้อมูล Leave Quota
   const { remainingDays, isLoading: isQuotaLoading } = useLeaveQuota(currentUserId || null);
   const [error, setError] = useState<string | null>(null);
   const [isDepartmentLocked, setIsDepartmentLocked] = useState(false);
@@ -82,9 +74,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   const [takenDates, setTakenDates] = useState<Date[]>([]);
 
   const { startDateTime, endDateTime } = useMemo(() => {
-    if (selectedDates.length === 0) {
-      return { startDateTime: "", endDateTime: "" };
-    }
+    if (selectedDates.length === 0) return { startDateTime: "", endDateTime: "" };
     const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
     return {
       startDateTime: sortedDates[0].toISOString(),
@@ -150,10 +140,8 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       .then(data => {
         if (Array.isArray(data)) {
           const disabledDatesArray: Date[] = [];
-          
           data.forEach(item => {
             if (item.status && (item.status.includes('Rejected') || item.status.includes('ปฏิเสธ'))) return;
-
             const dateStr = item.date;
             if (!dateStr) return;
 
@@ -174,7 +162,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
               const [startStr, endStr] = dateStr.split(' ถึง ');
               const startDate = parseDateString(startStr);
               const endDate = parseDateString(endStr);
-              
               for (let dt = new Date(startDate); dt <= endDate; dt.setDate(dt.getDate() + 1)) {
                 disabledDatesArray.push(new Date(dt));
               }
@@ -182,7 +169,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
               disabledDatesArray.push(parseDateString(dateStr));
             }
           });
-          
           setTakenDates(disabledDatesArray);
         }
       })
@@ -193,7 +179,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   const handleDateSelect = (dates: Date[] | undefined) => {
     const safeDates = dates || [];
     setSelectedDates(safeDates);
-
     if (safeDates.length !== 1) {
       setIsHalfDay(false);
     }
@@ -211,8 +196,8 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     if (!formData.department || !formData.leaveType || selectedDates.length === 0 || (isReasonRequired && !formData.reason)) {
       Swal.fire({
         icon: "warning",
-        title: "Incomplete Form",
-        text: "Please fill in all required fields and select at least one leave date.",
+        title: language === 'th' ? "ข้อมูลไม่ครบถ้วน" : "Incomplete Form",
+        text: language === 'th' ? "กรุณากรอกข้อมูลให้ครบถ้วนและเลือกวันที่ต้องการลา" : "Please fill in all required fields and select at least one leave date.",
         confirmButtonColor: "#00B5E2",
       });
       return;
@@ -229,8 +214,8 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       if (hasToday && now.getHours() >= 9) {
         Swal.fire({
           icon: "error",
-          title: "ไม่อนุญาตให้ทำรายการ",
-          text: "ไม่สามารถลาได้แล้ว กรุณาแจ้งกับหัวหน้าโดยตรงครับ",
+          title: language === 'th' ? "ไม่อนุญาตให้ทำรายการ" : "Action Not Allowed",
+          text: language === 'th' ? "ไม่สามารถลาได้แล้ว กรุณาแจ้งกับหัวหน้าโดยตรงครับ" : "You cannot submit sick leave for today after 09:00 AM. Please contact your manager directly.",
           confirmButtonColor: "#FF334B",
         });
         return;
@@ -242,10 +227,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     try {
       const response = await fetch(`${N8N_URL}/webhook/submit-leave`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-        },
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
         body: JSON.stringify({
           userName: formData.userName,
           userId: formData.userId,
@@ -262,20 +244,18 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       });
 
       const result = await response.json();
-
       if (!response.ok || result.status === "error") {
         throw new Error(result.message || "An error occurred");
       }
 
       await Swal.fire({
         icon: "success",
-        title: "Request Submitted!",
-        text: result.message || "Your leave request has been sent successfully.",
+        title: language === 'th' ? "ส่งคำขอสำเร็จ!" : "Request Submitted!",
+        text: result.message || (language === 'th' ? "คำขอลางานของคุณถูกส่งเรียบร้อยแล้ว" : "Your leave request has been sent successfully."),
         confirmButtonColor: "#00B5E2",
       });
 
       navigate("/"); 
-
       setFormData((prev) => ({ ...prev, reason: "" }));
       setSelectedDates([]);
       setIsHalfDay(false);
@@ -286,8 +266,8 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     } catch (err: any) {
       await Swal.fire({
         icon: "error",
-        title: "Submission Failed",
-        text: err.message || "Failed to submit your request.",
+        title: language === 'th' ? "เกิดข้อผิดพลาด" : "Submission Failed",
+        text: err.message || (language === 'th' ? "ไม่สามารถส่งคำขอได้" : "Failed to submit your request."),
         confirmButtonColor: "#00B5E2",
       });
       navigate("/");
@@ -313,9 +293,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <p className="text-destructive mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()} className="bg-[#00B5E2]">
-              Retry
-            </Button>
+            <Button onClick={() => window.location.reload()} className="bg-[#00B5E2]">Retry</Button>
           </CardContent>
         </Card>
       </div>
@@ -327,15 +305,11 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       <div className="bg-white text-slate-800 py-6 px-4 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-500 via-amber-400 to-emerald-500"></div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/")}
-            className="p-2 -ml-2 rounded-full hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-800"
-          >
+          <button onClick={() => navigate("/")} className="p-2 -ml-2 rounded-full hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-800">
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            {/* 🌟 3. ใช้ t() แทนข้อความแข็งๆ */}
-            <h1 className="text-2xl font-bold text-slate-800">Leave Request</h1>
+            <h1 className="text-2xl font-bold text-slate-800">{t('leave_request')}</h1>
             <p className="text-sm text-slate-500">{t('submit_leave')}</p>
           </div>
         </div>
@@ -345,20 +319,21 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
         <Card className="rounded-2xl shadow-sm border border-slate-200">
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-5">
+              
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-slate-600">
-                  <User className="h-4 w-4" /> User Name
+                  <User className="h-4 w-4" /> {t('user_name')}
                 </Label>
                 <Input value={formData.userName} readOnly className="bg-slate-50 border-slate-200 font-medium text-slate-600" />
               </div>
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-muted-foreground">
-                  <FileText className="h-4 w-4" /> Department
+                  <FileText className="h-4 w-4" /> {t('department')}
                 </Label>
                 <Select value={formData.department} onValueChange={handleDepartmentChange} disabled={isDepartmentLocked}>
                   <SelectTrigger className={isDepartmentLocked ? "font-medium bg-muted/50" : "font-medium"}>
-                    <SelectValue placeholder="Select department" />
+                    <SelectValue placeholder={`-- ${t('department')} --`} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="IT">IT</SelectItem>
@@ -372,14 +347,13 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-slate-600">
-                  <FileText className="h-4 w-4" /> Leave Type
+                  <FileText className="h-4 w-4" /> {t('leave_type')}
                 </Label>
                 <Select value={formData.leaveType} onValueChange={(val) => setFormData({ ...formData, leaveType: val })} disabled={isLeaveTypeLocked}>
                   <SelectTrigger className={`font-medium border-slate-200 ${isLeaveTypeLocked ? "bg-slate-50" : "bg-white"}`}>
-                    <SelectValue placeholder="Select leave type" />
+                    <SelectValue placeholder={`-- ${t('leave_type')} --`} />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* 🌟 4. แปลประเภทลา */}
                     <SelectItem value="sick">{t('sick_leave')}</SelectItem>
                     <SelectItem value="vacation">{t('annual_leave')}</SelectItem>
                   </SelectContent>
@@ -403,16 +377,16 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                       <CalendarIcon className="mr-2 h-4 w-4 text-slate-500" />
                       {selectedDates && selectedDates.length > 0 ? (
                         <span className="text-slate-800 font-medium truncate">
-                          เลือกแล้ว <span className="text-sky-600 font-bold">{selectedDates.length}</span> วัน 
+                          {t('selected')} <span className="text-sky-600 font-bold">{selectedDates.length}</span> {t('days')}
                           <span className="text-xs text-slate-400 ml-2 font-normal">
                               ({[...selectedDates]
                                 .sort((a,b)=>a.getTime()-b.getTime())
-                                .map(d => format(d, "dd MMM", { locale: th }))
+                                .map(d => format(d, "dd MMM", { locale: language === 'th' ? th : enUS }))
                                 .join(", ")})
                           </span>
                         </span>
                       ) : (
-                        <span>{t('select_date')}</span>
+                        <span>{t('click_to_select_date')}</span>
                       )}
                     </Button>
                   </PopoverTrigger>
@@ -476,7 +450,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
                 {selectedDates && selectedDates.length > 0 && (
                   <p className="text-sm font-medium text-slate-600 mt-2 ml-1">
-                    * Total duration: <b className={isHalfDay ? "text-amber-500" : "text-sky-500"}>
+                    * {t('total_duration')} <b className={isHalfDay ? "text-amber-500" : "text-sky-500"}>
                       {selectedDates.length > 1 
                         ? `${requestedDays} ${t('days')}` 
                         : (isHalfDay ? t('half_day') : t('full_day'))}
@@ -491,7 +465,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                     <FileText className="h-4 w-4" /> {t('reason')}
                   </Label>
                   <Textarea
-                    placeholder="Describe your reason..."
+                    placeholder={t('reason_placeholder')}
                     value={formData.reason}
                     onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                     className="min-h-[100px] resize-none"
@@ -503,7 +477,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm font-medium text-muted-foreground">{t('remaining_quota')}:</span>
+                    <span className="text-sm font-medium text-muted-foreground">{t('remaining_quota')}</span>
                   </div>
                   {isQuotaLoading ? (
                     <Skeleton className="h-5 w-16" />
@@ -516,7 +490,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 {isOverQuota && (
                   <div className="flex items-center gap-2 mt-3 text-destructive">
                     <AlertTriangle className="h-4 w-4" />
-                    <span className="text-sm font-medium">จำนวนวันที่ขอเกินโควต้าที่เหลือ</span>
+                    <span className="text-sm font-medium">{t('quota_exceeded')}</span>
                   </div>
                 )}
               </div>
@@ -531,7 +505,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                     }`}
               >
                 {isSubmitting ? (
-                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</>
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t('submitting')}</>
                 ) : (
                   t('submit_btn')
                 )}

@@ -11,10 +11,10 @@ interface LanguageContextType {
   t: (key: keyof typeof translations['th']) => string; // ฟังก์ชันสำหรับแปลคำ
 }
 
-// ดิกชันนารีเก็บคำแปล (เพิ่มคำที่ต้องการแปลไว้ที่นี่)
+// ดิกชันนารีเก็บคำแปล
 const translations = {
   th: {
-    // คำใน Dashboard
+    // Dashboard
     'leave_history': 'ประวัติการลาล่าสุด',
     'sick_leave': 'ลาป่วย',
     'annual_leave': 'พักร้อน',
@@ -27,17 +27,29 @@ const translations = {
     'load_more': 'ดูประวัติเพิ่มเติม',
     'show_less': 'แสดงน้อยลง',
     'no_history': 'ยังไม่มีประวัติการลางาน',
-    // คำในหน้ายื่นลา
-    'submit_leave': 'ยื่นลางาน',
+    
+    // Leave Request Form
+    'leave_request': 'ยื่นคำขอลางาน',
+    'submit_leave': 'กรอกรายละเอียดการลางานของคุณ',
+    'user_name': 'ชื่อ - นามสกุล',
+    'department': 'แผนก',
+    'leave_type': 'ประเภทการลา',
     'select_date': 'เลือกวันที่ต้องการลา',
+    'click_to_select_date': 'กดเพื่อเลือกวันที่',
+    'selected': 'เลือกแล้ว',
     'duration': 'ระยะเวลา',
-    'reason': 'เหตุผล',
-    'remaining_quota': 'วันลาคงเหลือ',
-    'submit_btn': 'ส่งคำขอลางาน',
     'full_day': 'เต็มวัน',
     'half_day': 'ครึ่งวัน',
+    'total_duration': 'สรุปการขอลา:',
+    'reason': 'เหตุผลการลา',
+    'reason_placeholder': 'ระบุเหตุผลการลา...',
+    'remaining_quota': 'วันลาคงเหลือ:',
+    'quota_exceeded': 'จำนวนวันที่ขอลาเกินโควต้าที่เหลือ',
+    'submit_btn': 'ส่งคำขอลางาน',
+    'submitting': 'กำลังส่งข้อมูล...',
   },
   en: {
+    // Dashboard
     'leave_history': 'Recent Leave History',
     'sick_leave': 'Sick Leave',
     'annual_leave': 'Annual Leave',
@@ -50,14 +62,26 @@ const translations = {
     'load_more': 'Load More',
     'show_less': 'Show Less',
     'no_history': 'No leave history yet',
-    'submit_leave': 'Submit Leave',
+    
+    // Leave Request Form
+    'leave_request': 'Leave Request',
+    'submit_leave': 'Submit your leave application',
+    'user_name': 'Name',
+    'department': 'Department',
+    'leave_type': 'Leave Type',
     'select_date': 'Select Leave Date',
+    'click_to_select_date': 'Click to select date',
+    'selected': 'Selected',
     'duration': 'Duration',
-    'reason': 'Reason',
-    'remaining_quota': 'Remaining Quota',
-    'submit_btn': 'Submit Request',
     'full_day': 'Full Day',
     'half_day': 'Half Day',
+    'total_duration': 'Total duration:',
+    'reason': 'Reason',
+    'reason_placeholder': 'Describe your reason...',
+    'remaining_quota': 'Remaining Quota:',
+    'quota_exceeded': 'Requested days exceed remaining quota',
+    'submit_btn': 'Submit Request',
+    'submitting': 'Submitting...',
   }
 };
 
