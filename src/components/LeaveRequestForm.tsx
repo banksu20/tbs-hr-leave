@@ -143,20 +143,35 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       .then(data => {
         if (Array.isArray(data)) {
           const disabledDatesArray: Date[] = [];
-          data.forEach(item => {
+          data.forEach((item: any) => {
             if (item.status && (item.status.includes('Rejected') || item.status.includes('ปฏิเสธ'))) return;
+            
+            // ดึงวันที่จาก selected_dates (ที่ n8n เพิ่งเพิ่มให้)
+            if (item.selected_dates) {
+              const dateList = item.selected_dates.split(',');
+              dateList.forEach((dStr: string) => {
+                const parts = dStr.split('-');
+                if (parts.length === 3) {
+                  // สร้าง Date โดยบังคับเวลาเป็น 00:00:00 
+                  disabledDatesArray.push(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 0, 0, 0, 0));
+                }
+              });
+              return; 
+            }
+
+            // รองรับประวัติแบบเก่า (เผื่อไว้)
             const dateStr = item.date;
             if (!dateStr) return;
 
             const parseDateString = (str: string) => {
               const parts = str.trim().split('-');
-              if(parts.length === 3) {
-                  const d = parseInt(parts[0]);
+              if (parts.length === 3) {
+                  const d = parseInt(parts[0], 10);
                   const mStr = parts[1].substring(0,3);
-                  const y = parseInt(parts[2]);
+                  const y = parseInt(parts[2], 10);
                   const year = y < 100 ? 2000 + y : y;
                   const months: any = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-                  return new Date(year, months[mStr], d);
+                  return new Date(year, months[mStr], d, 0, 0, 0, 0); 
               }
               return new Date(str); 
             };
