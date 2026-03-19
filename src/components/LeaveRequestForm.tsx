@@ -144,119 +144,50 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
         if (Array.isArray(data)) {
           const disabledDatesArray: Date[] = [];
           data.forEach((item: any) => {
-            // ถ้าโดน Reject แล้ว ไม่ต้องบล็อกปฏิทิน
+            // ข้ามรายการที่โดนปฏิเสธ
             if (item.status && (item.status.includes('Rejected') || item.status.includes('ปฏิเสธ'))) return;
-            
-            // --- ฟังก์ชันหลักสำหรับแปลงวันที่จาก String ทุกรูปแบบให้เป็น Date ---
-            const pushDateToDisabled = (dateStr: string) => {
-                if (!dateStr || dateStr.trim() === "-") return;
-                
-                const str = dateStr.trim();
-                
-                // ถ้ามาเป็น Format 'yyyy-MM-dd' (เช่น 2026-03-19)
-                if (str.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                    const parts = str.split('-');
-                    disabledDatesArray.push(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 0, 0, 0, 0));
-                    return;
-                }
 
-                // ถ้ามาเป็น Format 'dd-MMM-yy' หรือ 'dd-MMM-yyyy' (เช่น 19-Mar-26)
-                const parts = str.split('-');
-                if (parts.length === 3) {
-                    const d = parseInt(parts[0], 10);
-                    const mStr = parts[1].substring(0,3);
-                    const y = parseInt(parts[2], 10);
-                    const year = y < 100 ? 2000 + y : y;
-                    const months: any = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-                    const monthIdx = months[mStr];
-                    if (monthIdx !== undefined) {
-                        disabledDatesArray.push(new Date(year, monthIdx, d, 0, 0, 0, 0));
-                        return;
-                    }
-                }
-                
-                // Fallback: โยนให้ JavaScript ลอง parse ดู
-                const d = new Date(str);
+            // ฟังก์ชันช่วยเพิ่มวันที่ (ตัดเวลาทิ้ง เอาแค่วันเดือนปี)
+            const addDate = (d: Date) => {
                 if (!isNaN(d.getTime())) {
-                    disabledDatesArray.push(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0));
+                    disabledDatesArray.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
                 }
             };
 
-            // สำคัญที่สุด: ลุยเช็คข้อมูลทั้งหมดที่ n8n ส่งมา
-
-            // เช็คจาก selected_dates ก่อน (ระบบใหม่) เช่น "2026-03-19,2026-03-20" หรือ "19-Mar-26, 20-Mar-26"
-            if (item.selected_dates) {
-              item.selected_dates.split(',').forEach((dStr: string) => pushDateToDisabled(dStr));
-            } 
-            
-            // เช็คจาก date (ระบบเก่าหรือระบบรวมกลุ่ม)
+            // 1. ลองดึงจาก selected_dates ก่อน (รูปแบบ: 2026-03-25,2026-03-26)
+            if (item.selected_dates && item.selected_dates.includes('-') && !item.selected_dates.includes('$(')) {
+                item.selected_dates.split(',').forEach((dStr: string) => {
+                    const parts = dStr.trim().split('-');
+                    if (parts.length === 3 && parts[0].length === 4) { 
+                        addDate(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
+                    }
+                });
+            }
+            // 2. ถ้าไม่มี ให้ดึงจากช่อง date (รูปแบบ: 25-Mar-26 หรือ 25-Mar-26 ถึง 26-Mar-26)
             else if (item.date) {
-               const dateStr = item.date;
-               
-               // ถ้าเป็นแบบช่วงเวลา: "19-Mar-26 ถึง 21-Mar-26"
-               if (dateStr.includes(' ถึง ') || dateStr.includes(' to ')) {
-                 const delimiter = dateStr.includes(' ถึง ') ? ' ถึง ' : ' to ';
-                 const [startStr, endStr] = dateStr.split(delimiter);
-                 
-                 // แปลง start
-                 let startD = new Date();
-                 const sParts = startStr.trim().split('-');
-                 if (sParts.length === 3) {
-                    const months: any = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-                    const y = parseInt(sParts[2], 10) < 100 ? 2000 + parseInt(sParts[2], 10) : parseInt(sParts[2], 10);
-                    startD = new Date(y, months[sParts[1].substring(0,3)], parseInt(sParts[0], 10), 0,0,0,0);
-                 } else startD = new Date(startStr);
-
-                 // แปลง end
-                 let endD = new Date();
-                 const eParts = endStr.trim().split('-');
-                 if (eParts.length === 3) {
-                    const months: any = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-                    const y = parseInt(eParts[2], 10) < 100 ? 2000 + parseInt(eParts[2], 10) : parseInt(eParts[2], 10);
-                    endD = new Date(y, months[eParts[1].substring(0,3)], parseInt(eParts[0], 10), 0,0,0,0);
-                 } else endD = new Date(endStr);
-
-                 // วนลูปบล็อกตั้งแต่วันแรกถึงวันสุดท้าย
-                 if(!isNaN(startD.getTime()) && !isNaN(endD.getTime())){
-                    for (let dt = new Date(startD); dt <= endD; dt.setDate(dt.getDate() + 1)) {
-                      disabledDatesArray.push(new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 0, 0, 0, 0));
+                const parseDmy = (str: string) => {
+                    const p = str.trim().split('-');
+                    if (p.length === 3) {
+                        const mMap: any = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
+                        let y = parseInt(p[2], 10);
+                        if (y < 100) y += 2000;
+                        return new Date(y, mMap[p[1].toLowerCase().substring(0, 3)], parseInt(p[0], 10));
                     }
-                 }
-               } 
-               
-               // ถ้าเป็นแบบจัดกลุ่มแล้ว: "19, 20 Mar 2026 / 21, 22 Apr 2026" หรือ "19-Mar-26, 20-Mar-26"
-               else {
-                 // ตัดแบ่งด้วย / ก่อน (ถ้ามีหลายเดือน)
-                 const monthGroups = dateStr.split('/');
-                 
-                 monthGroups.forEach((group: string) => {
-                    group = group.trim();
-                    // ถ้าในกลุ่มมีคอมม่า แสดงว่าเป็นแบบ "19, 20 Mar 2026" หรือ "19-Mar-26, 20-Mar-26"
-                    if (group.includes(',')) {
-                        // เช็คว่าเป็นแบบ "19-Mar-26, 20-Mar-26" (มีขีด)
-                        if (group.includes('-')) {
-                            group.split(',').forEach((dStr: string) => pushDateToDisabled(dStr));
-                        } 
-                        // เป็นแบบ "19, 20 Mar 2026"
-                        else {
-                            const words = group.split(' ').filter(w => w.trim().length > 0); // ["19,", "20", "Mar", "2026"]
-                            if (words.length >= 3) {
-                                const yearStr = words.pop(); // "2026"
-                                const monthStr = words.pop(); // "Mar"
-                                const daysStr = words.join(''); // "19,20"
-                                
-                                daysStr.split(',').forEach((dayRaw: string) => {
-                                    if(dayRaw.trim()){
-                                        pushDateToDisabled(`${dayRaw.trim()}-${monthStr}-${yearStr}`);
-                                    }
-                                });
-                            }
+                    return new Date(str);
+                };
+
+                if (item.date.includes(' ถึง ') || item.date.includes(' to ')) {
+                    const [start, end] = item.date.split(/ ถึง | to /);
+                    const d1 = parseDmy(start);
+                    const d2 = parseDmy(end);
+                    if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
+                        for (let dt = new Date(d1); dt <= d2; dt.setDate(dt.getDate() + 1)) {
+                            addDate(dt);
                         }
-                    } else {
-                        pushDateToDisabled(group);
                     }
-                 });
-               }
+                } else {
+                    addDate(parseDmy(item.date));
+                }
             }
           });
           setTakenDates(disabledDatesArray);
@@ -518,9 +449,14 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                         today.setHours(0, 0, 0, 0);
                         const isPast = date < today;
                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                        
+                        // 🌟 แก้ตรงนี้: เทียบ วัน เดือน ปี ตรงๆ เลิกง้อ getTime() ที่เพี้ยนง่าย
                         const isTaken = takenDates.some(takenDate => 
-                          takenDate.getTime() === new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+                          takenDate.getDate() === date.getDate() &&
+                          takenDate.getMonth() === date.getMonth() &&
+                          takenDate.getFullYear() === date.getFullYear()
                         );
+                        
                         return isPast || isWeekend || isTaken;
                       }}
                       initialFocus
@@ -531,7 +467,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                           color: "white",
                           borderRadius: "12px",
                         },
-                        // 🌟 เพิ่มสไตล์ให้วันที่ถูกลาไปแล้ว (ให้เป็นสีเทาจางและขีดฆ่า)
                         disabled: {
                           color: "#cbd5e1",
                           textDecoration: "line-through",
