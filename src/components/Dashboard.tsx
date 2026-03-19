@@ -198,8 +198,35 @@ const Dashboard = () => {
                 const isApproved = item.status.includes('Approved');
                 const isRejected = item.status.includes('Rejected') || item.status.includes('ปฏิเสธ');
                 
-                // แปลงคำว่า ลาป่วย/พักร้อน ที่มาจาก Database ให้เข้ากับภาษาที่เลือก
                 const displayType = isSick ? t('sick_leave') : t('annual_leave');
+
+                // ฟังก์ชันช่วยจัดรูปแบบวันที่ (จัดกลุ่ม 9, 10 Mar 2026)
+                const formatDisplayDate = (selectedDatesStr: string, fallbackDate: string) => {
+                  if (!selectedDatesStr) return fallbackDate;
+                  const dateArray = selectedDatesStr.split(',').map(s => s.trim());
+                  
+                  const datesObj = dateArray.map(dStr => {
+                    const parts = dStr.split('-');
+                    if(parts.length !== 3) return new Date(dStr);
+                    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                  }).filter(d => !isNaN(d.getTime())).sort((a, b) => a.getTime() - b.getTime());
+
+                  if (datesObj.length === 0) return fallbackDate;
+
+                  const groups: any = {};
+                  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                  
+                  datesObj.forEach(d => {
+                    const key = `${months[d.getMonth()]} ${d.getFullYear()}`;
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(d.getDate());
+                  });
+
+                  return Object.entries(groups).map(([monthYear, days]: [string, any]) => `${days.join(', ')} ${monthYear}`).join(' / ');
+                };
+
+                // นำข้อมูลมาแปลงก่อนแสดงผล
+                const finalDateToShow = formatDisplayDate(item.selected_dates, item.date);
 
                 return (
                   <div 
@@ -217,7 +244,7 @@ const Dashboard = () => {
                         <p className="text-[15px] font-bold text-slate-800 leading-none mb-1.5">{displayType}</p>
                         <div className="flex items-center gap-1.5 text-slate-500">
                           <Calendar className="h-3 w-3" />
-                          <p className="text-[11px] font-medium">{item.date}</p>
+                          <p className="text-[11px] font-medium">{finalDateToShow}</p>
                         </div>
                       </div>
                     </div>
