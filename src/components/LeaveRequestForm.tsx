@@ -143,23 +143,24 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       .then(data => {
         if (Array.isArray(data)) {
           const disabledDatesArray: Date[] = [];
-          data.forEach((item: any) => {
+          data.forEach(item => {
+            // ถ้ารายการโดน Reject แล้ว ข้ามไป ไม่ต้องบล็อกปฏิทิน
             if (item.status && (item.status.includes('Rejected') || item.status.includes('ปฏิเสธ'))) return;
             
-            // ดึงวันที่จาก selected_dates (ที่ n8n เพิ่งเพิ่มให้)
+            // ดึงวันที่จาก selected_dates (ที่ส่งมาจาก n8n แบบใหม่)
             if (item.selected_dates) {
               const dateList = item.selected_dates.split(',');
               dateList.forEach((dStr: string) => {
-                const parts = dStr.split('-');
+                const parts = dStr.trim().split('-');
                 if (parts.length === 3) {
-                  // สร้าง Date โดยบังคับเวลาเป็น 00:00:00 
+                  // แปลงเป็น Date โดยบังคับให้ชั่วโมงเป็น 0 ทั้งหมดเพื่อบล็อกตรงเป๊ะ
                   disabledDatesArray.push(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 0, 0, 0, 0));
                 }
               });
-              return; 
+              return; // ถ้ามี selected_dates แล้วจบตรงนี้เลย ไม่ต้องทำแบบเก่า
             }
 
-            // รองรับประวัติแบบเก่า (เผื่อไว้)
+            //  ถ้าระบบส่งแบบเก่า (ไม่มี selected_dates) ให้ใช้วิธีนี้สำรอง
             const dateStr = item.date;
             if (!dateStr) return;
 
