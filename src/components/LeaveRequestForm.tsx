@@ -197,7 +197,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       Swal.fire({
         icon: "warning",
         title: language === 'th' ? "ข้อมูลไม่ครบถ้วน" : "Incomplete Form",
-        text: language === 'th' ? "กรุณากรอกข้อมูลให้ครบถ้วนและเลือกวันที่ต้องการลา" : "Please fill in all required fields and select at least one leave date.",
+        text: language === 'th' ? "กรุณากรอกเหตุผลในการลา" : "Please fill in all required fields and select at least one leave date.",
         confirmButtonColor: "#00B5E2",
       });
       return;
