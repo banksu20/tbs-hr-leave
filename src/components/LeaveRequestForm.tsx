@@ -69,6 +69,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [isHalfDay, setIsHalfDay] = useState(false);
+  const [halfDayType, setHalfDayType] = useState<"morning" | "afternoon">("morning");
 
   const requestedDays = (selectedDates.length === 1 && isHalfDay) ? 0.5 : selectedDates.length;
   const [takenDates, setTakenDates] = useState<Date[]>([]);
@@ -84,6 +85,8 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
   const displayRemainingDays = remainingDays ?? 10;
   const isOverQuota = requestedDays > displayRemainingDays;
+
+
 
   useEffect(() => {
     if (department) setIsDepartmentLocked(true);
@@ -242,7 +245,8 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
           selectedDates: selectedDates.map(d => format(d, "yyyy-MM-dd")),
           reason: formData.reason,
           submittedAt: new Date().toISOString(),
-          isHalfDay: isHalfDay 
+          isHalfDay: isHalfDay,
+          halfDayPeriod: isHalfDay ? halfDayType : null, 
         }),
       });
 
@@ -449,15 +453,16 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
                 {/* เลือก ครึ่งวัน/เต็มวัน */}
                 {selectedDates.length === 1 && (
-                  <div className="mt-3 pt-3 border-t border-slate-200/50 space-y-2.5 animate-in fade-in slide-in-from-top-2">
+                  <div className="mt-3 pt-3 border-t border-slate-200/50 space-y-3 animate-in fade-in slide-in-from-top-2">
                     <Label className="flex items-center gap-2 text-slate-500 text-[10px] uppercase tracking-wider font-bold">
                       <Clock className="h-3 w-3" /> {t('duration')}
                     </Label>
+                    
                     <div className="flex gap-2">
                       <Button
                         type="button"
                         variant={!isHalfDay ? "default" : "outline"}
-                        className={cn("flex-1 h-10 rounded-xl shadow-sm text-xs font-bold", !isHalfDay ? (formData.leaveType === 'sick' ? "bg-rose-500 hover:bg-rose-600 text-white" : "bg-sky-500 hover:bg-sky-600 text-white") : "text-slate-500 bg-white border-slate-200")}
+                        className={cn("flex-1 h-10 rounded-xl shadow-sm text-xs font-bold transition-all", !isHalfDay ? (formData.leaveType === 'sick' ? "bg-rose-500 hover:bg-rose-600 text-white" : "bg-sky-500 hover:bg-sky-600 text-white") : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
                         onClick={() => setIsHalfDay(false)}
                       >
                         {t('full_day')}
@@ -465,12 +470,34 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                       <Button
                         type="button"
                         variant={isHalfDay ? "default" : "outline"}
-                        className={cn("flex-1 h-10 rounded-xl shadow-sm text-xs font-bold", isHalfDay ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent" : "text-slate-500 bg-white border-slate-200")}
+                        className={cn("flex-1 h-10 rounded-xl shadow-sm text-xs font-bold transition-all", isHalfDay ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent" : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
                         onClick={() => setIsHalfDay(true)}
                       >
                         {t('half_day')}
                       </Button>
                     </div>
+
+                    {/* ตัวเลือก เช้า/บ่าย จะโชว์ก็ต่อเมื่อกดเลือกปุ่ม "ครึ่งวัน" */}
+                    {isHalfDay && (
+                      <div className="flex gap-2 pt-1 animate-in slide-in-from-top-1">
+                        <Button
+                          type="button"
+                          variant={halfDayType === "morning" ? "default" : "outline"}
+                          className={cn("flex-1 h-9 rounded-lg text-xs font-semibold transition-all", halfDayType === "morning" ? "bg-slate-800 text-white" : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
+                          onClick={() => setHalfDayType("morning")}
+                        >
+                          {language === 'th' ? "ช่วงเช้า" : "Morning"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={halfDayType === "afternoon" ? "default" : "outline"}
+                          className={cn("flex-1 h-9 rounded-lg text-xs font-semibold transition-all", halfDayType === "afternoon" ? "bg-slate-800 text-white" : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
+                          onClick={() => setHalfDayType("afternoon")}
+                        >
+                          {language === 'th' ? "ช่วงบ่าย" : "Afternoon"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
