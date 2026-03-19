@@ -211,11 +211,14 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                d.getFullYear() === now.getFullYear();
       });
 
-      if (hasToday && now.getHours() >= 9) {
+      const thaiTime = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Bangkok', hour12: false });
+      const [hour, minute] = thaiTime.split(':').map(Number);
+
+      if (hasToday && (hour > 9 || (hour === 9 && minute >= 1))) {
         Swal.fire({
           icon: "error",
           title: language === 'th' ? "ไม่อนุญาตให้ทำรายการ" : "Action Not Allowed",
-          text: language === 'th' ? "ไม่สามารถลาได้แล้ว กรุณาแจ้งกับหัวหน้าโดยตรงครับ" : "You cannot submit sick leave for today after 09:00 AM. Please contact your manager directly.",
+          text: language === 'th' ? "ไม่อนุญาตให้ทำรายการหลังเวลา 09:00 น. กรุณาแจ้งหัวหน้าโดยตรงครับ" : "You cannot submit sick leave for today after 09:01 AM. Please contact your manager directly.",
           confirmButtonColor: "#FF334B",
         });
         return;
