@@ -94,7 +94,7 @@ export default function RejectForm() {
 
     } catch (error) {
       console.error(error);
-      toast({ title: "Error", variant: "destructive" });
+      toast({ title: "รายการนี้ถูกดำเนินการ (อนุมัติหรือปฏิเสธ) ไปแล้ว ไม่สามารถทำรายการซ้ำได้", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
