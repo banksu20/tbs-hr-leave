@@ -143,28 +143,26 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       .then(data => {
         if (Array.isArray(data)) {
           const disabledDatesArray: Date[] = [];
-          data.forEach(item => {
-            // ถ้ารายการโดน Reject แล้ว ข้ามไป ไม่ต้องบล็อกปฏิทิน
+          data.forEach((item: any) => {
+            // ถ้าโดน Reject ไม่ต้องบล็อก
             if (item.status && (item.status.includes('Rejected') || item.status.includes('ปฏิเสธ'))) return;
             
-            // ดึงวันที่จาก selected_dates (ที่ส่งมาจาก n8n แบบใหม่)
+            // ดึงจาก selected_dates (รองรับการลาแบบแยกวัน 9, 10, 16)
             if (item.selected_dates) {
-              const dateList = item.selected_dates.split(',');
-              dateList.forEach((dStr: string) => {
-                const parts = dStr.trim().split('-');
-                if (parts.length === 3) {
-                  // แปลงเป็น Date โดยบังคับให้ชั่วโมงเป็น 0 ทั้งหมดเพื่อบล็อกตรงเป๊ะ
-                  disabledDatesArray.push(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 0, 0, 0, 0));
+              item.selected_dates.split(',').forEach((dStr: string) => {
+                const d = new Date(dStr.trim());
+                if (!isNaN(d.getTime())) {
+                  disabledDatesArray.push(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0));
                 }
               });
-              return; // ถ้ามี selected_dates แล้วจบตรงนี้เลย ไม่ต้องทำแบบเก่า
+              return;
             }
 
-            //  ถ้าระบบส่งแบบเก่า (ไม่มี selected_dates) ให้ใช้วิธีนี้สำรอง
+            // ดึงจากช่อง date ปกติ (รองรับรูปแบบ 31-Mar-26 หรือ 31-Mar-2026)
             const dateStr = item.date;
             if (!dateStr) return;
 
-            const parseDateString = (str: string) => {
+            const parseFlexibleDate = (str: string) => {
               const parts = str.trim().split('-');
               if (parts.length === 3) {
                   const d = parseInt(parts[0], 10);
@@ -172,20 +170,22 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   const y = parseInt(parts[2], 10);
                   const year = y < 100 ? 2000 + y : y;
                   const months: any = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-                  return new Date(year, months[mStr], d, 0, 0, 0, 0); 
+                  const monthIdx = months[mStr];
+                  if (monthIdx !== undefined) return new Date(year, monthIdx, d, 0, 0, 0, 0);
               }
               return new Date(str); 
             };
 
             if (dateStr.includes(' ถึง ')) {
               const [startStr, endStr] = dateStr.split(' ถึง ');
-              const startDate = parseDateString(startStr);
-              const endDate = parseDateString(endStr);
+              const startDate = parseFlexibleDate(startStr);
+              const endDate = parseFlexibleDate(endStr);
               for (let dt = new Date(startDate); dt <= endDate; dt.setDate(dt.getDate() + 1)) {
-                disabledDatesArray.push(new Date(dt));
+                disabledDatesArray.push(new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 0, 0, 0, 0));
               }
             } else {
-              disabledDatesArray.push(parseDateString(dateStr));
+              const d = parseFlexibleDate(dateStr);
+              if (!isNaN(d.getTime())) disabledDatesArray.push(d);
             }
           });
           setTakenDates(disabledDatesArray);
@@ -448,9 +448,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                         const isPast = date < today;
                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                         const isTaken = takenDates.some(takenDate => 
-                          takenDate.getDate() === date.getDate() &&
-                          takenDate.getMonth() === date.getMonth() &&
-                          takenDate.getFullYear() === date.getFullYear()
+                          takenDate.getTime() === new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
                         );
                         return isPast || isWeekend || isTaken;
                       }}
@@ -460,8 +458,14 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                         selected: {
                           backgroundColor: formData.leaveType === 'sick' ? "#f43f5e" : "#0ea5e9",
                           color: "white",
-                          borderRadius: "12px", // เปลี่ยนจากวงกลมเป็นสี่เหลี่ยมขอบมนให้ดูโมเดิร์น
+                          borderRadius: "12px",
                         },
+                        // 🌟 เพิ่มสไตล์ให้วันที่ถูกลาไปแล้ว (ให้เป็นสีเทาจางและขีดฆ่า)
+                        disabled: {
+                          color: "#cbd5e1",
+                          textDecoration: "line-through",
+                          opacity: "0.5"
+                        }
                       }}
                     />
                   </PopoverContent>
