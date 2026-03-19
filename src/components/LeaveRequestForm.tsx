@@ -84,7 +84,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   }, [selectedDates]);
 
   const displayRemainingDays = remainingDays ?? 10;
-  const isOverQuota = requestedDays > displayRemainingDays;
+  const isOverQuota = formData.leaveType === "sick" ? false : requestedDays > displayRemainingDays;
 
 
 
@@ -524,27 +524,28 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 md:px-6 md:py-5 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-50">
         <div className="max-w-2xl mx-auto space-y-3">
           
-          {/* กล่องโควต้า (เล็กและกระชับขึ้น) */}
-          <div className={`px-4 py-2.5 rounded-xl border flex items-center justify-between transition-colors ${
-            isOverQuota ? "bg-rose-50 border-rose-200" : "bg-slate-800 border-slate-800 text-white"
-          }`}>
-            <div className="flex items-center gap-2">
-              <CalendarIcon className={`h-4 w-4 ${isOverQuota ? "text-rose-500" : "text-slate-400"}`} />
-              <span className={`text-xs font-semibold uppercase tracking-wider ${isOverQuota ? "text-rose-700" : "text-slate-300"}`}>{t('remaining_quota')}</span>
+          {formData.leaveType !== "sick" && (
+            <div className={`px-4 py-2.5 rounded-xl border flex items-center justify-between transition-colors ${
+              isOverQuota ? "bg-rose-50 border-rose-200" : "bg-slate-800 border-slate-800 text-white"
+            }`}>
+              <div className="flex items-center gap-2">
+                <CalendarIcon className={`h-4 w-4 ${isOverQuota ? "text-rose-500" : "text-slate-400"}`} />
+                <span className={`text-xs font-semibold uppercase tracking-wider ${isOverQuota ? "text-rose-700" : "text-slate-300"}`}>{t('remaining_quota')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {isQuotaLoading ? (
+                  <Skeleton className="h-5 w-12 bg-slate-600/50 rounded-md" />
+                ) : (
+                  <>
+                    {isOverQuota && <AlertTriangle className="h-4 w-4 text-rose-500 animate-pulse" />}
+                    <span className={`text-lg font-extrabold ${isOverQuota ? "text-rose-600" : "text-white"}`}>
+                      {displayRemainingDays} <span className="text-[10px] font-medium opacity-80 uppercase ml-0.5">{t('days')}</span>
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              {isQuotaLoading ? (
-                <Skeleton className="h-5 w-12 bg-slate-600/50 rounded-md" />
-              ) : (
-                <>
-                  {isOverQuota && <AlertTriangle className="h-4 w-4 text-rose-500 animate-pulse" />}
-                  <span className={`text-lg font-extrabold ${isOverQuota ? "text-rose-600" : "text-white"}`}>
-                    {displayRemainingDays} <span className="text-[10px] font-medium opacity-80 uppercase ml-0.5">{t('days')}</span>
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
+          )}
 
           {/* ปุ่มกดลางาน */}
           <Button
