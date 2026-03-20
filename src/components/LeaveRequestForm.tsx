@@ -144,56 +144,33 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
         if (Array.isArray(data)) {
           const disabledDatesArray: Date[] = [];
           data.forEach((item: any) => {
-            // ถ้าโดน Reject แล้วให้ข้ามไปเลย
+            // ถ้าโดน Reject ไม่ต้องบล็อก
             if (item.status && (item.status.includes('Rejected') || item.status.includes('ปฏิเสธ'))) return;
             
-            // ฟังก์ชันแปลวันที่ที่ทนทานต่อ Timezone
-            const addDate = (d: Date) => {
-                if (!isNaN(d.getTime())) {
-                    disabledDatesArray.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
-                }
-            };
-
-            // เช็คก่อนว่ามี selected_dates ที่ใช้ได้ไหม (ต้องไม่มีวงเล็บของ n8n ขยะ)
-            const hasValidSelectedDates = item.selected_dates && typeof item.selected_dates === 'string' && !item.selected_dates.includes('$(');
-
-            if (hasValidSelectedDates) {
-              // ถ้ามี selected_dates ให้หั่นด้วยลูกน้ำแล้วบล็อกทีละวันเป๊ะๆ เลย
+            // ดึงวันที่แบบเป๊ะๆ จาก selected_dates (เช่น "2026-04-13,2026-04-14")
+            if (item.selected_dates && typeof item.selected_dates === 'string' && !item.selected_dates.includes('$(')) {
               const dateStrings = item.selected_dates.split(',');
               dateStrings.forEach((dStr: string) => {
                 const cleanStr = dStr.trim();
                 const parts = cleanStr.split('-');
-                if (parts.length === 3 && parts[0].length === 4) { // เช็ค yyyy-mm-dd
-                  addDate(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
-                } else {
-                    addDate(new Date(cleanStr)); // เผื่อมาในรูปแบบอื่น
+                if (parts.length === 3 && parts[0].length === 4) { // yyyy-mm-dd
+                  // ล็อกเวลาไว้ที่เที่ยงคืนตรง
+                  disabledDatesArray.push(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 0, 0, 0, 0));
                 }
               });
-            } 
-            // ถ้า "ไม่มี" selected_dates จริงๆ ค่อยไปดึงแบบเก่า (เพื่อรองรับประวัติลายุคโบราณ)
-            else if (item.date) {
-                const parseDmy = (str: string) => {
-                    const p = str.trim().split('-');
-                    if (p.length === 3) {
-                        const mMap: any = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
-                        let y = parseInt(p[2], 10);
-                        if (y < 100) y += 2000;
-                        return new Date(y, mMap[p[1].toLowerCase().substring(0, 3)], parseInt(p[0], 10));
+            }
+            
+            // ถ้าระบบเก่าไม่มี selected_dates เราจะบล็อกให้แค่วันเดียว (ห้ามวนลูปกวาดช่วง "ถึง" เด็ดขาด!)
+            else if (item.date && !item.date.includes('ถึง')) {
+                const p = item.date.trim().split('-');
+                if (p.length === 3) {
+                    const mMap: any = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
+                    let y = parseInt(p[2], 10);
+                    if (y < 100) y += 2000;
+                    const m = mMap[p[1].toLowerCase().substring(0, 3)];
+                    if (m !== undefined) {
+                        disabledDatesArray.push(new Date(y, m, parseInt(p[0], 10), 0, 0, 0, 0));
                     }
-                    return new Date(str);
-                };
-
-                if (item.date.includes(' ถึง ') || item.date.includes(' to ')) {
-                    const [start, end] = item.date.split(/ ถึง | to /);
-                    const d1 = parseDmy(start);
-                    const d2 = parseDmy(end);
-                    if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
-                        for (let dt = new Date(d1); dt <= d2; dt.setDate(dt.getDate() + 1)) {
-                            addDate(new Date(dt)); // วนลูปบล็อกเฉพาะของเก่า
-                        }
-                    }
-                } else {
-                    addDate(parseDmy(item.date));
                 }
             }
           });
