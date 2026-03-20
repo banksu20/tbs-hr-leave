@@ -144,26 +144,33 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
         if (Array.isArray(data)) {
           const disabledDatesArray: Date[] = [];
           data.forEach((item: any) => {
-            // ข้ามรายการที่โดนปฏิเสธ
+            // ถ้าโดน Reject แล้วให้ข้ามไปเลย
             if (item.status && (item.status.includes('Rejected') || item.status.includes('ปฏิเสธ'))) return;
-
-            // ฟังก์ชันช่วยเพิ่มวันที่ (ตัดเวลาทิ้ง เอาแค่วันเดือนปี)
+            
+            // ฟังก์ชันแปลวันที่ที่ทนทานต่อ Timezone
             const addDate = (d: Date) => {
                 if (!isNaN(d.getTime())) {
                     disabledDatesArray.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
                 }
             };
 
-            // 1. ลองดึงจาก selected_dates ก่อน (รูปแบบ: 2026-03-25,2026-03-26)
-            if (item.selected_dates && item.selected_dates.includes('-') && !item.selected_dates.includes('$(')) {
-                item.selected_dates.split(',').forEach((dStr: string) => {
-                    const parts = dStr.trim().split('-');
-                    if (parts.length === 3 && parts[0].length === 4) { 
-                        addDate(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
-                    }
-                });
-            }
-            // 2. ถ้าไม่มี ให้ดึงจากช่อง date (รูปแบบ: 25-Mar-26 หรือ 25-Mar-26 ถึง 26-Mar-26)
+            // เช็คก่อนว่ามี selected_dates ที่ใช้ได้ไหม (ต้องไม่มีวงเล็บของ n8n ขยะ)
+            const hasValidSelectedDates = item.selected_dates && typeof item.selected_dates === 'string' && !item.selected_dates.includes('$(');
+
+            if (hasValidSelectedDates) {
+              // ถ้ามี selected_dates ให้หั่นด้วยลูกน้ำแล้วบล็อกทีละวันเป๊ะๆ เลย
+              const dateStrings = item.selected_dates.split(',');
+              dateStrings.forEach((dStr: string) => {
+                const cleanStr = dStr.trim();
+                const parts = cleanStr.split('-');
+                if (parts.length === 3 && parts[0].length === 4) { // เช็ค yyyy-mm-dd
+                  addDate(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
+                } else {
+                    addDate(new Date(cleanStr)); // เผื่อมาในรูปแบบอื่น
+                }
+              });
+            } 
+            // ถ้า "ไม่มี" selected_dates จริงๆ ค่อยไปดึงแบบเก่า (เพื่อรองรับประวัติลายุคโบราณ)
             else if (item.date) {
                 const parseDmy = (str: string) => {
                     const p = str.trim().split('-');
@@ -182,7 +189,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                     const d2 = parseDmy(end);
                     if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
                         for (let dt = new Date(d1); dt <= d2; dt.setDate(dt.getDate() + 1)) {
-                            addDate(dt);
+                            addDate(new Date(dt)); // วนลูปบล็อกเฉพาะของเก่า
                         }
                     }
                 } else {
