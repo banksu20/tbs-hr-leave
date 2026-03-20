@@ -86,7 +86,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
             {/* ช่องที่ 3: ชื่อเล่น */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-700">
-                ชื่อเล่น (Nickname)
+                ชื่อเล่น
               </label>
               <Input 
                 placeholder="Nickname" 
@@ -99,7 +99,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
             {/* Select Department */}
             <div className="space-y-2 pt-2">
               <label className="text-sm font-semibold text-slate-700">
-                แผนก (Department)
+                แผนก
               </label>
               <select
                 value={department}
