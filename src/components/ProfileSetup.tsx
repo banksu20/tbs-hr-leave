@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import tbsLogo from "@/image/TBS-Logo.png"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
+import liff from "@line/liff";
+
 
 interface ProfileSetupProps {
   defaultName: string;
@@ -15,6 +17,26 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
   const [lastName, setLastName] = useState("");
   const [nickName, setNickName] = useState("");
   const [department, setDepartment] = useState("");
+
+  const [isLiffInit, setIsLiffInit] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    liff.init({ liffId: "2008617589-89gR1Y3Y" })
+    .then(() => {
+      setIsLiffInit(true);
+      if (liff.isLoggedIn()){
+        setIsLoggedIn(true);
+      }
+    })
+    .catch((err) => {
+      console.error("LIFF Init failed", err);
+    });
+  }, []);
+
+  const handleLoginLine = () => {
+    liff.login();
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,8 +51,6 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
       return;
     }
 
-    // 🌟 นำทั้ง 3 ช่องมารวมกัน คั่นด้วย | (เช่น: Patsawee|Prairumphueng|Satang)
-    // เพื่อส่งไปให้ n8n แยกเช็คว่าตรงกับช่องไหนใน Sheet
     const combinedName = `${firstName.trim()}|${lastName.trim()}|${nickName.trim()}`;
     
     onSave({ name: combinedName, department });
@@ -39,6 +59,45 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
   // ฟังก์ชันช่วยทำตัวพิมพ์ใหญ่คำแรกอัตโนมัติ
   const capitalize = (val: string) => val.replace(/\b\w/g, char => char.toUpperCase());
 
+  
+  if(!isLiffInit){
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <p className="text-slate-500">Initializing LIFF...</p>
+      </div>
+    )
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-slate-50 to-slate-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-xl border-0 ring-1 ring-slate-200">
+          <CardHeader className="text-center space-y-3 pb-6">
+            <div className="flex justify-center mb-2">
+              <img src={tbsLogo} alt="TBS Marketing Logo" className="h-16 w-auto object-contain" />
+            </div>
+            <CardDescription className="text-slate-600 text-base leading-relaxed px-4 font-medium">
+              กรุณาเข้าสู่ระบบด้วย LINE เพื่อดำเนินการต่อ
+              <span className="text-slate-400 text-[13px] mt-2 block font-normal">
+                Please log in with your LINE account to access the system.
+              </span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center pb-8 px-6">
+            <Button 
+              onClick={handleLoginLine} 
+              className="w-full h-12 text-md font-semibold text-white shadow-md hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: "#06C755" }} // สีเขียวเอกลักษณ์ของ LINE
+            >
+              เข้าสู่ระบบด้วย LINE
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ถ้า Login แล้วแสดงฟอร์มกรอกข้อมูล
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-slate-50 to-slate-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-xl border-0 ring-1 ring-slate-200">
@@ -56,13 +115,10 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
-            
-            {/* ช่องที่ 1 & 2: ชื่อจริง - นามสกุล */}
+            {/* ชื่อจริง - นามสกุล */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">
-                  ชื่อจริง
-                </label>
+                <label className="text-sm font-semibold text-slate-700">ชื่อจริง</label>
                 <Input 
                   placeholder="First Name" 
                   value={firstName}
@@ -71,9 +127,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">
-                  นามสกุล
-                </label>
+                <label className="text-sm font-semibold text-slate-700">นามสกุล</label>
                 <Input 
                   placeholder="Last Name" 
                   value={lastName}
@@ -83,11 +137,9 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
               </div>
             </div>
 
-            {/* ช่องที่ 3: ชื่อเล่น */}
+            {/* ชื่อเล่น */}
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">
-                ชื่อเล่น
-              </label>
+              <label className="text-sm font-semibold text-slate-700">ชื่อเล่น</label>
               <Input 
                 placeholder="Nickname" 
                 value={nickName}
@@ -98,9 +150,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
 
             {/* Select Department */}
             <div className="space-y-2 pt-2">
-              <label className="text-sm font-semibold text-slate-700">
-                แผนก
-              </label>
+              <label className="text-sm font-semibold text-slate-700">แผนก</label>
               <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
