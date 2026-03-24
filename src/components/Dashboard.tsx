@@ -2,14 +2,13 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import liff from "@line/liff";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Thermometer, Palmtree, CalendarDays, Calendar, CheckCircle2, Clock, XCircle, Users } from "lucide-react"; // 🌟 เพิ่มไอคอน Users
+import { Thermometer, Palmtree, CalendarDays, Calendar, CheckCircle2, Clock, XCircle, Users } from "lucide-react";
 import HolidaysModal from "./HolidaysModal";
 import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 import tbsLogo from "@/image/TBS-Logo.png";
 import { useLanguage } from "@/hooks/useLanguage";
 import TeamCalendar from "./TeamCalendar";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
-
 
 const LIFF_ID = "2008617589-89gR1Y3Y";
 
@@ -21,12 +20,13 @@ const Dashboard = () => {
   const [leaveHistory, setLeaveHistory] = useState([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [registeredName, setRegisteredName] = useState<string | null>(null);
+  
   const [userDept, setUserDept] = useState<string>(""); 
+  
   const [countItems, setCountItems] = useState(5);
 
   const { t } = useLanguage();
 
-  // ดึงข้อมูล Leave Quota
   const { remainingDays, sickRemaining, annualTotal, sickTaken, sickTotal, isLoading: isQuotaLoading } = useLeaveQuota(userId);
 
   const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
@@ -43,6 +43,7 @@ const Dashboard = () => {
         const profile = await liff.getProfile();
         setUserId(profile.userId);
         setUserName(profile.displayName);
+        // พอได้ userId แล้ว ไปเรียกฟังก์ชันหาชื่อและแผนก
         fetchRegisteredName(profile.userId);
 
       } catch (err) { 
@@ -75,7 +76,9 @@ const Dashboard = () => {
       const data = await res.json();
       if(data.found) {
         setRegisteredName(data.name);
-        setUserDept(data.department); // 🌟 เซฟแผนกไว้เพื่อส่งต่อให้ปฏิทิน
+        if (data.department) {
+            setUserDept(data.department);
+        }
       }
   }catch (err) {
     console.error("Error fetching registered name:", err);
@@ -170,7 +173,7 @@ const Dashboard = () => {
           </div>
         </button>
 
-        {/* Team Leave Calendar */}
+        {/* ปุ่ม Team Leave Calendar */}
         <Dialog>
           <DialogTrigger asChild>
             <button 
@@ -182,7 +185,10 @@ const Dashboard = () => {
                 </div>
                 <div className="flex flex-col text-left">
                   <span className="text-sm font-bold text-white">ปฏิทินลางานของทีม</span>
-                  <span className="text-[11px] font-medium text-blue-100">Team Leave Calendar</span>
+                  {/*  โชว์ชื่อแผนกในปุ่ม เพื่อให้พนักงานรู้ว่ากำลังดูของแผนกไหน */}
+                  <span className="text-[11px] font-medium text-blue-100">
+                    {userDept ? `Team Calendar: ${userDept}` : 'Team Leave Calendar'}
+                  </span>
                 </div>
               </div>
               <div className="bg-white/20 px-3 py-1.5 rounded-full">
@@ -192,11 +198,14 @@ const Dashboard = () => {
           </DialogTrigger>
           <DialogContent className="w-[90%] max-w-md rounded-2xl p-0 border-0 overflow-hidden bg-transparent shadow-none">
              <DialogTitle className="sr-only">ปฏิทินวันหยุดของทีม</DialogTitle>
+             
+             {/* โยน userDept เข้าไปให้ TeamCalendar */}
              {userDept ? (
                <TeamCalendar department={userDept} />
              ) : (
                <div className="p-8 bg-white rounded-2xl text-center"><Skeleton className="w-full h-64" /></div>
              )}
+
           </DialogContent>
         </Dialog>
       </div>
