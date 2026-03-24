@@ -23,7 +23,6 @@ import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/useLanguage";
-import TeamCalendar from "./TeamCalendar";
 
 
 const LIFF_ID = import.meta.env.VITE_LIFF_ID || "2008617589-89gR1Y3Y";
@@ -327,10 +326,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
       {/* Form Content Area */}
       <div className="px-4 pb-40 md:px-6 md:max-w-2xl md:mx-auto w-full mt-4 flex-1 space-y-4">
-        
-        {formData.department && (
-          <TeamCalendar department={formData.department} />
-        )}
+
 
         <form id="leave-form" onSubmit={handleSubmit} className="space-y-4">
           
