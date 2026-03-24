@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import liff from "@line/liff";
 import Swal from "sweetalert2";
 import { format } from "date-fns";
-import { th, enUS } from "date-fns/locale"; // 🌟 เพิ่ม enUS สำหรับจัดฟอร์แมตวันที่ตามภาษา
+import { th, enUS } from "date-fns/locale"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,6 +23,8 @@ import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/useLanguage";
+import TeamCalendar from "./TeamCalendar";
+
 
 const LIFF_ID = import.meta.env.VITE_LIFF_ID || "2008617589-89gR1Y3Y";
 const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://thirstless-ostensively-maryam.ngrok-free.dev";
@@ -45,7 +47,7 @@ interface FormData {
 const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: LeaveRequestFormProps) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { language, t } = useLanguage(); // 🌟 ดึง language มาใช้เช็ค locale
+  const { language, t } = useLanguage(); 
 
   const typeFromUrl = searchParams.get("type") || "";
   const defaultType = initialLeaveType || typeFromUrl;
@@ -85,8 +87,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
   const displayRemainingDays = remainingDays ?? 10;
   const isOverQuota = formData.leaveType === "sick" ? false : requestedDays > displayRemainingDays;
-
-
 
   useEffect(() => {
     if (department) setIsDepartmentLocked(true);
@@ -144,23 +144,18 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
         if (Array.isArray(data)) {
           const disabledDatesArray: Date[] = [];
           data.forEach((item: any) => {
-            // ถ้าโดน Reject ไม่ต้องบล็อก
             if (item.status && (item.status.includes('Rejected') || item.status.includes('ปฏิเสธ'))) return;
             
-            // ดึงวันที่แบบเป๊ะๆ จาก selected_dates (เช่น "2026-04-13,2026-04-14")
             if (item.selected_dates && typeof item.selected_dates === 'string' && !item.selected_dates.includes('$(')) {
               const dateStrings = item.selected_dates.split(',');
               dateStrings.forEach((dStr: string) => {
                 const cleanStr = dStr.trim();
                 const parts = cleanStr.split('-');
-                if (parts.length === 3 && parts[0].length === 4) { // yyyy-mm-dd
-                  // ล็อกเวลาไว้ที่เที่ยงคืนตรง
+                if (parts.length === 3 && parts[0].length === 4) {
                   disabledDatesArray.push(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 0, 0, 0, 0));
                 }
               });
             }
-            
-            // ถ้าระบบเก่าไม่มี selected_dates เราจะบล็อกให้แค่วันเดียว (ห้ามวนลูปกวาดช่วง "ถึง" เด็ดขาด!)
             else if (item.date && !item.date.includes('ถึง')) {
                 const p = item.date.trim().split('-');
                 if (p.length === 3) {
@@ -330,8 +325,13 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
         </div>
       </div>
 
-      {/* Form Content Area (เพิ่ม padding-bottom เยอะๆ เผื่อที่ให้ Sticky Footer) */}
-      <div className="px-4 pb-40 md:px-6 md:max-w-2xl md:mx-auto w-full mt-4 flex-1">
+      {/* Form Content Area */}
+      <div className="px-4 pb-40 md:px-6 md:max-w-2xl md:mx-auto w-full mt-4 flex-1 space-y-4">
+        
+        {formData.department && (
+          <TeamCalendar department={formData.department} />
+        )}
+
         <form id="leave-form" onSubmit={handleSubmit} className="space-y-4">
           
           {/* 1. ข้อมูลส่วนตัวพนักงาน */}
@@ -434,7 +434,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                         const isPast = date < today;
                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                         
-                        // 🌟 แก้ตรงนี้: เทียบ วัน เดือน ปี ตรงๆ เลิกง้อ getTime() ที่เพี้ยนง่าย
                         const isTaken = takenDates.some(takenDate => 
                           takenDate.getDate() === date.getDate() &&
                           takenDate.getMonth() === date.getMonth() &&
@@ -560,14 +559,14 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
           {/* ปุ่มกดลางาน */}
           <Button
             type="submit"
-            form="leave-form" /* สำคัญ! เชื่อมปุ่มที่อยู่ข้างนอกแบบฟอร์มเข้ากับ tag <form> ด้านบน */
+            form="leave-form" 
             disabled={isSubmitting || isOverQuota || selectedDates.length === 0}
             className={`w-full h-12 md:h-14 text-base font-bold text-white rounded-xl shadow-md transition-all active:scale-[0.98]
                 ${isSubmitting || isOverQuota || selectedDates.length === 0 
-                    ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed" 
-                    : formData.leaveType === 'sick' 
-                      ? "bg-gradient-to-r from-rose-500 to-pink-600 hover:shadow-rose-500/30"
-                      : "bg-gradient-to-r from-sky-500 to-blue-600 hover:shadow-sky-500/30"
+                  ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed" 
+                  : formData.leaveType === 'sick' 
+                    ? "bg-gradient-to-r from-rose-500 to-pink-600 hover:shadow-rose-500/30"
+                    : "bg-gradient-to-r from-sky-500 to-blue-600 hover:shadow-sky-500/30"
                 }`}
           >
             {isSubmitting ? (

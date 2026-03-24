@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import liff from "@line/liff";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Thermometer, Palmtree, CalendarDays, Calendar, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { Thermometer, Palmtree, CalendarDays, Calendar, CheckCircle2, Clock, XCircle, Users } from "lucide-react"; // 🌟 เพิ่มไอคอน Users
 import HolidaysModal from "./HolidaysModal";
 import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 import tbsLogo from "@/image/TBS-Logo.png";
 import { useLanguage } from "@/hooks/useLanguage";
+import TeamCalendar from "./TeamCalendar";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 
 
 const LIFF_ID = "2008617589-89gR1Y3Y";
@@ -19,6 +21,7 @@ const Dashboard = () => {
   const [leaveHistory, setLeaveHistory] = useState([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [registeredName, setRegisteredName] = useState<string | null>(null);
+  const [userDept, setUserDept] = useState<string>(""); 
   const [countItems, setCountItems] = useState(5);
 
   const { t } = useLanguage();
@@ -72,6 +75,7 @@ const Dashboard = () => {
       const data = await res.json();
       if(data.found) {
         setRegisteredName(data.name);
+        setUserDept(data.department); // 🌟 เซฟแผนกไว้เพื่อส่งต่อให้ปฏิทิน
       }
   }catch (err) {
     console.error("Error fetching registered name:", err);
@@ -118,7 +122,6 @@ const Dashboard = () => {
             <div className="bg-rose-50 p-2 rounded-xl text-rose-500">
               <Thermometer className="h-4 w-4" />
             </div>
-            {/* เปลี่ยนเป็น t('sick_leave') */}
             <span className="text-xs font-bold text-rose-700 uppercase tracking-wide">{t('sick_leave')}</span>
           </div>
           <div className="flex items-baseline gap-1">
@@ -127,11 +130,9 @@ const Dashboard = () => {
               ) : (
                 <span className="text-3xl font-extrabold text-slate-800">{sickTaken || 0}</span>
               )}
-            {/* เปลี่ยนเป็น t('days') */}
             <span className="text-sm font-medium text-slate-400">{t('days')}</span>
           </div>
         </div>
-
 
         {/* Annual Quota Card */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-sky-100 relative overflow-hidden">
@@ -142,12 +143,10 @@ const Dashboard = () => {
             <div className="bg-sky-50 p-2 rounded-xl text-sky-500">
               <Palmtree className="h-4 w-4" />
             </div>
-            {/* เปลี่ยนเป็น t('annual_leave') */}
             <span className="text-xs font-bold text-sky-700 uppercase tracking-wide">{t('annual_leave')}</span>
           </div>
           <div className="flex items-baseline gap-1">
             {isQuotaLoading ? <Skeleton className="h-8 w-12" /> : <span className="text-3xl font-extrabold text-slate-800">{remainingDays} / {annualTotal}</span>}
-            {/* เปลี่ยนเป็น t('days') */}
             <span className="text-sm font-medium text-slate-400">{t('days')}</span>
           </div>
         </div>
@@ -162,23 +161,50 @@ const Dashboard = () => {
               <CalendarDays className="h-5 w-5 text-white" />
             </div>
             <div className="flex flex-col text-left">
-              {/* เปลี่ยนเป็น t('company_holidays') */}
               <span className="text-sm font-bold text-white">{t('company_holidays')}</span>
               <span className="text-[11px] font-medium text-emerald-50">Company Holidays</span>
             </div>
           </div>
           <div className="bg-white/20 px-3 py-1.5 rounded-full">
-            {/* เปลี่ยนเป็น t('view_calendar') */}
             <span className="text-xs font-semibold text-white">{t('view_calendar')}</span>
           </div>
         </button>
+
+        {/* Team Leave Calendar */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <button 
+              className="col-span-2 bg-gradient-to-r from-blue-500 to-indigo-500 p-4 rounded-2xl shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform mt-[-4px]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-2.5 rounded-xl">
+                  <Users className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="text-sm font-bold text-white">ปฏิทินลางานของทีม</span>
+                  <span className="text-[11px] font-medium text-blue-100">Team Leave Calendar</span>
+                </div>
+              </div>
+              <div className="bg-white/20 px-3 py-1.5 rounded-full">
+                <span className="text-xs font-semibold text-white">ดูรายชื่อ</span>
+              </div>
+            </button>
+          </DialogTrigger>
+          <DialogContent className="w-[90%] max-w-md rounded-2xl p-0 border-0 overflow-hidden bg-transparent shadow-none">
+             <DialogTitle className="sr-only">ปฏิทินวันหยุดของทีม</DialogTitle>
+             {userDept ? (
+               <TeamCalendar department={userDept} />
+             ) : (
+               <div className="p-8 bg-white rounded-2xl text-center"><Skeleton className="w-full h-64" /></div>
+             )}
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* History Section */}
       <div className="px-4 mt-8 pb-10 flex-1">
         <div className="flex items-center justify-between mb-4 px-1">
           <div className="flex items-center gap-2">
-            {/* เปลี่ยนเป็น t('leave_history') */}
             <h3 className="text-[15px] font-bold text-slate-800 uppercase tracking-wide">{t('leave_history')}</h3>
           </div>
           <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-200/50 px-2 py-1 rounded-md">
@@ -200,7 +226,6 @@ const Dashboard = () => {
                 
                 const displayType = isSick ? t('sick_leave') : t('annual_leave');
 
-                // ฟังก์ชันช่วยจัดรูปแบบวันที่ (จัดกลุ่ม 9, 10 Mar 2026)
                 const formatDisplayDate = (selectedDatesStr: string, fallbackDate: string) => {
                   if (!selectedDatesStr) return fallbackDate;
                   const dateArray = selectedDatesStr.split(',').map(s => s.trim());
@@ -225,7 +250,6 @@ const Dashboard = () => {
                   return Object.entries(groups).map(([monthYear, days]: [string, any]) => `${days.join(', ')} ${monthYear}`).join(' / ');
                 };
 
-                // นำข้อมูลมาแปลงก่อนแสดงผล
                 const finalDateToShow = formatDisplayDate(item.selected_dates, item.date);
 
                 return (
@@ -240,7 +264,6 @@ const Dashboard = () => {
                         {isSick ? <Thermometer className="h-5 w-5" /> : <Palmtree className="h-5 w-5" />}
                       </div>
                       <div>
-                        {/* โชว์ประเภทลาที่แปลแล้ว */}
                         <p className="text-[15px] font-bold text-slate-800 leading-none mb-1.5">{displayType}</p>
                         <div className="flex items-center gap-1.5 text-slate-500">
                           <Calendar className="h-3 w-3" />
@@ -254,7 +277,6 @@ const Dashboard = () => {
                         isApproved ? 'text-emerald-600' : isRejected ? 'text-rose-600' : 'text-amber-600'
                       }`}>
                         {isApproved ? <CheckCircle2 className="w-3.5 h-3.5" /> : isRejected ? <XCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
-                        {/* แปลงสถานะ Approved/Rejected เป็นภาษาที่เลือก */}
                         {isApproved ? t('approved') : isRejected ? t('rejected') : t('pending')}
                       </div>
                     </div>
@@ -269,7 +291,6 @@ const Dashboard = () => {
                     className="flex-1 py-3 rounded-xl bg-sky-50 text-sky-600 font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
                   >
                     <CalendarDays className="w-4 h-4" />
-                    {/* เปลี่ยนเป็น t('load_more') */}
                     {t('load_more')}
                   </button>
                 )}
@@ -279,7 +300,6 @@ const Dashboard = () => {
                     onClick={() => setCountItems(5)} 
                     className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-500 font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
                   >
-                    {/* เปลี่ยนเป็น t('show_less') */}
                     {t('show_less')}
                   </button>
                 )}
@@ -290,7 +310,6 @@ const Dashboard = () => {
               <div className="bg-slate-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
                 <CalendarDays className="h-5 w-5 text-slate-300" />
               </div>
-              {/* เปลี่ยนเป็น t('no_history') */}
               <p className="text-[13px] font-medium text-slate-400">{t('no_history')}</p>
             </div>
           )}
