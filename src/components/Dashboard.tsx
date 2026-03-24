@@ -184,7 +184,7 @@ const Dashboard = () => {
                   <Users className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className="text-sm font-bold text-white">ปฏิทินลางานของทีม</span>
+                  <span className="text-sm font-bold text-white">{t('team_calendar')}</span>
                   {/*  โชว์ชื่อแผนกในปุ่ม เพื่อให้พนักงานรู้ว่ากำลังดูของแผนกไหน */}
                   <span className="text-[11px] font-medium text-blue-100">
                     {userDept ? `Team Calendar: ${userDept}` : 'Team Leave Calendar'}
@@ -192,12 +192,12 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="bg-white/20 px-3 py-1.5 rounded-full">
-                <span className="text-xs font-semibold text-white">ดูรายชื่อ</span>
+                <span className="text-xs font-semibold text-white">{t('view_list')}</span>
               </div>
             </button>
           </DialogTrigger>
           <DialogContent className="w-[90%] max-w-md rounded-2xl p-0 border-0 overflow-hidden bg-transparent shadow-none">
-             <DialogTitle className="sr-only">ปฏิทินวันหยุดของทีม</DialogTitle>
+             <DialogTitle className="sr-only">{t('team_calendar')}</DialogTitle>
              
              {/* โยน userDept เข้าไปให้ TeamCalendar */}
              {userDept ? (

@@ -60,6 +60,14 @@ const translations = {
     'confirm_reject_btn': 'ยืนยันการปฏิเสธ',
     'enter_reason_alert': 'กรุณาระบุเหตุผล',
     'success_alert': 'ส่งข้อมูลสำเร็จ กรุณาปิดหน้าต่างนี้',
+
+
+    // Team Calendar
+    'team_calendar': 'ปฏิทินลางานของทีม',
+    'team_calendar_desc': 'ปฏิทินทีม:',
+    'view_list': 'ดูรายชื่อ',
+    'no_leave_today': 'ไม่มีใครลาในวันนี้ แผนกอยู่ครบ!',
+    'date_label': 'วันที่',
   },
   en: {
     // Dashboard
@@ -111,6 +119,12 @@ const translations = {
     'confirm_reject_btn': 'Confirm Reject',
     'enter_reason_alert': 'Please enter a reason',
     'success_alert': 'Success! You can close this window.',
+
+    'team_calendar': 'Team Leave Calendar',
+    'team_calendar_desc': 'Team Calendar:',
+    'view_list': 'View List',
+    'no_leave_today': 'No one is on leave today. The whole team is here!',
+    'date_label': 'Date',
   }
 };
 
