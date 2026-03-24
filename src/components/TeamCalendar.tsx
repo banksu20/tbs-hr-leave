@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
+
 const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://thirstless-ostensively-maryam.ngrok-free.dev";
 
 interface CalendarProps {
@@ -52,8 +53,8 @@ export default function TeamCalendar({ department }: CalendarProps) {
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
 
   return (
-    <Card className="w-full max-w-md mx-auto shadow-2xl border-0 overflow-hidden bg-white">
-      <CardHeader className="bg-slate-800 pb-4 border-b border-slate-700">
+    <Card className="w-full max-w-md mx-auto shadow-2xl border-0 overflow-hidden bg-white relative">
+      <CardHeader className="bg-slate-800 pb-4 border-b border-slate-700 pt-8">
         <div className="flex items-center justify-between">
           <button onClick={prevMonth} className="p-2 hover:bg-slate-700 rounded-full transition-colors text-slate-300">◀</button>
           <div className="flex flex-col items-center">
