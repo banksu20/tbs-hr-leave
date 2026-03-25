@@ -99,13 +99,25 @@ const Dashboard = () => {
             <p className="text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-2">
               <span className="text-[#00B5E2] capitalize">
                 {(() => {
-                  const parts = (registeredName || "").split('|').map(p => p.trim());
-                  const fn = parts[0] || "";
-                  const ln = parts[1] || "";
-                  const nick = (parts[2] || "").replace(/[()]/g, "");
+                  const parts = (registeredName || "").split('|').map(p => p.trim().replace(/[()]/g, ""));
                   
-                  const fullName = `${fn} ${ln}`.trim();
-                  return fullName ? `${fullName} (${nick})` : (nick || "User");
+                  const validParts = parts.filter(p => p !== "");
+
+                  if (parts.length >= 3 && parts[0] && parts[1] && parts[2]) {
+                    return `${parts[0]} ${parts[1]} (${parts[2]})`;
+                  }
+
+                  if (validParts.length > 1) {
+                    const nick = validParts.pop(); 
+                    const name = validParts.join(" "); 
+                    return `${name} (${nick})`;
+                  }
+
+                  if (validParts.length === 1) {
+                    return validParts[0]; 
+                  }
+
+                  return "User";
                 })()}
               </span>
             </p>
