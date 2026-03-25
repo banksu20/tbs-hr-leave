@@ -356,6 +356,9 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   <SelectItem value="Content">Content</SelectItem>
                   <SelectItem value="PBN">PBN</SelectItem>
                   <SelectItem value="Graphic">Graphic</SelectItem>
+                  <SelectItem value="SEM">SEM</SelectItem>
+                  <SelectItem value="Sale">Sale</SelectItem>
+                  <SelectItem value="Account">Account</SelectItem>
                 </SelectContent>
               </Select>
             </div>
