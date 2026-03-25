@@ -162,6 +162,9 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
                 <option value="Content">Content</option>
                 <option value="PBN">PBN</option>
                 <option value="Graphic">Graphic</option>
+                <option value="SEM">SEM</option>
+                <option value="Sale">Sale</option>
+                <option value="Account">Account</option>
               </select>
             </div>
 
