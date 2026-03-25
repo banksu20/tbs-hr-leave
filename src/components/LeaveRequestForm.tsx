@@ -333,13 +333,24 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
           {/* 1. ข้อมูลส่วนตัวพนักงาน */}
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
             
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-2 text-slate-500 font-semibold text-xs uppercase tracking-wider">
-                <User className="h-4 w-4 text-sky-500" /> {t('user_name')}
-              </Label>
-              <div className="px-4 py-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-bold text-sm">
-                {formData.userName}
-              </div>
+            <div className="px-4 py-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-bold text-sm">
+              {(() => {
+                const parts = (formData.userName || "").split('|').map(p => p.trim());
+                const firstName = parts[0] || "";
+                const lastName = parts[1] || "";
+                const nickname = parts[2] || "";
+
+                let displayName = `${firstName} ${lastName}`.trim();
+                
+                if (nickname) {
+                  const cleanNick = nickname.replace(/[()]/g, "");
+                  displayName = displayName 
+                    ? `${displayName} (${cleanNick})` 
+                    : cleanNick;
+                }
+
+                return displayName || "Unknown User";
+              })()}
             </div>
 
             <div className="space-y-1.5">

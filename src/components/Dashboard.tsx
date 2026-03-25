@@ -98,11 +98,15 @@ const Dashboard = () => {
             </p>
             <p className="text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-2">
               <span className="text-[#00B5E2] capitalize">
-                {registeredName 
-                  ? (registeredName.trim().startsWith("(") && registeredName.trim().endsWith(")") 
-                      ? registeredName.trim().slice(1, -1).trim() 
-                      : registeredName)
-                  : "User"}
+                {(() => {
+                  const parts = (registeredName || "").split('|').map(p => p.trim());
+                  const fn = parts[0] || "";
+                  const ln = parts[1] || "";
+                  const nick = (parts[2] || "").replace(/[()]/g, "");
+                  
+                  const fullName = `${fn} ${ln}`.trim();
+                  return fullName ? `${fullName} (${nick})` : (nick || "User");
+                })()}
               </span>
             </p>
             <div className="inline-flex items-center gap-2 bg-slate-100 px-2.5 py-1 rounded-lg w-fit">
