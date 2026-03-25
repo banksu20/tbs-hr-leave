@@ -112,6 +112,7 @@ const Dashboard = () => {
                     const name = validParts.join(" "); 
                     return `${name} (${nick})`;
                   }
+                  
 
                   if (validParts.length === 1) {
                     return validParts[0]; 

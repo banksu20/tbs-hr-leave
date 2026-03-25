@@ -330,27 +330,33 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
         <form id="leave-form" onSubmit={handleSubmit} className="space-y-4">
           
-          {/* 1. ข้อมูลส่วนตัวพนักงาน */}
+          {/* ข้อมูลส่วนตัวพนักงาน */}
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
             
-            <div className="px-4 py-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-bold text-sm">
-              {(() => {
-                const parts = (formData.userName || "").split('|').map(p => p.trim());
-                const firstName = parts[0] || "";
-                const lastName = parts[1] || "";
-                const nickname = parts[2] || "";
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-2 text-slate-500 font-semibold text-xs uppercase tracking-wider">
+                <User className="h-4 w-4 text-sky-500" /> {t('user_name')}
+              </Label>
 
-                let displayName = `${firstName} ${lastName}`.trim();
-                
-                if (nickname) {
-                  const cleanNick = nickname.replace(/[()]/g, "");
-                  displayName = displayName 
-                    ? `${displayName} (${cleanNick})` 
-                    : cleanNick;
-                }
+              <div className="px-4 py-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-bold text-sm">
+                {(() => {
+                  const parts = (formData.userName || "").split('|').map(p => p.trim().replace(/[()]/g, ""));
+                  const validParts = parts.filter(p => p !== "");
 
-                return displayName || "Unknown User";
-              })()}
+                  if (parts.length >= 3 && parts[0] && parts[1] && parts[2]) {
+                    return `${parts[0]} ${parts[1]} (${parts[2]})`;
+                  }
+                  if (validParts.length > 1) {
+                    const nick = validParts.pop(); 
+                    const name = validParts.join(" "); 
+                    return `${name} (${nick})`;
+                  }
+                  if (validParts.length === 1) {
+                    return validParts[0]; 
+                  }
+                  return "Unknown User";
+                })()}
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -375,7 +381,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
             </div>
           </div>
 
-          {/* 2. รายละเอียดการลา */}
+          {/*  รายละเอียดการลา */}
           <div className={`p-4 rounded-2xl shadow-sm border transition-colors duration-300 ${
             formData.leaveType === 'sick' ? 'bg-rose-50/60 border-rose-100' : 
             formData.leaveType === 'vacation' ? 'bg-sky-50/60 border-sky-100' : 
