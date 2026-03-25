@@ -152,7 +152,6 @@ export default function TeamCalendar({ department }: CalendarProps) {
               </ul>
             ) : (
               <div className="text-center py-4 flex flex-col items-center justify-center opacity-60">
-                  <span className="text-2xl mb-1">*</span>
                   <p className="text-xs text-slate-500 font-medium">ไม่มีใครลาในวันนี้</p>
               </div>
             )}
