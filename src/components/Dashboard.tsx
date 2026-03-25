@@ -94,10 +94,16 @@ const Dashboard = () => {
         <div className="flex items-start justify-between">
           <div className="flex flex-col">
             <p className="text-[13px] font-semibold text-slate-400 tracking-wider uppercase mb-1">
-              TBS Marketing
+              TBS Employee System
             </p>
             <p className="text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-2">
-              <span className="text-[#00B5E2] capitalize">{registeredName || "User"}</span>
+              <span className="text-[#00B5E2] capitalize">
+                {registeredName 
+                  ? (registeredName.trim().startsWith("(") && registeredName.trim().endsWith(")") 
+                      ? registeredName.trim().slice(1, -1).trim() 
+                      : registeredName)
+                  : "User"}
+              </span>
             </p>
             <div className="inline-flex items-center gap-2 bg-slate-100 px-2.5 py-1 rounded-lg w-fit">
               <div className="bg-[#06C755] p-1 rounded-md shadow-sm">
