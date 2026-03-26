@@ -172,7 +172,7 @@ const Dashboard = () => {
             </div>
             <div className="flex items-baseline gap-1 mt-1 z-10">
               {isQuotaLoading ? <Skeleton className="h-8 w-12" /> : 
-                remainingDays <= 0 ? (
+                Number(remainingDays) <= 0 ? (
                   <span className="text-[11px] font-bold text-rose-500 bg-rose-50 border border-rose-100 px-2 py-1 rounded-md">วันหยุดหมดแล้ว</span>
                 ) : (
                   <><span className="text-3xl font-extrabold text-slate-800">{remainingDays}</span>
@@ -192,8 +192,7 @@ const Dashboard = () => {
               <CalendarDays className="h-5 w-5" />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">Personal Leave</span>
-              <span className="text-[10px] text-slate-400 font-medium">โควตาลากิจ</span>
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">{t('personal_leave')}</span>
             </div>
           </div>
           <div className="flex items-baseline gap-1 z-10">
@@ -201,8 +200,8 @@ const Dashboard = () => {
               personalRemaining <= 0 ? (
                 <span className="text-[11px] font-bold text-rose-500 bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-100">วันหยุดหมดแล้ว</span>
               ) : (
-                <><span className="text-4xl font-extrabold text-slate-800">{personalRemaining}</span>
-                <span className="text-xl font-bold text-slate-300">/ {personalTotal}</span></>
+                <><span className="text-3xl font-extrabold text-slate-800">{personalTotal || 0}</span>
+                <span className="text-sm font-medium text-slate-400">{t('days')}</span></>
               )}
           </div>
         </div>
