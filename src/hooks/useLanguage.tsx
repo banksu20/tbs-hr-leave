@@ -44,6 +44,7 @@ const translations = {
     'quota_exceeded': 'จำนวนวันที่ขอลาเกินโควต้าที่เหลือ',
     'submit_btn': 'ส่งคำขอลางาน',
     'submitting': 'กำลังส่งข้อมูล...',
+    'personal_leave': 'ลากิจ',
 
     // Reject Form
     'reject_action': 'รายการปฏิเสธ',
@@ -103,6 +104,7 @@ const translations = {
     'quota_exceeded': 'Requested days exceed remaining quota',
     'submit_btn': 'Submit Request',
     'submitting': 'Submitting...',
+    'personal_leave': 'Personal Leave',
 
     // Reject Form
     'reject_action': 'Reject Action',

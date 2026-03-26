@@ -64,7 +64,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     userName: userName || "",
     userId: userId || "",
     department: department || "",
-    leaveType: defaultType === "sick" ? "sick" : defaultType === "vacation" ? "vacation" : "",
+    leaveType: defaultType === "sick" ? "sick" : defaultType === "vacation" ? "vacation" : defaultType === "personal" ? "personal" : "",
     reason: "",
   });
 
@@ -403,6 +403,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   <SelectContent>
                     <SelectItem value="sick" className="font-bold text-rose-600">{t('sick_leave')}</SelectItem>
                     <SelectItem value="vacation" className="font-bold text-sky-600">{t('annual_leave')}</SelectItem>
+                    <SelectItem value="personal" className="font-bold text-amber-600">{t('personal_leave')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -582,7 +583,9 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed" 
                   : formData.leaveType === 'sick' 
                     ? "bg-gradient-to-r from-rose-500 to-pink-600 hover:shadow-rose-500/30"
-                    : "bg-gradient-to-r from-sky-500 to-blue-600 hover:shadow-sky-500/30"
+                    : formData.leaveType === 'personal'
+                      ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-amber-500/30"
+                      : "bg-gradient-to-r from-sky-500 to-blue-600 hover:shadow-sky-500/30"
                 }`}
           >
             {isSubmitting ? (
