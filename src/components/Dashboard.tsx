@@ -138,12 +138,10 @@ const Dashboard = () => {
 
       {/* Quota & Holiday Grid */}
       <div className="px-4 mt-6 flex flex-col gap-3">
-        
-        {/* แถวบน: ลาป่วย & ลากิจ (แบ่งครึ่ง) */}
         <div className="grid grid-cols-2 gap-3">
           
           {/* Sick Quota Card */}
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100 relative overflow-hidden flex flex-col">
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100 relative overflow-hidden flex flex-col justify-between">
             <div className="absolute -right-4 -top-4 opacity-[0.03]">
               <Thermometer className="w-24 h-24 text-rose-500" />
             </div>
@@ -151,73 +149,64 @@ const Dashboard = () => {
               <div className="bg-rose-50 p-2 rounded-xl text-rose-500">
                 <Thermometer className="h-4 w-4" />
               </div>
-              <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wide truncate">{t('sick_leave')}</span>
+              <span className="text-xs font-bold text-rose-700 uppercase tracking-wide truncate">{t('sick_leave')}</span>
             </div>
-            <div className="flex items-baseline gap-1 mt-auto">
-              {isQuotaLoading ? (
-                  <Skeleton className="h-8 w-12" />
-                ) : (
-                  <span className="text-3xl font-extrabold text-slate-800">{sickTaken || 0}</span>
-                )}
-              <span className="text-sm font-medium text-slate-400">{t('days')}</span>
+            <div className="flex items-baseline gap-1 mt-1">
+              {isQuotaLoading ? <Skeleton className="h-8 w-12" /> : (
+                <><span className="text-3xl font-extrabold text-slate-800">{sickTaken || 0}</span>
+                <span className="text-sm font-medium text-slate-400">{t('days')}</span></>
+              )}
             </div>
           </div>
 
-          {/* Personal Quota Card (ลากิจ) */}
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100 relative overflow-hidden flex flex-col">
+          {/* Annual Quota Card  */}
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-sky-100 relative overflow-hidden flex flex-col justify-between">
             <div className="absolute -right-4 -top-4 opacity-[0.03]">
-              <CalendarDays className="w-24 h-24 text-amber-500" />
+              <Palmtree className="w-24 h-24 text-sky-500" />
             </div>
             <div className="flex items-center gap-2 mb-2">
-              <div className="bg-amber-50 p-2 rounded-xl text-amber-500">
-                <CalendarDays className="h-4 w-4" />
+              <div className="bg-sky-50 p-2 rounded-xl text-sky-500">
+                <Palmtree className="h-4 w-4" />
               </div>
-              <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wide truncate">Personal</span>
+              <span className="text-xs font-bold text-sky-700 uppercase tracking-wide truncate">{t('annual_leave')}</span>
             </div>
-            <div className="flex items-baseline gap-1 mt-auto">
-              {isQuotaLoading ? (
-                  <Skeleton className="h-8 w-12" />
-                ) : personalRemaining === 0 ? (
-                  <span className="text-[13px] font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-md">วันหยุดหมดแล้ว</span>
+            <div className="flex items-baseline gap-1 mt-1 z-10">
+              {isQuotaLoading ? <Skeleton className="h-8 w-12" /> : 
+                remainingDays <= 0 ? (
+                  <span className="text-[11px] font-bold text-rose-500 bg-rose-50 border border-rose-100 px-2 py-1 rounded-md">วันหยุดหมดแล้ว</span>
                 ) : (
-                  <>
-                    <span className="text-3xl font-extrabold text-slate-800">{personalRemaining}</span>
-                    <span className="text-xl font-bold text-slate-300">/ {personalTotal}</span>
-                  </>
+                  <><span className="text-3xl font-extrabold text-slate-800">{remainingDays}</span>
+                  <span className="text-sm font-bold text-slate-300">/ {annualTotal}</span></>
                 )}
             </div>
           </div>
         </div>
 
-        {/* Annual Quota Card */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-sky-100 relative overflow-hidden flex justify-between items-center">
-          <div className="absolute -right-4 -top-8 opacity-[0.03]">
-            <Palmtree className="w-32 h-32 text-sky-500" />
+        {/* Personal Quota Card */}
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100 relative overflow-hidden flex items-center justify-between">
+          <div className="absolute -right-2 -top-8 opacity-[0.03]">
+            <CalendarDays className="w-32 h-32 text-amber-500" />
           </div>
-          
           <div className="flex items-center gap-3">
-            <div className="bg-sky-50 p-3 rounded-xl text-sky-500">
-              <Palmtree className="h-5 w-5" />
+            <div className="bg-amber-50 p-3 rounded-xl text-amber-500">
+              <CalendarDays className="h-5 w-5" />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-sky-700 uppercase tracking-wide">{t('annual_leave')}</span>
-              <span className="text-[10px] text-slate-400">Vacation Quota</span>
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">Personal Leave</span>
+              <span className="text-[10px] text-slate-400 font-medium">โควตาลากิจ</span>
             </div>
           </div>
-
-          <div className="flex items-baseline gap-1 pr-2 z-10">
-            {isQuotaLoading ? (
-                <Skeleton className="h-8 w-16" />
-              ) : remainingDays === 0 ? (
-                <span className="text-sm font-bold text-rose-500 bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-100">วันหยุดหมดแล้ว</span>
+          <div className="flex items-baseline gap-1 z-10">
+            {isQuotaLoading ? <Skeleton className="h-8 w-16" /> : 
+              personalRemaining <= 0 ? (
+                <span className="text-[11px] font-bold text-rose-500 bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-100">วันหยุดหมดแล้ว</span>
               ) : (
-                <>
-                  <span className="text-4xl font-extrabold text-slate-800">{remainingDays}</span>
-                  <span className="text-xl font-bold text-slate-300">/ {annualTotal}</span>
-                </>
+                <><span className="text-4xl font-extrabold text-slate-800">{personalRemaining}</span>
+                <span className="text-xl font-bold text-slate-300">/ {personalTotal}</span></>
               )}
           </div>
         </div>
+
 
         {/* Full width Company Holiday Button */}
         <button 
