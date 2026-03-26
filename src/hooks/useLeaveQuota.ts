@@ -9,6 +9,8 @@ interface UseLeaveQuotaResult {
   annualTotal: number | null; 
   sickTotal: number | null; 
   sickTaken: number | null; 
+  personalRemaining?: number | null;
+  personalTotal?: number | null;
   isLoading: boolean;
   error: string | null;
   refetch: () => void;

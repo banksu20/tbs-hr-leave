@@ -85,7 +85,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   }, [selectedDates]);
 
   const displayRemainingDays = remainingDays ?? 10;
-  const isOverQuota = formData.leaveType === "sick" ? false : requestedDays > displayRemainingDays;
+  const isOverQuota = (formData.leaveType === "sick" || formData.leaveType === "personal") ? false : requestedDays > displayRemainingDays;
 
   useEffect(() => {
     if (department) setIsDepartmentLocked(true);
@@ -381,10 +381,11 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
             </div>
           </div>
 
-          {/*  รายละเอียดการลา */}
+          {/* รายละเอียดการลา */}
           <div className={`p-4 rounded-2xl shadow-sm border transition-colors duration-300 ${
             formData.leaveType === 'sick' ? 'bg-rose-50/60 border-rose-100' : 
             formData.leaveType === 'vacation' ? 'bg-sky-50/60 border-sky-100' : 
+            formData.leaveType === 'personal' ? 'bg-amber-50/60 border-amber-100' : 
             'bg-white border-slate-100'
           }`}>
             <div className="space-y-4">
@@ -396,7 +397,10 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 </Label>
                 <Select value={formData.leaveType} onValueChange={(val) => setFormData({ ...formData, leaveType: val })} disabled={isLeaveTypeLocked}>
                   <SelectTrigger className={`h-12 rounded-xl font-bold border-white bg-white shadow-sm text-sm ${
-                    formData.leaveType === 'sick' ? 'text-rose-600 ring-1 ring-rose-100' : formData.leaveType === 'vacation' ? 'text-sky-600 ring-1 ring-sky-100' : 'text-slate-700 border-slate-200'
+                    formData.leaveType === 'sick' ? 'text-rose-600 ring-1 ring-rose-100' : 
+                    formData.leaveType === 'vacation' ? 'text-sky-600 ring-1 ring-sky-100' : 
+                    formData.leaveType === 'personal' ? 'text-amber-600 ring-1 ring-amber-100' : // 🌟 เพิ่มบรรทัดนี้
+                    'text-slate-700 border-slate-200'
                   }`}>
                     <SelectValue placeholder={`-- ${t('leave_type')} --`} />
                   </SelectTrigger>
@@ -550,7 +554,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 md:px-6 md:py-5 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-50">
         <div className="max-w-2xl mx-auto space-y-3">
           
-          {formData.leaveType !== "sick" && (
+          {(formData.leaveType !== "sick" && formData.leaveType !== "personal") && (
             <div className={`px-4 py-2.5 rounded-xl border flex items-center justify-between transition-colors ${
               isOverQuota ? "bg-rose-50 border-rose-200" : "bg-slate-800 border-slate-800 text-white"
             }`}>
