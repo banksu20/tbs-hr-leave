@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import liff from "@line/liff";
-import { AlertTriangle } from "lucide-react"; 
 
 
 interface ProfileSetupProps {
@@ -117,11 +116,6 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
             
-            <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2 shadow-sm">
-              <AlertTriangle className="h-5 w-5 shrink-0" />
-              <span>กรุณากรอก ชื่อ-นามสกุล และชื่อเล่น เป็น <b>ภาษาอังกฤษเท่านั้น</b></span>
-            </div>
-
             {/* ชื่อจริง - นามสกุล */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
