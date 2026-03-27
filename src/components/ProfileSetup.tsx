@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import liff from "@line/liff";
+import { AlertTriangle } from "lucide-react"; 
 
 
 interface ProfileSetupProps {
@@ -115,23 +116,33 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
+            
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2 shadow-sm">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <span>กรุณากรอก ชื่อ-นามสกุล และชื่อเล่น เป็น <b>ภาษาอังกฤษเท่านั้น</b></span>
+            </div>
+
             {/* ชื่อจริง - นามสกุล */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">ชื่อจริง</label>
+                <label className="text-sm font-semibold text-slate-700">
+                  ชื่อจริง <span className="text-[11px] font-normal text-rose-500">(English Only)</span>
+                </label>
                 <Input 
                   placeholder="First Name" 
                   value={firstName}
-                  onChange={(e) => setFirstName(capitalize(e.target.value))}
+                  onChange={(e) => setFirstName(capitalize(e.target.value.replace(/[^a-zA-Z\s]/g, '')))}
                   className="h-11 bg-white border-slate-200 focus-visible:ring-blue-500"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">นามสกุล</label>
+                <label className="text-sm font-semibold text-slate-700">
+                  นามสกุล <span className="text-[11px] font-normal text-rose-500">(English Only)</span>
+                </label>
                 <Input 
                   placeholder="Last Name" 
                   value={lastName}
-                  onChange={(e) => setLastName(capitalize(e.target.value))}
+                  onChange={(e) => setLastName(capitalize(e.target.value.replace(/[^a-zA-Z\s]/g, '')))}
                   className="h-11 bg-white border-slate-200 focus-visible:ring-blue-500"
                 />
               </div>
@@ -139,11 +150,13 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
 
             {/* ชื่อเล่น */}
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">ชื่อเล่น</label>
+              <label className="text-sm font-semibold text-slate-700">
+                ชื่อเล่น <span className="text-[11px] font-normal text-rose-500">(English Only)</span>
+              </label>
               <Input 
                 placeholder="Nickname" 
                 value={nickName}
-                onChange={(e) => setNickName(capitalize(e.target.value))}
+                onChange={(e) => setNickName(capitalize(e.target.value.replace(/[^a-zA-Z\s]/g, '')))}
                 className="h-11 bg-white border-slate-200 focus-visible:ring-blue-500"
               />
             </div>
