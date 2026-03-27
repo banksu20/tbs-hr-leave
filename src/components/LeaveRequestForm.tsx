@@ -202,28 +202,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       return;
     }
 
-    if (formData.leaveType === "sick") {
-      const now = new Date();
-      const hasToday = selectedDates.some(d => {
-        return d.getDate() === now.getDate() && 
-               d.getMonth() === now.getMonth() && 
-               d.getFullYear() === now.getFullYear();
-      });
-
-      const thaiTime = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Bangkok', hour12: false });
-      const [hour, minute] = thaiTime.split(':').map(Number);
-
-      if (hasToday && (hour > 9 || (hour === 9 && minute >= 1))) {
-        Swal.fire({
-          icon: "error",
-          title: language === 'th' ? "ไม่อนุญาตให้ทำรายการ" : "Action Not Allowed",
-          text: language === 'th' ? "ไม่อนุญาตให้ทำรายการหลังเวลา 09:00 น. กรุณาแจ้งหัวหน้าโดยตรงครับ" : "You cannot submit sick leave for today after 09:01 AM. Please contact your manager directly.",
-          confirmButtonColor: "#FF334B",
-        });
-        return;
-      }
-    }
-
     setIsSubmitting(true);
 
     try {
