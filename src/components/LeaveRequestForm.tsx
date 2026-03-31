@@ -26,7 +26,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 
 
 const LIFF_ID = import.meta.env.VITE_LIFF_ID || "2008617589-89gR1Y3Y";
-const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://thirstless-ostensively-maryam.ngrok-free.dev";
+const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "unphotographed-dionna-laudable.ngrok-free.dev";
 
 interface LeaveRequestFormProps {
   userId?: string;
