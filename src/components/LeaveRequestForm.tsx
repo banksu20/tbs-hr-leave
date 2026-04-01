@@ -137,6 +137,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     if (currentUserId) {
       fetch(`${N8N_URL}/webhook/get-leave-history?userId=${currentUserId}`, {
         headers: { "ngrok-skip-browser-warning": "true" }
+        
       })
       .then(res => res.json())
       .then(data => {
