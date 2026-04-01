@@ -10,7 +10,8 @@ import liff from "@line/liff";
 //  1. Import ระบบภาษา
 import { useLanguage } from "@/hooks/useLanguage";
 
-const WEBHOOK_SUBMIT_REJECT = "https://thirstless-ostensively-maryam.ngrok-free.dev/webhook/submit-reject";
+
+const WEBHOOK_SUBMIT_REJECT = "https://unphotographed-dionna-laudable.ngrok-free.dev/webhook/submit-reject";
 
 // ฟังก์ชันแปลงประเภทการลาให้เป็น 2 ภาษา
 const formatLeaveType = (type: string | null, language: string) => {
