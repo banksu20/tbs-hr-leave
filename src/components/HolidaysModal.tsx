@@ -70,11 +70,18 @@ const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
     setError(false);
     
     try {
-      // แก้ไข: ใช้ Proxy (allorigins.win) เพื่อหลบ CORS Error
-      const targetUrl = `https://date.nager.at/api/v3/publicholidays/${currentYear}/TH`;
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
       
-      const response = await fetch(proxyUrl);
+      const cachedDataHolidays = localStorage.getItem(`holidays_${currentYear}`);
+      if (cachedDataHolidays) {
+        setHolidays(JSON.parse(cachedDataHolidays));
+        setLoading(false);
+        return;
+      }
+
+
+      const targetUrl = `https://date.nager.at/api/v3/publicholidays/${currentYear}/TH`;
+      
+      const response = await fetch(targetUrl);
       
       if (!response.ok) throw new Error("API Error");
       
@@ -84,12 +91,12 @@ const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
       const allHolidays = [...data, ...companyExtraHolidays];
       allHolidays.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+      localStorage.setItem(`holidays_${currentYear}`, JSON.stringify(allHolidays));
+
       setHolidays(allHolidays);
     } catch (err) {
       console.warn("API Failed, using fallback data:", err);
-      // ✅ ถ้า API พัง ให้ใช้ข้อมูลสำรองแทน (User จะได้ไม่เจอ Error)
       setHolidays(fallbackHolidays); 
-      // ไม่ต้อง Set Error เป็น true เพื่อให้หน้าจอแสดงผลได้ปกติ
     } finally {
       setLoading(false);
     }
