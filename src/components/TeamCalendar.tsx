@@ -14,24 +14,27 @@ export default function TeamCalendar({ department }: CalendarProps) {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
   useEffect(() => {
     if (!department) return;
     
     setIsLoading(true);
-    //  ส่งค่า department แนบไปกับ URL เพื่อให้ n8n รู้ว่าต้องดึงข้อมูลแผนกไหน
-    fetch(`${N8N_URL}/webhook/get-team-calendar?department=${department}`, {
+    fetch(`${N8N_URL}/webhook/get-team-calendar?department=${department}&year=${year}&month=${month +1}`, {
         headers: { "ngrok-skip-browser-warning": "true" }
     })
       .then(res => res.json())
       .then(data => {
           setLeaveData(data);
           setIsLoading(false);
+          setSelectedDay(null);
       })
       .catch(err => {
           console.error("Error fetching team calendar:", err);
           setIsLoading(false);
       });
-  }, [department]);
+  }, [department, year, month]);
 
   const getDaysInMonth = (year: number, month: number) => {
     return new Date(year, month + 1, 0).getDate();
@@ -41,8 +44,7 @@ export default function TeamCalendar({ department }: CalendarProps) {
     return new Date(year, month, 1).getDay();
   };
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
+  
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
 
@@ -125,7 +127,6 @@ export default function TeamCalendar({ department }: CalendarProps) {
           })}
         </div>
 
-        {/* ส่วนแสดงรายชื่อเมื่อกดเลือกวัน */}
         {selectedDay && (
           <div className="mt-5 p-4 bg-white rounded-xl border border-slate-200 shadow-sm animate-in fade-in slide-in-from-bottom-2">
             <h4 className="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2 flex items-center gap-2">
