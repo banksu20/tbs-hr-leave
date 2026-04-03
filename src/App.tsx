@@ -6,7 +6,7 @@ import liff from "@line/liff";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Loader2 } from "lucide-react"; // ไอคอนโหลด
+import { Loader2 } from "lucide-react"; 
 
 import Index from "@/pages/Index";
 import LeaveRequest from "@/pages/LeaveRequest";
@@ -16,17 +16,18 @@ import ProfileSetup from "@/components/ProfileSetup";
 
 import { useLanguage } from "./hooks/useLanguage";
 
-
 const queryClient = new QueryClient();
 const LIFF_ID = "2008617589-89gR1Y3Y";
 
-const WEBHOOK_CHECK_USER = "https://unphotographed-dionna-laudable.ngrok-free.dev/webhook/check-user";
-const WEBHOOK_REGISTER_USER = "https://unphotographed-dionna-laudable.ngrok-free.dev/webhook/register-user";
+// 🔗 Webhook URL
+const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
+const WEBHOOK_CHECK_USER = `${N8N_URL}/webhook/check-user`;
+const WEBHOOK_REGISTER_USER = `${N8N_URL}/webhook/register-user`;
 
 const App = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [localUser, setLocalUser] = useState<{name: string, department: string} | null>(null);
-  const [isInitializing, setIsInitializing] = useState(true); // สถานะรอโหลดข้อมูล
+  const [isInitializing, setIsInitializing] = useState(true); 
 
   const params = new URLSearchParams(window.location.search);
   const typeFromUrl = params.get("type");
@@ -41,37 +42,32 @@ const App = () => {
           const profile = await liff.getProfile();
           setUserProfile(profile);
 
-          // ✅ 1. ยิงไปถาม n8n (Google Sheets) ว่าคนนี้เคยสมัครยัง?
           const res = await fetch(`${WEBHOOK_CHECK_USER}?userId=${profile.userId}`, {
             headers: { "ngrok-skip-browser-warning": "true" }
           });
           const data = await res.json();
 
           if (data.found) {
-            // ถ้าเคยสมัครแล้ว ดึงข้อมูลมาใช้เลย
             setLocalUser({ name: data.name, department: data.department });
-            localStorage.setItem("tbs_user_profile", JSON.stringify({ name: data.name, department: data.department })); // เซฟลงเครื่องไว้ใช้เป็น Cache เร็วๆ
+            localStorage.setItem("tbs_user_profile", JSON.stringify({ name: data.name, department: data.department }));
           } else {
-            // ถ้าไม่เคยสมัคร (localUser จะเป็น null ทำให้หน้า ProfileSetup เด้งขึ้นมา)
             setLocalUser(null);
           }
         }
       } catch (error) {
         console.error("Initialization Error:", error);
       } finally {
-        setIsInitializing(false); // ปิดหน้าจอโหลด
+        setIsInitializing(false); 
       }
     };
     
     initializeLiffAndCheckUser();
   }, []);
 
-  // ✅ 2. ฟังก์ชันเมื่อพนักงานกรอกข้อมูลครั้งแรกเสร็จ
-  const handleSaveProfile = async (data: {name: string, department: string}) => {
+  const handleSaveProfile = async (data: {name: string, department: string, pin: string}) => {
     setIsInitializing(true);
     try {
-      // ส่งข้อมูลไปบันทึกลง Google Sheets
-      await fetch(WEBHOOK_REGISTER_USER, {
+      const res = await fetch(WEBHOOK_REGISTER_USER, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -79,16 +75,23 @@ const App = () => {
         },
         body: JSON.stringify({
           userId: userProfile?.userId,
-          name: data.name,
-          department: data.department
+          name: data.name,        
+          department: data.department,
+          pin: data.pin           
         })
       });
 
-      // บันทึกสำเร็จ -> ให้ทะลุเข้าแอปได้
-      setLocalUser(data);
-      localStorage.setItem("tbs_user_profile", JSON.stringify(data));
-    } catch (error) {
-      alert("Failed to save profile. / ไม่สามารถบันทึกข้อมูลได้");
+      const result = await res.json();
+
+      if (!res.ok || result.status === "error") {
+        throw new Error(result.message || "Invalid PIN / รหัส PIN ไม่ถูกต้อง");
+      }
+
+      setLocalUser({ name: data.name, department: data.department });
+      localStorage.setItem("tbs_user_profile", JSON.stringify({ name: data.name, department: data.department }));
+      
+    } catch (error: any) {
+      alert(error.message || "Failed to bind account.");
       console.error(error);
     } finally {
       setIsInitializing(false);
@@ -113,13 +116,11 @@ const App = () => {
     </button>
   );
 
-
-  // โชว์หน้าจอ Loading ระหว่างรอดึงข้อมูล Google Sheets
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
         <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-        <p className="text-slate-600 font-medium">Checking User Profile...</p>
+        <p className="text-slate-600 font-medium">Loading TBS System...</p>
       </div>
     );
   }
@@ -140,7 +141,7 @@ const App = () => {
               path="/" 
               element={
                 !localUser ? (
-                  <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} />
+                  <ProfileSetup onSave={handleSaveProfile} />
                 ) : typeFromUrl ? (
                   <LeaveRequestPage />
                 ) : (
@@ -153,7 +154,7 @@ const App = () => {
               path="/leave-request" 
               element={
                 !localUser ? (
-                  <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} />
+                  <ProfileSetup onSave={handleSaveProfile} />
                 ) : (
                   <LeaveRequestPage />
                 )

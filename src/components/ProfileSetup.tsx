@@ -1,95 +1,94 @@
 import { useState, useEffect } from "react";
 import tbsLogo from "@/image/TBS-Logo.png"; 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import liff from "@line/liff";
+import { Loader2, UserCheck, Lock } from "lucide-react";
 
+const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
 
 interface ProfileSetupProps {
-  defaultName: string;
-  onSave: (data: { name: string; department: string }) => void;
+  onSave: (data: { name: string; department: string; pin: string }) => void;
 }
 
-export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps) {
-  // 🌟 สร้าง State แยก 3 ช่อง
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [nickName, setNickName] = useState("");
-  const [department, setDepartment] = useState("");
+interface Employee {
+  name: string;
+  department: string;
+}
 
+export default function ProfileSetup({ onSave }: ProfileSetupProps) {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [selectedEmployee, setSelectedEmployee] = useState("");
+  const [pin, setPin] = useState("");
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [isLiffInit, setIsLiffInit] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // 1. ดึงรายชื่อพนักงานจาก n8n
+  useEffect(() => {
+    fetch(`${N8N_URL}/webhook/get-employees`, {
+        headers: { "ngrok-skip-browser-warning": "true" }
+    })
+      .then(res => res.json())
+      .then(data => {
+        setEmployees(data);
+        setIsLoadingEmployees(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch employees", err);
+        setIsLoadingEmployees(false);
+      });
+  }, []);
+
+  // 2. Initial LIFF
   useEffect(() => {
     liff.init({ liffId: "2008617589-89gR1Y3Y" })
     .then(() => {
       setIsLiffInit(true);
-      if (liff.isLoggedIn()){
-        setIsLoggedIn(true);
-      }
+      if (liff.isLoggedIn()) setIsLoggedIn(true);
     })
-    .catch((err) => {
-      console.error("LIFF Init failed", err);
-    });
+    .catch((err) => console.error("LIFF Init failed", err));
   }, []);
-
-  const handleLoginLine = () => {
-    liff.login();
-  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // บังคับให้กรอกอย่างน้อย 1 ช่อง (ไม่ชื่อ ก็ต้องนามสกุล หรือชื่อเล่น)
-    if (!firstName.trim() && !lastName.trim() && !nickName.trim()) {
-      alert("Please fill at least one name field / กรุณากรอกชื่ออย่างน้อย 1 ช่อง");
-      return;
-    }
-    if (!department) {
-      alert("Please select a department / กรุณาเลือกแผนก");
-      return;
-    }
+    if (!selectedEmployee) return alert("Please select your name / กรุณาเลือกชื่อของคุณ");
+    if (pin.length < 4) return alert("Please enter 4-digit PIN / กรุณากรอกรหัส PIN 4 หลัก");
 
-    const combinedName = `${firstName.trim()}|${lastName.trim()}|${nickName.trim()}`;
+    // หาแผนกของพนักงานที่เลือก
+    const emp = employees.find(sh => sh.name === selectedEmployee);
     
-    onSave({ name: combinedName, department });
+    // ส่งข้อมูลไปที่หน้า App.tsx เพื่อทำการ Save (ผูก Account)
+    onSave({ 
+        name: selectedEmployee, 
+        department: emp?.department || "", 
+        pin: pin 
+    });
   };
 
-  // ฟังก์ชันช่วยทำตัวพิมพ์ใหญ่คำแรกอัตโนมัติ
-  const capitalize = (val: string) => val.replace(/\b\w/g, char => char.toUpperCase());
-
-  
-  if(!isLiffInit){
+  if(!isLiffInit || isLoadingEmployees) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <p className="text-slate-500">Initializing LIFF...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-3">
+        <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+        <p className="text-slate-500 font-medium">Initializing System...</p>
       </div>
-    )
+    );
   }
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md shadow-xl border-0 ring-1 ring-slate-200">
-          <CardHeader className="text-center space-y-3 pb-6">
-            <div className="flex justify-center mb-2">
-              <img src={tbsLogo} alt="TBS Marketing Logo" className="h-16 w-auto object-contain" />
-            </div>
-            <CardDescription className="text-slate-600 text-base leading-relaxed px-4 font-medium">
-              กรุณาเข้าสู่ระบบด้วย LINE เพื่อดำเนินการต่อ
-              <span className="text-slate-400 text-[13px] mt-2 block font-normal">
-                Please log in with your LINE account to access the system.
-              </span>
+          <CardHeader className="text-center pb-6">
+            <img src={tbsLogo} alt="TBS Logo" className="h-16 mx-auto mb-4" />
+            <CardDescription className="text-slate-600 font-medium text-md">
+                กรุณาเข้าสู่ระบบด้วย LINE เพื่อดำเนินการต่อ
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex justify-center pb-8 px-6">
-            <Button 
-              onClick={handleLoginLine} 
-              className="w-full h-12 text-md font-semibold text-white shadow-md hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: "#06C755" }} // สีเขียวเอกลักษณ์ของ LINE
-            >
-              เข้าสู่ระบบด้วย LINE
+          <CardContent>
+            <Button onClick={() => liff.login()} className="w-full h-12 bg-[#06C755] hover:opacity-90">
+              Log in with LINE
             </Button>
           </CardContent>
         </Card>
@@ -97,86 +96,53 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
     );
   }
 
-  // ถ้า Login แล้วแสดงฟอร์มกรอกข้อมูล
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-xl border-0 ring-1 ring-slate-200">
-        <CardHeader className="text-center space-y-3 pb-6">
-          <div className="flex justify-center mb-2">
-            <img src={tbsLogo} alt="TBS Marketing Logo" className="h-16 w-auto object-contain" />
-          </div>
-          <CardDescription className="text-slate-400 text-sm leading-relaxed px-4">
-            ระบุข้อมูลของคุณเพื่อเริ่มต้นใช้งานระบบวันลา<br/>
-            <span className="text-slate-500 text-[13px] mt-1 block">
-              Please enter your full name and nickname to set up your profile.
-            </span>
-          </CardDescription>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-2xl border-0 ring-1 ring-slate-200 rounded-3xl overflow-hidden">
+        <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+        <CardHeader className="text-center pt-8 pb-4">
+          <img src={tbsLogo} alt="TBS Logo" className="h-14 mx-auto mb-4" />
+          <h2 className="text-2xl font-extrabold text-slate-800">Setup Profile</h2>
+          <p className="text-slate-400 text-sm mt-1">Select your name to bind with LINE</p>
         </CardHeader>
 
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            
-            {/* ชื่อจริง - นามสกุล */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">
-                  ชื่อจริง <span className="text-[11px] font-normal text-rose-500">(English Only)</span>
-                </label>
-                <Input 
-                  placeholder="First Name" 
-                  value={firstName}
-                  onChange={(e) => setFirstName(capitalize(e.target.value.replace(/[^a-zA-Z\s]/g, '')))}
-                  className="h-11 bg-white border-slate-200 focus-visible:ring-blue-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">
-                  นามสกุล <span className="text-[11px] font-normal text-rose-500">(English Only)</span>
-                </label>
-                <Input 
-                  placeholder="Last Name" 
-                  value={lastName}
-                  onChange={(e) => setLastName(capitalize(e.target.value.replace(/[^a-zA-Z\s]/g, '')))}
-                  className="h-11 bg-white border-slate-200 focus-visible:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* ชื่อเล่น */}
+        <CardContent className="px-6 pb-10">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Dropdown เลือกชื่อ */}
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">
-                ชื่อเล่น <span className="text-[11px] font-normal text-rose-500">(English Only)</span>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                <UserCheck className="h-4 w-4 text-blue-500" /> Employee Name
               </label>
-              <Input 
-                placeholder="Nickname" 
-                value={nickName}
-                onChange={(e) => setNickName(capitalize(e.target.value.replace(/[^a-zA-Z\s]/g, '')))}
-                className="h-11 bg-white border-slate-200 focus-visible:ring-blue-500"
-              />
-            </div>
-
-            {/* Select Department */}
-            <div className="space-y-2 pt-2">
-              <label className="text-sm font-semibold text-slate-700">แผนก</label>
               <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="flex h-11 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer"
+                value={selectedEmployee}
+                onChange={(e) => setSelectedEmployee(e.target.value)}
+                className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all appearance-none cursor-pointer shadow-sm"
               >
-                <option value="" disabled className="text-slate-400">-- Select Department --</option>
-                <option value="IT">IT</option>
-                <option value="SEO">SEO</option>
-                <option value="Content">Content</option>
-                <option value="PBN">PBN</option>
-                <option value="Graphic">Graphic</option>
-                <option value="SEM">SEM</option>
-                <option value="Sale">Sale</option>
-                <option value="Account">Account</option>
+                <option value="">-- Choose your name --</option>
+                {employees.map((emp, idx) => (
+                  <option key={idx} value={emp.name}>{emp.name}</option>
+                ))}
               </select>
             </div>
 
-            <Button type="submit" className="w-full mt-8 h-12 text-md font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white shadow-md">
-              Save & Continue
+            {/* ช่องกรอก PIN */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                <Lock className="h-4 w-4 text-blue-500" /> Security PIN
+              </label>
+              <Input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="4-digit PIN"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                className="h-12 rounded-xl text-center text-2xl tracking-[1em] font-bold border-slate-200 focus-visible:ring-blue-500"
+              />
+            </div>
+
+            <Button type="submit" className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 active:scale-[0.98] transition-transform mt-4">
+              Bind Account
             </Button>
           </form>
         </CardContent>
