@@ -462,7 +462,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                           backgroundColor: "#fee2e2", 
                           fontWeight: "bold",
                           borderRadius: "12px",
-                          opacity: "0.9" 
+                          opacity: "0.6" 
                         }
                       }}
                     />
