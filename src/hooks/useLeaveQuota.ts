@@ -25,6 +25,10 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
   const [sickTotal, setSickTotal] = useState<number | null>(null);
   const [sickTaken, setSickTaken] = useState<number | null>(null); // 🌟 2. สร้าง State มารับค่าที่ใช้ไปแล้ว
 
+  const [personalRemaining, setPersonalRemaining] = useState<number | null>(null);
+  const [personalTotal, setPersonalTotal] = useState<number | null>(null);
+  const [personalTaken, setPersonalTaken] = useState<number | null>(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,6 +59,10 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
       setSickTotal(data.sickTotal ?? null);
       setSickTaken(data.sickTaken ?? null); 
 
+      setPersonalRemaining(data.personalRemaining ?? null);
+      setPersonalTotal(data.personalTotal ?? null);
+      setPersonalTaken(data.personalTaken ?? null);
+
     } catch (err: any) {
       console.error("Failed to fetch leave quota:", err);
       setError(err.message || "Failed to load quota");
@@ -73,6 +81,9 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
     annualTotal, 
     sickTotal, 
     sickTaken, 
+    personalRemaining, 
+    personalTotal, 
+    personalTaken,
     isLoading, 
     error, 
     refetch: fetchQuota 
