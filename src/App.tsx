@@ -6,7 +6,7 @@ import liff from "@line/liff";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Loader2 } from "lucide-react"; 
+import { Loader2 } from "lucide-react"; // ไอคอนโหลด
 
 import Index from "@/pages/Index";
 import LeaveRequest from "@/pages/LeaveRequest";
@@ -16,18 +16,17 @@ import ProfileSetup from "@/components/ProfileSetup";
 
 import { useLanguage } from "./hooks/useLanguage";
 
+
 const queryClient = new QueryClient();
 const LIFF_ID = "2008617589-89gR1Y3Y";
 
-// 🔗 Webhook URL
-const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
-const WEBHOOK_CHECK_USER = `${N8N_URL}/webhook/check-user`;
-const WEBHOOK_REGISTER_USER = `${N8N_URL}/webhook/register-user`;
+const WEBHOOK_CHECK_USER = "https://unphotographed-dionna-laudable.ngrok-free.dev/webhook/check-user";
+const WEBHOOK_REGISTER_USER = "https://unphotographed-dionna-laudable.ngrok-free.dev/webhook/register-user";
 
 const App = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [localUser, setLocalUser] = useState<{name: string, department: string} | null>(null);
-  const [isInitializing, setIsInitializing] = useState(true); 
+  const [isInitializing, setIsInitializing] = useState(true); // สถานะรอโหลดข้อมูล
 
   const params = new URLSearchParams(window.location.search);
   const typeFromUrl = params.get("type");
@@ -49,7 +48,7 @@ const App = () => {
 
           if (data.found) {
             setLocalUser({ name: data.name, department: data.department });
-            localStorage.setItem("tbs_user_profile", JSON.stringify({ name: data.name, department: data.department }));
+            localStorage.setItem("tbs_user_profile", JSON.stringify({ name: data.name, department: data.department })); // เซฟลงเครื่องไว้ใช้เป็น Cache เร็วๆ
           } else {
             setLocalUser(null);
           }
@@ -57,17 +56,18 @@ const App = () => {
       } catch (error) {
         console.error("Initialization Error:", error);
       } finally {
-        setIsInitializing(false); 
+        setIsInitializing(false); // ปิดหน้าจอโหลด
       }
     };
     
     initializeLiffAndCheckUser();
   }, []);
 
-  const handleSaveProfile = async (data: {name: string, department: string, pin: string}) => {
+  const handleSaveProfile = async (data: {name: string, department: string}) => {
     setIsInitializing(true);
     try {
-      const res = await fetch(WEBHOOK_REGISTER_USER, {
+      // ส่งข้อมูลไปบันทึกลง Google Sheets
+      await fetch(WEBHOOK_REGISTER_USER, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -75,23 +75,15 @@ const App = () => {
         },
         body: JSON.stringify({
           userId: userProfile?.userId,
-          name: data.name,        
-          department: data.department,
-          pin: data.pin           
+          name: data.name,
+          department: data.department
         })
       });
 
-      const result = await res.json();
-
-      if (!res.ok || result.status === "error") {
-        throw new Error(result.message || "Invalid PIN / รหัส PIN ไม่ถูกต้อง");
-      }
-
-      setLocalUser({ name: data.name, department: data.department });
-      localStorage.setItem("tbs_user_profile", JSON.stringify({ name: data.name, department: data.department }));
-      
-    } catch (error: any) {
-      alert(error.message || "Failed to bind account.");
+      setLocalUser(data);
+      localStorage.setItem("tbs_user_profile", JSON.stringify(data));
+    } catch (error) {
+      alert("Failed to save profile. / ไม่สามารถบันทึกข้อมูลได้");
       console.error(error);
     } finally {
       setIsInitializing(false);
@@ -116,11 +108,13 @@ const App = () => {
     </button>
   );
 
+
+  // โชว์หน้าจอ Loading ระหว่างรอดึงข้อมูล Google Sheets
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
         <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-        <p className="text-slate-600 font-medium">Loading TBS System...</p>
+        <p className="text-slate-600 font-medium">Checking User Profile...</p>
       </div>
     );
   }
@@ -141,7 +135,7 @@ const App = () => {
               path="/" 
               element={
                 !localUser ? (
-                  <ProfileSetup onSave={handleSaveProfile} />
+                  <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} />
                 ) : typeFromUrl ? (
                   <LeaveRequestPage />
                 ) : (
@@ -154,7 +148,7 @@ const App = () => {
               path="/leave-request" 
               element={
                 !localUser ? (
-                  <ProfileSetup onSave={handleSaveProfile} />
+                  <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} />
                 ) : (
                   <LeaveRequestPage />
                 )
