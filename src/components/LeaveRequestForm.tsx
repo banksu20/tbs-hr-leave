@@ -442,6 +442,9 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                         
                         return isPast || isWeekend || isTaken;
                       }}
+                      modifiers={{
+                        taken: takenDates
+                      }}
                       initialFocus
                       className="pointer-events-auto bg-white rounded-2xl p-3"
                       modifiersStyles={{
@@ -450,7 +453,11 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                           color: "white",
                           borderRadius: "12px",
                         },
-                        disabled: {
+                        disabled:{
+                          color: "#cbd5e1",
+                          opacity: "0.5",
+                        },
+                        taken: {
                           color: "#ef4444", 
                           backgroundColor: "#fee2e2", 
                           fontWeight: "bold",
