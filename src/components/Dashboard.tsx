@@ -27,7 +27,7 @@ const Dashboard = () => {
 
   const { t } = useLanguage();
 
-  const { remainingDays, sickRemaining, annualTotal, sickTaken, sickTotal, personalRemaining, personalTotal, isLoading: isQuotaLoading } = useLeaveQuota(userId);
+  const { remainingDays, sickRemaining, annualTotal, sickTaken, sickTotal, personalRemaining, personalTotal, personalTaken, isLoading: isQuotaLoading } = useLeaveQuota(userId);
 
   const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
 
@@ -200,7 +200,7 @@ const Dashboard = () => {
               personalRemaining <= 0 ? (
                 <span className="text-[11px] font-bold text-rose-500 bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-100">วันหยุดหมดแล้ว</span>
               ) : (
-                <><span className="text-3xl font-extrabold text-slate-800">{personalTotal || 0}</span>
+                <><span className="text-3xl font-extrabold text-slate-800">{personalTaken || 0}</span>
                 <span className="text-sm font-medium text-slate-400">{t('days')}</span></>
               )}
           </div>

@@ -13,6 +13,7 @@ interface UseLeaveQuotaResult {
   personalTotal?: number | null;
   isLoading: boolean;
   error: string | null;
+  personalTaken?: number | null;
   refetch: () => void;
 }
 
