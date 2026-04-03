@@ -196,13 +196,10 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="flex items-baseline gap-1 z-10">
-            {isQuotaLoading ? <Skeleton className="h-8 w-16" /> : 
-              personalRemaining <= 0 ? (
-                <span className="text-[11px] font-bold text-rose-500 bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-100">วันหยุดหมดแล้ว</span>
-              ) : (
+            {isQuotaLoading ? <Skeleton className="h-8 w-16" /> : (
                 <><span className="text-3xl font-extrabold text-slate-800">{personalTaken || 0}</span>
                 <span className="text-sm font-medium text-slate-400">{t('days')}</span></>
-              )}
+            )}
           </div>
         </div>
 
