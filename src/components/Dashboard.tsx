@@ -328,7 +328,14 @@ const Dashboard = () => {
                         {isSick ? <Thermometer className="h-5 w-5" /> : isPersonal ? <CalendarDays className="h-5 w-5" /> : <Palmtree className="h-5 w-5" />}
                       </div>
                       <div>
-                        <p className="text-[15px] font-bold text-slate-800 leading-none mb-1.5">{displayType}</p>
+                        <p className="text-[15px] font-bold text-slate-800 leading-none mb-1.5 flex items-center gap-2">
+                          {displayType}
+                          {Number(item.leave_days) === 0.5 && (
+                            <span className="text-[10px] bg-sky-100 text-sky-700 px-2 py-0.5 rounded-md font-bold tracking-wide">
+                              ครึ่งวัน
+                            </span>
+                          )}
+                        </p>
                         <div className="flex items-center gap-1.5 text-slate-500">
                           <Calendar className="h-3 w-3" />
                           <p className="text-[11px] font-medium">{finalDateToShow}</p>
