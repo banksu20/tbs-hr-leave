@@ -451,9 +451,11 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                           borderRadius: "12px",
                         },
                         disabled: {
-                          color: "#cbd5e1",
-                          textDecoration: "line-through",
-                          opacity: "0.5"
+                          color: "#ef4444", 
+                          backgroundColor: "#fee2e2", 
+                          fontWeight: "bold",
+                          borderRadius: "12px",
+                          opacity: "0.9" 
                         }
                       }}
                     />
