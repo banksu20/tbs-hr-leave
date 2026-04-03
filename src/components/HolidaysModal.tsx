@@ -18,14 +18,14 @@ interface Holiday {
   name: string; // ชื่ออังกฤษ
 }
 
+let cachedHolidays: Holiday[] | null = null; 
+
 const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const currentYear = new Date().getFullYear();
 
-  // 🛡️ ข้อมูลสำรอง (Fallback) กรณี API ใช้งานไม่ได้
-  // จะได้ไม่ขึ้นหน้า Error ให้ user ตกใจ
   const fallbackHolidays: Holiday[] = [
     { date: `${currentYear}-01-01`, localName: "วันขึ้นปีใหม่", name: "New Year's Day" },
     { date: `${currentYear}-02-12`, localName: "วันมาฆบูชา (ประมาณการ)", name: "Makha Bucha Day" },
@@ -71,9 +71,8 @@ const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
     
     try {
       
-      const cachedDataHolidays = localStorage.getItem(`holidays_${currentYear}`);
-      if (cachedDataHolidays) {
-        setHolidays(JSON.parse(cachedDataHolidays));
+      if(cachedHolidays){
+        setHolidays(cachedHolidays);
         setLoading(false);
         return;
       }
@@ -87,11 +86,10 @@ const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
       
       const data = await response.json();
 
-      // รวมวันหยุด + เรียงลำดับ
       const allHolidays = [...data, ...companyExtraHolidays];
       allHolidays.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-      localStorage.setItem(`holidays_${currentYear}`, JSON.stringify(allHolidays));
+      cachedHolidays = allHolidays;
 
       setHolidays(allHolidays);
     } catch (err) {
@@ -151,7 +149,6 @@ const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
                   </div>
                 ))
               ) : (
-                // กรณีสุดวิสัยจริงๆ ที่ไม่มีข้อมูลเลย
                 <div className="flex flex-col justify-center items-center py-12 text-red-400 gap-2">
                    <AlertCircle className="h-8 w-8" />
                    <span className="text-xs">ไม่พบข้อมูลวันหยุด</span>
