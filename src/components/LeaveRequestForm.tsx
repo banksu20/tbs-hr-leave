@@ -342,21 +342,9 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
               <Label className="flex items-center gap-2 text-slate-500 font-semibold text-xs uppercase tracking-wider">
                 <FileText className="h-4 w-4 text-sky-500" /> {t('department')}
               </Label>
-              <Select value={formData.department} onValueChange={handleDepartmentChange} disabled={isDepartmentLocked}>
-                <SelectTrigger className={`h-12 rounded-xl text-sm ${isDepartmentLocked ? "font-bold bg-slate-50 border-slate-100 text-slate-700" : "font-bold border-slate-200"}`}>
-                  <SelectValue placeholder={`-- ${t('department')} --`} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="IT">IT</SelectItem>
-                  <SelectItem value="SEO">SEO</SelectItem>
-                  <SelectItem value="Content">Content</SelectItem>
-                  <SelectItem value="PBN">PBN</SelectItem>
-                  <SelectItem value="Graphic">Graphic</SelectItem>
-                  <SelectItem value="SEM">SEM</SelectItem>
-                  <SelectItem value="Sale">Sale</SelectItem>
-                  <SelectItem value="Account">Account</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="px-4 py-3 h-12 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-bold text-sm flex items-center">
+                {formData.department || t('department')}
+              </div>
             </div>
           </div>
 
