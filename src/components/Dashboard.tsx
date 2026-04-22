@@ -31,6 +31,9 @@ const Dashboard = () => {
 
   const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
 
+  const isTechTeam = userDept === "Web Developer" || userDept === "UX/UI Designer";
+  const displayDeptName = isTechTeam ? "DEV & UX/UI" : userDept;
+
   useEffect(() => {
     const initLiff = async () => {
       try {
@@ -237,7 +240,7 @@ const Dashboard = () => {
                   <span className="text-sm font-bold text-white">{t('team_calendar')}</span>
                   {/*  โชว์ชื่อแผนกในปุ่ม เพื่อให้พนักงานรู้ว่ากำลังดูของแผนกไหน */}
                   <span className="text-[11px] font-medium text-blue-100">
-                    {userDept ? `Team Calendar: ${userDept}` : 'Team Leave Calendar'}
+                    {userDept ? `Team Calendar: ${displayDeptName}` : 'Team Leave Calendar'}
                   </span>
                 </div>
               </div>

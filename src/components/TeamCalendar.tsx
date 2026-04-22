@@ -17,24 +17,53 @@ export default function TeamCalendar({ department }: CalendarProps) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
+  const isTechTeam = department === "Web Developer" || department === "UX/UI Designer";
+  const displayDept = isTechTeam ? "DEV & UX/UI" : department;
+
   useEffect(() => {
     if (!department) return;
     
     setIsLoading(true);
-    fetch(`${N8N_URL}/webhook/get-team-calendar?department=${department}&year=${year}&month=${month +1}`, {
-        headers: { "ngrok-skip-browser-warning": "true" }
-    })
-      .then(res => res.json())
-      .then(data => {
+
+    const fetchCalendarData = async () => {
+      try {
+        if (isTechTeam) {
+          const [resDev, resUx] = await Promise.all([
+            fetch(`${N8N_URL}/webhook/get-team-calendar?department=Web Developer&year=${year}&month=${month +1}`, { headers: { "ngrok-skip-browser-warning": "true" } }),
+            fetch(`${N8N_URL}/webhook/get-team-calendar?department=UX/UI Designer&year=${year}&month=${month +1}`, { headers: { "ngrok-skip-browser-warning": "true" } })
+          ]);
+
+          const dataDev = await resDev.json();
+          const dataUx = await resUx.json();
+
+          const mergedData = { ...dataDev };
+          for (const date in dataUx) {
+            if (mergedData[date]) {
+              mergedData[date] = [...mergedData[date], ...dataUx[date]];
+            } else {
+              mergedData[date] = dataUx[date];
+            }
+          }
+          setLeaveData(mergedData);
+
+        } else {
+          // ถ้าเป็นแผนกทั่วไป ดึงปกติ
+          const res = await fetch(`${N8N_URL}/webhook/get-team-calendar?department=${department}&year=${year}&month=${month +1}`, {
+            headers: { "ngrok-skip-browser-warning": "true" }
+          });
+          const data = await res.json();
           setLeaveData(data);
-          setIsLoading(false);
-          setSelectedDay(null);
-      })
-      .catch(err => {
-          console.error("Error fetching team calendar:", err);
-          setIsLoading(false);
-      });
-  }, [department, year, month]);
+        }
+      } catch (err) {
+        console.error("Error fetching team calendar:", err);
+      } finally {
+        setIsLoading(false);
+        setSelectedDay(null);
+      }
+    };
+
+    fetchCalendarData();
+  }, [department, year, month, isTechTeam]);
 
   const getDaysInMonth = (year: number, month: number) => {
     return new Date(year, month + 1, 0).getDate();
@@ -44,7 +73,6 @@ export default function TeamCalendar({ department }: CalendarProps) {
     return new Date(year, month, 1).getDay();
   };
 
-  
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
 
@@ -63,7 +91,8 @@ export default function TeamCalendar({ department }: CalendarProps) {
             <CardTitle className="text-lg text-white font-bold tracking-wide">
               {currentDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
             </CardTitle>
-            <span className="text-[10px] text-sky-400 font-medium tracking-wider uppercase">Team: {department}</span>
+            {/* 🌟 แสดงชื่อทีมที่จัดกลุ่มแล้ว */}
+            <span className="text-[10px] text-sky-400 font-bold tracking-wider uppercase">Team: {displayDept}</span>
           </div>
           <button onClick={nextMonth} className="p-2 hover:bg-slate-700 rounded-full transition-colors text-slate-300">▶</button>
         </div>
