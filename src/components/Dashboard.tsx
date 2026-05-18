@@ -31,8 +31,12 @@ const Dashboard = () => {
 
   const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
 
-  const isTechTeam = userDept === "Web Developer" || userDept === "UX/UI Designer";
-  const displayDeptName = isTechTeam ? "DEV & UX/UI" : userDept;
+  const Boom_userId = "Uc229f2377a2b8839adab478d92c0c26f";
+  const cleanDept = userDept?.trim();
+  const isTechTeam = cleanDept === "Web Developer" || cleanDept === "UX/UI Designer";
+  const isCreativeTeam = userId === Boom_userId && (cleanDept === "Graphic" || cleanDept === "Content");
+  
+  const displayDeptName = isTechTeam ? "DEV & UX/UI" : isCreativeTeam ? "Graphic & Content" : cleanDept;
 
   useEffect(() => {
     const initLiff = async () => {

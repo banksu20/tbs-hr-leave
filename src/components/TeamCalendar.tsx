@@ -20,18 +20,17 @@ export default function TeamCalendar({ department, userId }: CalendarProps) {
 
   const Boom_userId = "Uc229f2377a2b8839adab478d92c0c26f";
 
-  const isTechTeam = department === "Web Developer" || department === "UX/UI Designer";
+  const cleanDept = department?.trim();
+  const isTechTeam = cleanDept === "Web Developer" || cleanDept === "UX/UI Designer";
 
-  const isCreativeTeam = userId === Boom_userId && (department === "Graphic" || department === "Content");
+  const isCreativeTeam = userId === Boom_userId && (cleanDept === "Graphic" || cleanDept === "Content");
 
-  let displayDept = department;
+  let displayDept = cleanDept;
   if (isTechTeam) {
     displayDept = "DEV & UX/UI";
   } else if (isCreativeTeam) {
     displayDept = "Graphic & Content";
   }
-
-
   useEffect(() => {
     if (!department) return;
     
