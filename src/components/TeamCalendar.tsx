@@ -6,9 +6,10 @@ const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "unphotographed-dionna-l
 
 interface CalendarProps {
   department: string;
+  userId?: string;
 }
 
-export default function TeamCalendar({ department }: CalendarProps) {
+export default function TeamCalendar({ department, userId }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [leaveData, setLeaveData] = useState<any>({});
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -17,8 +18,19 @@ export default function TeamCalendar({ department }: CalendarProps) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
+  const Boom_userId = "Uc229f2377a2b8839adab478d92c0c26f";
+
   const isTechTeam = department === "Web Developer" || department === "UX/UI Designer";
-  const displayDept = isTechTeam ? "DEV & UX/UI" : department;
+
+  const isCreativeTeam = userId === Boom_userId && (department === "Graphic" || department === "Content");
+
+  let displayDept = department;
+  if (isTechTeam) {
+    displayDept = "DEV & UX/UI";
+  } else if (isCreativeTeam) {
+    displayDept = "Graphic & Content";
+  }
+
 
   useEffect(() => {
     if (!department) return;
@@ -46,8 +58,24 @@ export default function TeamCalendar({ department }: CalendarProps) {
           }
           setLeaveData(mergedData);
 
+        } else if (isCreativeTeam) {
+          const [resGraphic, resContent] = await Promise.all([
+            fetch(`${N8N_URL}/webhook/get-team-calendar?department=Graphic&year=${year}&month=${month +1}`, { headers: { "ngrok-skip-browser-warning": "true" } }),
+            fetch(`${N8N_URL}/webhook/get-team-calendar?department=Content&year=${year}&month=${month +1}`, { headers: { "ngrok-skip-browser-warning": "true" } })
+          ]);
+          const dataGraphic = await resGraphic.json();
+          const dataContent = await resContent.json();
+
+          const mergedData = { ...dataGraphic };
+          for (const date in dataContent) {
+            if (mergedData[date]) {
+              mergedData[date] = [...mergedData[date], ...dataContent[date]];
+            } else {
+              mergedData[date] = dataContent[date];
+            }
+          }
+          setLeaveData(mergedData);
         } else {
-          // ถ้าเป็นแผนกทั่วไป ดึงปกติ
           const res = await fetch(`${N8N_URL}/webhook/get-team-calendar?department=${department}&year=${year}&month=${month +1}`, {
             headers: { "ngrok-skip-browser-warning": "true" }
           });
@@ -63,7 +91,7 @@ export default function TeamCalendar({ department }: CalendarProps) {
     };
 
     fetchCalendarData();
-  }, [department, year, month, isTechTeam]);
+  }, [department, year, month, isTechTeam, isCreativeTeam]);
 
   const getDaysInMonth = (year: number, month: number) => {
     return new Date(year, month + 1, 0).getDate();
