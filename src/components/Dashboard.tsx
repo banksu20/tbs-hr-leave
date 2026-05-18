@@ -254,7 +254,10 @@ const Dashboard = () => {
              
              {/* โยน userDept เข้าไปให้ TeamCalendar */}
              {userDept ? (
-               <TeamCalendar department={userDept} />
+               <TeamCalendar 
+               department={userDept}
+               userId={userId}
+               />
              ) : (
                <div className="p-8 bg-white rounded-2xl text-center"><Skeleton className="w-full h-64" /></div>
              )}
