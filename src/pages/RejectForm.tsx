@@ -11,7 +11,7 @@ import liff from "@line/liff";
 import { useLanguage } from "@/hooks/useLanguage";
 
 
-const WEBHOOK_SUBMIT_REJECT = "https://unphotographed-dionna-laudable.ngrok-free.dev/webhook/submit-reject";
+const WEBHOOK_SUBMIT_REJECT = "https://contractors-mounts-healthcare-dicke.trycloudflare.com/webhook/submit-reject";
 
 // ฟังก์ชันแปลงประเภทการลาให้เป็น 2 ภาษา
 const formatLeaveType = (type: string | null, language: string) => {
