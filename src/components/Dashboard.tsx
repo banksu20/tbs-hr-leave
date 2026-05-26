@@ -76,18 +76,21 @@ const Dashboard = () => {
   }, [userId]);
 
   const fetchRegisteredName = async (id: string) => {
-    try {
-      const res = await fetch(`${N8N_URL}/webhook/check-user?userId=${id}`, {
-        headers: { "ngrok-skip-browser-warning": "true" }
-      });
-      const data = await res.json();
-      if(data.found) {
-        setRegisteredName(data.name);
-        if (data.department) {
-            setUserDept(data.department);
-        }
+  try {
+    const res = await fetch(`${N8N_URL}/webhook/check-user?userId=${id}`);
+    
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+    
+    const data = await res.json();
+    if(data.found) {
+      setRegisteredName(data.name);
+      if (data.department) {
+          setUserDept(data.department);
       }
-  }catch (err) {
+    }
+  } catch (err) {
     console.error("Error fetching registered name:", err);
   }
 }
