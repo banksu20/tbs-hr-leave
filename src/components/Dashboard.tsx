@@ -29,7 +29,7 @@ const Dashboard = () => {
 
   const { remainingDays, sickRemaining, annualTotal, sickTaken, sickTotal, personalRemaining, personalTotal, personalTaken, isLoading: isQuotaLoading } = useLeaveQuota(userId);
 
-  const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
+  const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://contractors-mounts-healthcare-dicke.trycloudflare.com";
 
   const Boom_userId = "Uc229f2377a2b8839adab478d92c0c26f";
   const cleanDept = userDept?.trim();
