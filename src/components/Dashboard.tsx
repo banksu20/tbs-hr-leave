@@ -29,7 +29,7 @@ const Dashboard = () => {
 
   const { remainingDays, sickRemaining, annualTotal, sickTaken, sickTotal, personalRemaining, personalTotal, personalTaken, isLoading: isQuotaLoading } = useLeaveQuota(userId);
 
-  const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://hr.womenrefugeeroute.org";
+  const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefugeeroute.org";
 
   const Boom_userId = "Uc229f2377a2b8839adab478d92c0c26f";
   const cleanDept = userDept?.trim();

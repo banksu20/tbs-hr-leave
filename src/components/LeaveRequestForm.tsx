@@ -26,7 +26,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 
 
 const LIFF_ID = import.meta.env.VITE_LIFF_ID || "2008617589-89gR1Y3Y";
-const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://hr.womenrefugeeroute.org";
+const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefugeeroute.org";
 
 interface LeaveRequestFormProps {
   userId?: string;

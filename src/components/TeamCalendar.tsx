@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2, X } from "lucide-react";
-const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://hr.womenrefugeeroute.org";
+const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefugeeroute.org";
 
 interface CalendarProps {
   department: string;
