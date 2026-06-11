@@ -20,8 +20,8 @@ import { useLanguage } from "./hooks/useLanguage";
 const queryClient = new QueryClient();
 const LIFF_ID = "2008617589-89gR1Y3Y";
 
-const WEBHOOK_CHECK_USER = "https://contractors-mounts-healthcare-dicke.trycloudflare.com/webhook/check-user";
-const WEBHOOK_REGISTER_USER = "https://contractors-mounts-healthcare-dicke.trycloudflare.com/webhook/register-user";
+const WEBHOOK_CHECK_USER = "https://hr.womenrefugeeroute.org/webhook/check-user";
+const WEBHOOK_REGISTER_USER = "https://hr.womenrefugeeroute.org/webhook/register-user";
 
 const App = () => {
   const [userProfile, setUserProfile] = useState<any>(null);

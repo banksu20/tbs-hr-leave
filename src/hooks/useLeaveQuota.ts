@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://contractors-mounts-healthcare-dicke.trycloudflare.com";
+const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://hr.womenrefugeeroute.org";
 const QUOTA_API_URL = `${N8N_URL}/webhook/get-quota`;
 
 interface UseLeaveQuotaResult {
