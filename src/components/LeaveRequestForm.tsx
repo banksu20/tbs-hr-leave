@@ -419,7 +419,13 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                       disabled={(date) => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
-                        const isPast = date < today;
+                        
+                        // Normalize the date to local midnight to prevent timezone mismatch issues
+                        const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                        const isPast = checkDate < today;
+                        
+                        // Sick leave can be taken retroactively, so we do not disable past dates for it
+                        const isPastDisabled = formData.leaveType === 'sick' ? false : isPast;
                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                         
                         const isTaken = takenDates.some(takenDate => 
@@ -428,7 +434,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                           takenDate.getFullYear() === date.getFullYear()
                         );
                         
-                        return isPast || isWeekend || isTaken;
+                        return isPastDisabled || isWeekend || isTaken;
                       }}
                       modifiers={{
                         taken: takenDates

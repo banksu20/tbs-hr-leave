@@ -1,0 +1,1142 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import liff from "@line/liff";
+import { 
+  Users, Calendar, Clock, Search, Filter, Plus, ArrowLeft,
+  Check, X, Settings, UserPlus, CheckCircle2,
+  XCircle, CalendarDays, Thermometer, Palmtree, Trash2, Edit, Loader2, Lock
+} from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { useLanguage } from "@/hooks/useLanguage";
+import { initialEmployees, Employee, LeaveRecord } from "@/data/mockEmployees";
+import tbsLogo from "@/image/TBS-Logo.png";
+
+const LIFF_ID = "2008617589-89gR1Y3Y";
+
+export default function CeoDashboard() {
+  const navigate = useNavigate();
+  const { language, t } = useLanguage();
+
+  // Authentication states
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [enteredPasscode, setEnteredPasscode] = useState("");
+
+  // Load from localStorage or mock data
+  const [employees, setEmployees] = useState<Employee[]>(() => {
+    const saved = localStorage.getItem("tbs_employees_db");
+    return saved ? JSON.parse(saved) : initialEmployees;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("tbs_employees_db", JSON.stringify(employees));
+  }, [employees]);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("bypass") === "true") {
+        setIsAdmin(true);
+        setCheckingAuth(false);
+        return;
+      }
+      
+      const localPass = localStorage.getItem("tbs_ceo_authenticated");
+      if (localPass === "true") {
+        setIsAdmin(true);
+        setCheckingAuth(false);
+        return;
+      }
+
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if (liff.isLoggedIn()) {
+          const profile = await liff.getProfile();
+          const ceoId = import.meta.env.VITE_CEO_USER_ID || "Uc229f2377a2b8839adab478d92c0c26f";
+          if (profile.userId === ceoId) {
+            setIsAdmin(true);
+            localStorage.setItem("tbs_ceo_authenticated", "true");
+            toast.success("Access Granted: Signed in as CEO");
+          }
+        }
+      } catch (err) {
+        console.error("LIFF Admin check error:", err);
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  const handleUnlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (enteredPasscode === "tbs2026") {
+      setIsAdmin(true);
+      localStorage.setItem("tbs_ceo_authenticated", "true");
+      toast.success("Access Granted");
+    } else {
+      toast.error("Incorrect passcode");
+    }
+  };
+
+  // Search & Filter State
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDept, setSelectedDept] = useState("All");
+  const [activeTab, setActiveTab] = useState<"employees" | "pending">("employees");
+
+  // Modal / Selection State
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
+  const [isAddLeaveOpen, setIsAddLeaveOpen] = useState(false);
+  const [isEditQuotaOpen, setIsEditQuotaOpen] = useState(false);
+
+  // Form States
+  const [newEmpName, setNewEmpName] = useState("");
+  const [newEmpNickname, setNewEmpNickname] = useState("");
+  const [newEmpDept, setNewEmpDept] = useState("Telesales");
+  const [newEmpStartDate, setNewEmpStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newEmpAnnual, setNewEmpAnnual] = useState(12);
+  const [newEmpCarried, setNewEmpCarried] = useState(0);
+
+  const [leaveDate, setLeaveDate] = useState(new Date().toISOString().split("T")[0]);
+  const [leaveType, setLeaveType] = useState<"sick" | "annual" | "personal">("annual");
+  const [leaveDays, setLeaveDays] = useState(1);
+  const [leaveNote, setLeaveNote] = useState("");
+
+  const [quotaAnnual, setQuotaAnnual] = useState(12);
+  const [quotaSick, setQuotaSick] = useState(30);
+  const [quotaPersonal, setQuotaPersonal] = useState(3);
+  const [quotaCarried, setQuotaCarried] = useState(0);
+
+  // Helper date formatter: e.g. "2026-01-19" -> "19-Jan-26"
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "-";
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear().toString().slice(-2);
+    return `${day}-${month}-${year}`;
+  };
+
+  // Helper to sum approved leave days
+  const sumLeaves = (leaves: LeaveRecord[], type: "sick" | "annual" | "personal") => {
+    return leaves
+      .filter((l) => l.type === type && l.status === "Approved")
+      .reduce((sum, item) => sum + item.days, 0);
+  };
+
+  // List of all unique departments for the dropdown
+  const departments = ["All", ...Array.from(new Set(employees.map((e) => e.department)))];
+
+  // Filtered list of employees
+  const filteredEmployees = employees.filter((emp) => {
+    const matchesSearch =
+      emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.nickname.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDept = selectedDept === "All" || emp.department === selectedDept;
+    return matchesSearch && matchesDept;
+  });
+
+  // Calculate statistics
+  const totalEmployees = employees.length;
+  
+  // Pending requests from all employees
+  const allPendingRequests = employees.flatMap((emp) =>
+    emp.leaves
+      .filter((l) => l.status === "Pending")
+      .map((l) => ({ ...l, employeeId: emp.id, employeeName: emp.name, nickname: emp.nickname }))
+  );
+
+  const pendingCount = allPendingRequests.length;
+
+  // On leave today (current date matches leave records)
+  const todayStr = new Date().toISOString().split("T")[0];
+  const onLeaveToday = employees.filter((emp) =>
+    emp.leaves.some((l) => l.date === todayStr && l.status === "Approved")
+  );
+
+  // Actions
+  const handleApproveLeave = (empId: string, leaveId: string) => {
+    setEmployees((prev) =>
+      prev.map((emp) => {
+        if (emp.id !== empId) return emp;
+        return {
+          ...emp,
+          leaves: emp.leaves.map((l) => (l.id === leaveId ? { ...l, status: "Approved" } : l)),
+        };
+      })
+    );
+    toast.success("Leave request approved successfully");
+    // Update active selection modal if open
+    if (selectedEmployee && selectedEmployee.id === empId) {
+      setSelectedEmployee((curr) => {
+        if (!curr) return null;
+        return {
+          ...curr,
+          leaves: curr.leaves.map((l) => (l.id === leaveId ? { ...l, status: "Approved" } : l)),
+        };
+      });
+    }
+  };
+
+  const handleRejectLeave = (empId: string, leaveId: string) => {
+    setEmployees((prev) =>
+      prev.map((emp) => {
+        if (emp.id !== empId) return emp;
+        return {
+          ...emp,
+          leaves: emp.leaves.map((l) => (l.id === leaveId ? { ...l, status: "Rejected" } : l)),
+        };
+      })
+    );
+    toast.error("Leave request rejected");
+    // Update active selection modal if open
+    if (selectedEmployee && selectedEmployee.id === empId) {
+      setSelectedEmployee((curr) => {
+        if (!curr) return null;
+        return {
+          ...curr,
+          leaves: curr.leaves.map((l) => (l.id === leaveId ? { ...l, status: "Rejected" } : l)),
+        };
+      });
+    }
+  };
+
+  const handleAddEmployee = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmpName.trim() || !newEmpNickname.trim()) {
+      toast.error("Please enter both name and nickname");
+      return;
+    }
+
+    const newEmp: Employee = {
+      id: `emp-${Date.now()}`,
+      name: newEmpName,
+      nickname: newEmpNickname,
+      department: newEmpDept,
+      startDate: newEmpStartDate,
+      quotas: {
+        annualTotal: newEmpAnnual,
+        sickTotal: 30,
+        personalTotal: 3,
+        carriedOver: newEmpCarried,
+      },
+      leaves: [],
+    };
+
+    setEmployees((prev) => [...prev, newEmp]);
+    setIsAddEmployeeOpen(false);
+    // Reset form
+    setNewEmpName("");
+    setNewEmpNickname("");
+    setNewEmpDept("Telesales");
+    setNewEmpStartDate(new Date().toISOString().split("T")[0]);
+    setNewEmpAnnual(12);
+    setNewEmpCarried(0);
+    toast.success("New employee added successfully");
+  };
+
+  const handleDeleteEmployee = (empId: string) => {
+    if (window.confirm("Are you sure you want to delete this employee profile? All their leave records will be lost.")) {
+      setEmployees((prev) => prev.filter((e) => e.id !== empId));
+      setSelectedEmployee(null);
+      toast.success("Employee profile deleted successfully");
+    }
+  };
+
+  const handleAddManualLeave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEmployee) return;
+
+    const newLeave: LeaveRecord = {
+      id: `l-${Date.now()}`,
+      date: leaveDate,
+      type: leaveType,
+      days: Number(leaveDays),
+      note: leaveNote,
+      status: "Approved", // CEO adds directly as Approved
+    };
+
+    setEmployees((prev) =>
+      prev.map((emp) => {
+        if (emp.id !== selectedEmployee.id) return emp;
+        return {
+          ...emp,
+          leaves: [newLeave, ...emp.leaves],
+        };
+      })
+    );
+
+    setSelectedEmployee((curr) => {
+      if (!curr) return null;
+      return {
+        ...curr,
+        leaves: [newLeave, ...curr.leaves],
+      };
+    });
+
+    setIsAddLeaveOpen(false);
+    setLeaveNote("");
+    setLeaveDays(1);
+    toast.success("Manual leave record added successfully");
+  };
+
+  const handleUpdateQuota = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEmployee) return;
+
+    setEmployees((prev) =>
+      prev.map((emp) => {
+        if (emp.id !== selectedEmployee.id) return emp;
+        return {
+          ...emp,
+          quotas: {
+            annualTotal: quotaAnnual,
+            sickTotal: quotaSick,
+            personalTotal: quotaPersonal,
+            carriedOver: quotaCarried,
+          },
+        };
+      })
+    );
+
+    setSelectedEmployee((curr) => {
+      if (!curr) return null;
+      return {
+        ...curr,
+        quotas: {
+          annualTotal: quotaAnnual,
+          sickTotal: quotaSick,
+          personalTotal: quotaPersonal,
+          carriedOver: quotaCarried,
+        },
+      };
+    });
+
+    setIsEditQuotaOpen(false);
+    toast.success("Leave quotas updated successfully");
+  };
+
+  // Open Quota edit dialog pre-filled
+  const openQuotaEdit = () => {
+    if (!selectedEmployee) return;
+    setQuotaAnnual(selectedEmployee.quotas.annualTotal);
+    setQuotaSick(selectedEmployee.quotas.sickTotal);
+    setQuotaPersonal(selectedEmployee.quotas.personalTotal);
+    setQuotaCarried(selectedEmployee.quotas.carriedOver);
+    setIsEditQuotaOpen(true);
+  };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
+        <Loader2 className="w-12 h-12 text-amber-400 animate-spin mb-4" />
+        <p className="text-slate-400 font-medium text-lg">Checking CEO Credentials...</p>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-slate-50/50 flex flex-col items-center justify-center font-inter-system font-normal p-4">
+        <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-2xl p-8 shadow-md">
+          <div className="flex flex-col items-center text-center mt-2 mb-6">
+            <div className="bg-slate-50 p-4 rounded-full text-slate-600 mb-4 border border-slate-100">
+              <Lock className="w-6 h-6" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-800 tracking-tight">CEO Portal Access Control</h2>
+            <p className="text-sm text-slate-500 mt-2 max-w-[320px]">
+              This portal is restricted to the CEO and executives only. Please enter the passcode to access.
+            </p>
+          </div>
+
+          <form onSubmit={handleUnlock} className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Passcode</label>
+              <Input
+                type="password"
+                value={enteredPasscode}
+                onChange={(e) => setEnteredPasscode(e.target.value)}
+                placeholder="Enter admin passcode..."
+                className="bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 h-12 rounded-lg focus-visible:ring-slate-900 text-center font-bold tracking-widest text-base"
+              />
+            </div>
+            
+            <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold h-12 rounded-lg shadow-sm mt-3 text-sm">
+              Sign In
+            </Button>
+          </form>
+
+          <div className="flex justify-center items-center mt-8 pt-5 border-t border-slate-100">
+            <img src={tbsLogo} alt="TBS Logo" className="h-6 w-auto opacity-50 grayscale" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50/50 flex flex-col font-inter-system font-normal pb-12 text-sm">
+      {/* Header Banner */}
+      <div className="bg-white border-b border-slate-200/60 py-5 px-8 shadow-sm">
+        <div className="max-w-6xl mx-auto flex justify-between items-center gap-4">
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">
+              TBS Employee System
+            </p>
+            <h1 className="text-lg font-bold tracking-tight text-slate-800 mt-0.5">
+              CEO Dashboard & Admin Portal
+            </h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => {
+                localStorage.removeItem("tbs_ceo_authenticated");
+                setIsAdmin(false);
+                toast.info("Logged out successfully");
+              }}
+              className="text-xs font-bold text-slate-500 hover:text-slate-700 border border-slate-200 hover:bg-slate-50 px-3.5 py-2 rounded-lg transition-colors flex items-center gap-2"
+              title="Log Out"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              Log Out
+            </button>
+            <img src={tbsLogo} alt="TBS Logo" className="h-6 w-auto opacity-60 grayscale" />
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl w-full mx-auto px-6 mt-8">
+        {/* Statistics Bar */}
+        <div className="grid grid-cols-3 gap-8 border-b border-slate-200/80 pb-8 mb-8">
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Employees</span>
+            <h3 className="text-2xl font-bold text-slate-800">{totalEmployees} Employees</h3>
+          </div>
+          <div className="space-y-1.5 border-l border-slate-200/60 pl-8">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">On Leave Today</span>
+            <h3 className="text-2xl font-bold text-slate-800">{onLeaveToday.length} On Leave</h3>
+            {onLeaveToday.length > 0 && (
+              <p className="text-xs text-slate-400 font-medium mt-1">({onLeaveToday.map(e => e.nickname).join(", ")})</p>
+            )}
+          </div>
+          <div className="space-y-1.5 border-l border-slate-200/60 pl-8">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pending Requests</span>
+            <h3 className="text-2xl font-bold text-slate-800">{pendingCount} Requests</h3>
+          </div>
+        </div>
+
+        {/* Tab Controls */}
+        <div className="flex border-b border-slate-200 mb-8 gap-8 px-1">
+          <button
+            onClick={() => setActiveTab("employees")}
+            className={`pb-4 text-sm font-bold transition-all relative ${
+              activeTab === "employees"
+                ? "text-slate-800 border-b-2 border-slate-900"
+                : "text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            Employee Directory & Quotas
+          </button>
+          <button
+            onClick={() => setActiveTab("pending")}
+            className={`pb-4 text-sm font-bold transition-all relative ${
+              activeTab === "pending"
+                ? "text-slate-800 border-b-2 border-slate-900"
+                : "text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            Pending Leave Requests
+            {pendingCount > 0 && (
+              <span className="ml-2 px-2 py-0.5 bg-rose-500 text-white text-[10px] rounded-full">
+                {pendingCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Tab 1: Employee List Table */}
+        {activeTab === "employees" && (
+          <div className="space-y-6">
+            {/* Search & Filter Bar */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto flex-1">
+                {/* Search */}
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Search by name or nickname..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 h-10 bg-white border-slate-200 focus-visible:ring-slate-900 rounded-lg text-sm"
+                  />
+                </div>
+                {/* Department Dropdown */}
+                <div className="relative w-full sm:w-56 flex items-center">
+                  <select
+                    value={selectedDept}
+                    onChange={(e) => setSelectedDept(e.target.value)}
+                    className="pl-3.5 pr-8 w-full h-10 bg-white border border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-900 rounded-lg text-sm text-slate-600 appearance-none cursor-pointer"
+                  >
+                    {departments.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept === "All" ? "All Departments" : dept}
+                      </option>
+                    ))}
+                  </select>
+                  <Filter className="absolute right-3.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Add Employee Action */}
+              <Dialog open={isAddEmployeeOpen} onOpenChange={setIsAddEmployeeOpen}>
+                <DialogTrigger asChild>
+                  <Button className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white font-bold h-10 px-5 rounded-lg text-sm flex items-center justify-center gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    Add Employee
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md bg-white rounded-xl p-6 border border-slate-100">
+                  <DialogHeader>
+                    <DialogTitle className="text-base font-bold text-slate-800">
+                      Add New Employee
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-slate-500">
+                      Fill in the details to create a new employee profile.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleAddEmployee} className="space-y-5 mt-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</label>
+                      <Input
+                        value={newEmpName}
+                        onChange={(e) => setNewEmpName(e.target.value)}
+                        placeholder="e.g. Orathai Sangwannum"
+                        className="h-10 bg-slate-50 text-sm rounded-lg border-slate-200"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nickname</label>
+                      <Input
+                        value={newEmpNickname}
+                        onChange={(e) => setNewEmpNickname(e.target.value)}
+                        placeholder="e.g. Orn"
+                        className="h-10 bg-slate-50 text-sm rounded-lg border-slate-200"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
+                        <select
+                          value={newEmpDept}
+                          onChange={(e) => setNewEmpDept(e.target.value)}
+                          className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none"
+                        >
+                          <option value="Telesales">Telesales</option>
+                          <option value="Web Developer">Web Developer</option>
+                          <option value="UX/UI Designer">UX/UI Designer</option>
+                          <option value="Graphic">Graphic</option>
+                          <option value="Content">Content</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Start Date</label>
+                        <Input
+                          type="date"
+                          value={newEmpStartDate}
+                          onChange={(e) => setNewEmpStartDate(e.target.value)}
+                          className="h-10 bg-slate-50 text-sm rounded-lg border-slate-200"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Annual Leave Quota</label>
+                        <Input
+                          type="number"
+                          value={newEmpAnnual}
+                          onChange={(e) => setNewEmpAnnual(Number(e.target.value))}
+                          className="h-10 bg-slate-50 text-sm rounded-lg border-slate-200"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Carried Over Leave</label>
+                        <Input
+                          type="number"
+                          value={newEmpCarried}
+                          onChange={(e) => setNewEmpCarried(Number(e.target.value))}
+                          className="h-10 bg-slate-50 text-sm rounded-lg border-slate-200"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-3 justify-end pt-4">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setIsAddEmployeeOpen(false)}
+                        className="rounded-lg font-bold text-sm h-10"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-sm h-10"
+                      >
+                        Save Profile
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* Employee List Table (Clean, Minimal, spacious) */}
+            <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm">
+              <Table>
+                <TableHeader className="bg-slate-50/70 border-b border-slate-100">
+                  <TableRow className="hover:bg-transparent border-b-0">
+                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider pl-6 py-5">Employee</TableHead>
+                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-5">Annual Leave</TableHead>
+                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-5">Sick Leave</TableHead>
+                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-5">Personal Leave</TableHead>
+                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider text-right pr-6 py-5">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredEmployees.map((emp) => {
+                    const sickTaken = sumLeaves(emp.leaves, "sick");
+                    const annualTaken = sumLeaves(emp.leaves, "annual");
+                    const personalTaken = sumLeaves(emp.leaves, "personal");
+
+                    const totalAnnualQuota = emp.quotas.annualTotal + emp.quotas.carriedOver;
+                    const annualRemain = totalAnnualQuota - annualTaken;
+                    const personalRemain = emp.quotas.personalTotal - personalTaken;
+
+                    return (
+                      <TableRow
+                        key={emp.id}
+                        onClick={() => setSelectedEmployee(emp)}
+                        className="border-b border-slate-150 hover:bg-slate-50/45 transition-colors cursor-pointer"
+                      >
+                        <TableCell className="pl-6 py-5">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-600 text-sm">
+                              {emp.nickname[0]}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-800 text-sm">
+                                {emp.name} ({emp.nickname})
+                              </p>
+                              <div className="flex items-center gap-3 mt-1.5">
+                                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                  {emp.department}
+                                </span>
+                                <span className="text-xs text-slate-400 font-medium">
+                                  Started: {formatDate(emp.startDate)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-5">
+                          <p className="text-sm font-bold text-slate-800">
+                            {annualTaken} / {totalAnnualQuota} <span className="text-slate-400 font-normal">days</span>
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1 font-medium">
+                            {annualRemain} days left {emp.quotas.carriedOver > 0 && `(carried over: ${emp.quotas.carriedOver})`}
+                          </p>
+                        </TableCell>
+                        <TableCell className="py-5">
+                          <p className="text-sm font-bold text-slate-800">
+                            {sickTaken} / {emp.quotas.sickTotal} <span className="text-slate-400 font-normal">days</span>
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1 font-medium">
+                            {emp.quotas.sickTotal - sickTaken} days left
+                          </p>
+                        </TableCell>
+                        <TableCell className="py-5">
+                          <p className="text-sm font-bold text-slate-800">
+                            {personalTaken} / {emp.quotas.personalTotal} <span className="text-slate-400 font-normal">days</span>
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1 font-medium">
+                            {personalRemain} days left
+                          </p>
+                        </TableCell>
+                        <TableCell className="text-right pr-6 py-5">
+                          <span className="text-sm font-bold text-slate-400 hover:text-slate-900 group-hover:translate-x-1 transition-all">
+                            View Logs ➔
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {filteredEmployees.length === 0 && (
+              <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm">
+                <Users className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium text-sm">No employees found</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Pending Requests */}
+        {activeTab === "pending" && (
+          <Card className="bg-white border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
+            <CardHeader className="p-6 pb-2">
+              <CardTitle className="text-base font-bold text-slate-800">
+                Pending Leave Requests Queue
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 pt-2">
+              {allPendingRequests.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-slate-50">
+                      <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                        <TableHead className="font-bold text-slate-500 text-sm">Employee Name</TableHead>
+                        <TableHead className="font-bold text-slate-500 text-sm">Leave Type</TableHead>
+                        <TableHead className="font-bold text-slate-500 text-sm">Leave Date</TableHead>
+                        <TableHead className="font-bold text-slate-500 text-sm">Duration</TableHead>
+                        <TableHead className="font-bold text-slate-500 text-sm">Remarks</TableHead>
+                        <TableHead className="font-bold text-slate-500 text-sm text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {allPendingRequests.map((req) => {
+                        return (
+                          <TableRow key={req.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                            <TableCell className="font-bold text-slate-800 text-sm">
+                              {req.employeeName} ({req.nickname})
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={`border-0 rounded-md font-bold text-xs px-2 py-0.5 ${
+                                req.type === "sick" 
+                                  ? "bg-rose-50 text-rose-600" 
+                                  : req.type === "personal" 
+                                    ? "bg-amber-50 text-amber-600" 
+                                    : "bg-sky-50 text-sky-600"
+                              }`}>
+                                {req.type === "sick" ? "Sick" : req.type === "personal" ? "Personal" : "Annual"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-medium text-slate-600 text-sm">
+                              {formatDate(req.date)}
+                            </TableCell>
+                            <TableCell className="font-bold text-slate-800 text-sm">
+                              {req.days} day(s)
+                            </TableCell>
+                            <TableCell className="text-sm text-slate-500 max-w-[200px] truncate" title={req.note}>
+                              {req.note || "-"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  onClick={() => handleApproveLeave(req.employeeId, req.id)}
+                                  size="sm"
+                                  className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg px-3 py-1.5 h-9 text-xs font-bold flex items-center gap-1"
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  onClick={() => handleRejectLeave(req.employeeId, req.id)}
+                                  size="sm"
+                                  className="bg-rose-500 hover:bg-rose-600 text-white rounded-lg px-3 py-1.5 h-9 text-xs font-bold flex items-center gap-1"
+                                >
+                                  Reject
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-12 opacity-70">
+                  <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
+                  <p className="text-sm font-semibold text-slate-500">
+                    No pending leave requests at the moment.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Employee Detail Drawer / Dialog */}
+      {selectedEmployee && (
+        <Dialog open={!!selectedEmployee} onOpenChange={(open) => !open && setSelectedEmployee(null)}>
+          <DialogContent className="max-w-4xl bg-white rounded-xl p-6 border border-slate-100 overflow-y-auto max-h-[90vh]">
+            <DialogHeader className="border-b border-slate-100 pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <DialogTitle className="text-base font-bold text-slate-800">
+                  Leave History: {selectedEmployee.name} ({selectedEmployee.nickname})
+                </DialogTitle>
+                <div className="flex flex-wrap gap-2.5 mt-2">
+                  <Badge className="bg-slate-100 border-0 text-slate-600 text-xs font-bold px-3 py-1 rounded-md">
+                    Dept: {selectedEmployee.department}
+                  </Badge>
+                  <Badge className="bg-slate-50 border-0 text-slate-500 text-xs font-medium px-3 py-1 rounded-md">
+                    Started: {formatDate(selectedEmployee.startDate)}
+                  </Badge>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={openQuotaEdit}
+                  variant="outline"
+                  className="rounded-lg border-slate-200 text-slate-600 font-bold text-sm h-10 px-4"
+                >
+                  Adjust Quota
+                </Button>
+                <Button
+                  onClick={() => setIsAddLeaveOpen(true)}
+                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-sm h-10 px-4 flex items-center gap-1.5"
+                >
+                  <Plus className="h-4 w-4" />
+                  Log Manual Leave
+                </Button>
+              </div>
+            </DialogHeader>
+
+            {/* Content block: Quota cards on top, History table on bottom */}
+            <div className="space-y-8 mt-6">
+              {/* Individual Quota Summary Cards */}
+              <div className="grid grid-cols-3 gap-6">
+                {/* Annual */}
+                <div className="border border-slate-100 bg-slate-50/50 p-5 rounded-xl flex flex-col justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Annual Leave</span>
+                  <div className="flex items-baseline gap-1 mt-3">
+                    <span className="text-2xl font-bold text-slate-800">
+                      {sumLeaves(selectedEmployee.leaves, "annual")}
+                    </span>
+                    <span className="text-sm font-bold text-slate-400">
+                      / {selectedEmployee.quotas.annualTotal + selectedEmployee.quotas.carriedOver} days
+                    </span>
+                  </div>
+                </div>
+
+                {/* Sick */}
+                <div className="border border-slate-100 bg-slate-50/50 p-5 rounded-xl flex flex-col justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sick Leave</span>
+                  <div className="flex items-baseline gap-1 mt-3">
+                    <span className="text-2xl font-bold text-slate-800">
+                      {sumLeaves(selectedEmployee.leaves, "sick")}
+                    </span>
+                    <span className="text-sm font-bold text-slate-400">
+                      / {selectedEmployee.quotas.sickTotal} days
+                    </span>
+                  </div>
+                </div>
+
+                {/* Personal */}
+                <div className="border border-slate-100 bg-slate-50/50 p-5 rounded-xl flex flex-col justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Personal Leave</span>
+                  <div className="flex items-baseline gap-1 mt-3">
+                    <span className="text-2xl font-bold text-slate-800">
+                      {sumLeaves(selectedEmployee.leaves, "personal")}
+                    </span>
+                    <span className="text-sm font-bold text-slate-400">
+                      / {selectedEmployee.quotas.personalTotal} days
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* History Table */}
+              <div className="space-y-3">
+                <h5 className="font-bold text-slate-700 text-xs uppercase tracking-wide px-1">
+                  Remarks & Detailed Leave Logs
+                </h5>
+                <div className="border border-slate-100 rounded-xl overflow-hidden max-h-[300px] overflow-y-auto">
+                  <Table>
+                    <TableHeader className="bg-slate-50/80 sticky top-0 backdrop-blur-sm z-10">
+                      <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                        <TableHead className="font-bold text-slate-500 text-xs py-3">Date</TableHead>
+                        <TableHead className="font-bold text-slate-500 text-xs py-3">Type</TableHead>
+                        <TableHead className="font-bold text-slate-500 text-xs py-3">Duration</TableHead>
+                        <TableHead className="font-bold text-slate-500 text-xs py-3">Remarks / Notes</TableHead>
+                        <TableHead className="font-bold text-slate-500 text-xs py-3">Status</TableHead>
+                        <TableHead className="font-bold text-slate-500 text-xs py-3 text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedEmployee.leaves.length > 0 ? (
+                        selectedEmployee.leaves.map((l) => {
+                          const isApproved = l.status === "Approved";
+                          const isRejected = l.status === "Rejected" || l.status.includes("ปฏิเสธ");
+                          const isPending = l.status === "Pending";
+
+                          return (
+                            <TableRow key={l.id} className="border-b border-slate-50 hover:bg-slate-50/30">
+                              <TableCell className="font-medium text-slate-700 text-sm py-3">
+                                {formatDate(l.date)}
+                              </TableCell>
+                              <TableCell className="py-3">
+                                <span className={`text-xs font-bold ${
+                                  l.type === "sick" ? "text-rose-500" : l.type === "personal" ? "text-amber-500" : "text-sky-500"
+                                }`}>
+                                  {l.type === "sick" ? "Sick" : l.type === "personal" ? "Personal" : "Annual"}
+                                </span>
+                              </TableCell>
+                              <TableCell className="font-bold text-slate-800 text-sm py-3">
+                                {l.days} day(s)
+                              </TableCell>
+                              <TableCell className="text-sm text-slate-600 py-3 max-w-[220px] truncate" title={l.note}>
+                                {l.note || "-"}
+                              </TableCell>
+                              <TableCell className="py-3">
+                                <Badge className={`border-0 rounded-md font-bold text-[10px] px-2.5 py-1 ${
+                                  isApproved 
+                                    ? "bg-emerald-50 text-emerald-600" 
+                                    : isRejected 
+                                      ? "bg-rose-50 text-rose-600" 
+                                      : "bg-amber-50 text-amber-600"
+                                }`}>
+                                  {isApproved ? "Approved" : isRejected ? "Rejected" : "Pending"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="py-3 text-right">
+                                {isPending ? (
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      onClick={() => handleApproveLeave(selectedEmployee.id, l.id)}
+                                      className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-md transition-colors"
+                                      title="Approve"
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleRejectLeave(selectedEmployee.id, l.id)}
+                                      className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-md transition-colors"
+                                      title="Reject"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      // Toggle approve / reject as simple action for already processed leaves
+                                      if (isApproved) {
+                                        handleRejectLeave(selectedEmployee.id, l.id);
+                                      } else {
+                                        handleApproveLeave(selectedEmployee.id, l.id);
+                                      }
+                                    }}
+                                    className="text-xs text-slate-400 hover:text-slate-600 underline font-bold"
+                                  >
+                                    Change Status
+                                  </button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-slate-400 text-sm">
+                            No leave history recorded for this employee.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Danger zone footer: Delete employee */}
+              <div className="pt-5 border-t border-slate-100 flex justify-between items-center">
+                <span className="text-xs text-slate-400">
+                  Employee ID: {selectedEmployee.id}
+                </span>
+                <Button
+                  onClick={() => handleDeleteEmployee(selectedEmployee.id)}
+                  variant="ghost"
+                  className="text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg font-bold text-xs h-9 flex items-center gap-1.5"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Employee Profile
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Dialog: Add Leave Record Manually */}
+      {selectedEmployee && isAddLeaveOpen && (
+        <Dialog open={isAddLeaveOpen} onOpenChange={setIsAddLeaveOpen}>
+          <DialogContent className="max-w-md bg-white rounded-xl p-6 border border-slate-100">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-800">
+                Log Manual Leave Record
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-505">
+                Log a manual leave record for {selectedEmployee.name} directly into the database (automatically approved).
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleAddManualLeave} className="space-y-5 mt-2">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500">Leave Date</label>
+                <Input
+                  type="date"
+                  value={leaveDate}
+                  onChange={(e) => setLeaveDate(e.target.value)}
+                  className="h-10 bg-slate-50 text-sm border-slate-200 rounded-lg"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500">Leave Type</label>
+                  <select
+                    value={leaveType}
+                    onChange={(e) => setLeaveType(e.target.value as any)}
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none"
+                  >
+                    <option value="annual">Annual Leave</option>
+                    <option value="sick">Sick Leave</option>
+                    <option value="personal">Personal Leave</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500">Duration</label>
+                  <select
+                    value={leaveDays}
+                    onChange={(e) => setLeaveDays(Number(e.target.value))}
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none"
+                  >
+                    <option value={1}>1 Day</option>
+                    <option value={0.5}>0.5 Day (Half Day)</option>
+                    <option value={0.25}>0.25 Day (2 Hours)</option>
+                    <option value={2}>2 Days</option>
+                    <option value={3}>3 Days</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500">Remarks / Notes</label>
+                <Input
+                  value={leaveNote}
+                  onChange={(e) => setLeaveNote(e.target.value)}
+                  placeholder="e.g., Doctor appointment, Vacation, Personal errand..."
+                  className="h-10 bg-slate-50 text-sm border-slate-200 rounded-lg"
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end pt-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsAddLeaveOpen(false)}
+                  className="rounded-lg font-bold text-sm h-10"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-sm h-10"
+                >
+                  Submit Record
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Dialog: Edit Quota */}
+      {selectedEmployee && isEditQuotaOpen && (
+        <Dialog open={isEditQuotaOpen} onOpenChange={setIsEditQuotaOpen}>
+          <DialogContent className="max-w-md bg-white rounded-xl p-6 border border-slate-100">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-800">
+                Adjust Leave Quotas
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                Adjust the allowed annual leave limits for {selectedEmployee.name}.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUpdateQuota} className="space-y-5 mt-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500">Annual Leave Limit</label>
+                  <Input
+                    type="number"
+                    value={quotaAnnual}
+                    onChange={(e) => setQuotaAnnual(Number(e.target.value))}
+                    className="h-10 bg-slate-50 text-sm border-slate-200 rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500">Carried Over Limit</label>
+                  <Input
+                    type="number"
+                    value={quotaCarried}
+                    onChange={(e) => setQuotaCarried(Number(e.target.value))}
+                    className="h-10 bg-slate-50 text-sm border-slate-200 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500">Sick Leave Limit (days/year)</label>
+                  <Input
+                    type="number"
+                    value={quotaSick}
+                    onChange={(e) => setQuotaSick(Number(e.target.value))}
+                    className="h-10 bg-slate-50 text-sm border-slate-200 rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500">Personal Leave Limit (days/year)</label>
+                  <Input
+                    type="number"
+                    value={quotaPersonal}
+                    onChange={(e) => setQuotaPersonal(Number(e.target.value))}
+                    className="h-10 bg-slate-50 text-sm border-slate-200 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end pt-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsEditQuotaOpen(false)}
+                  className="rounded-lg font-bold text-sm h-10"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-sm h-10"
+                >
+                  Update Quotas
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}

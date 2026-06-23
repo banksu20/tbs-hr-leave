@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import liff from "@line/liff";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Thermometer, Palmtree, CalendarDays, Calendar, CheckCircle2, Clock, XCircle, Users } from "lucide-react";
@@ -14,6 +14,7 @@ const LIFF_ID = "2008617589-89gR1Y3Y";
 
 const Dashboard = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [showHolidaysModal, setShowHolidaysModal] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("");
@@ -37,6 +38,7 @@ const Dashboard = () => {
   const isCreativeTeam = userId === Boom_userId && (cleanDept === "Graphic" || cleanDept === "Content");
   
   const displayDeptName = isTechTeam ? "DEV & UX/UI" : isCreativeTeam ? "Graphic & Content" : cleanDept;
+  const isCeo = userId === (import.meta.env.VITE_CEO_USER_ID || "Uc229f2377a2b8839adab478d92c0c26f") || import.meta.env.DEV;
 
   useEffect(() => {
     const initLiff = async () => {
@@ -148,6 +150,25 @@ const Dashboard = () => {
 
       {/* Quota & Holiday Grid */}
       <div className="px-4 mt-6 flex flex-col gap-3">
+        {isCeo && (
+          <button
+            onClick={() => navigate("/ceo")}
+            className="w-full bg-slate-900 text-amber-400 p-4 rounded-2xl shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform border border-slate-800"
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-amber-400/20 p-2.5 rounded-xl text-amber-400 border border-amber-400/30">
+                <Users className="h-5 w-5" />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-sm font-bold text-white font-sans">ระบบจัดการหลังบ้าน (CEO Portal)</span>
+                <span className="text-[11px] font-medium text-slate-400 font-sans">เข้าสู่ระบบจัดการข้อมูลและวันลาพนักงาน</span>
+              </div>
+            </div>
+            <div className="bg-amber-400 text-slate-950 px-3 py-1.5 rounded-full text-xs font-bold font-sans">
+              เข้าใช้งาน ➔
+            </div>
+          </button>
+        )}
         <div className="grid grid-cols-2 gap-3">
           
           {/* Sick Quota Card */}
