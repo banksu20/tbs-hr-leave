@@ -1,304 +1,573 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import liff from "@line/liff";
+﻿import { useState, useEffect } from "react";
 import { 
-  Users, Calendar, Clock, Search, Filter, Plus, ArrowLeft,
-  Check, X, Settings, UserPlus, CheckCircle2,
-  XCircle, CalendarDays, Thermometer, Palmtree, Trash2, Edit, Loader2, Lock
+  Users, Calendar, Clock, Plus, Trash2, Edit, FileText,
+  Search, AlertCircle, CheckCircle2, LayoutGrid, BarChart3,
+  AlertTriangle, TrendingUp, Palmtree, Thermometer, CalendarDays,
+  Building, RotateCw, ShieldCheck, FileSpreadsheet, Upload, Download, Sparkles, Check, ArrowRight, ChevronRight, Filter, UserPlus
 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import * as XLSX from "xlsx";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { useLanguage } from "@/hooks/useLanguage";
 import { initialEmployees, Employee, LeaveRecord } from "@/data/mockEmployees";
 import tbsLogo from "@/image/TBS-Logo.png";
 
-const LIFF_ID = "2008617589-89gR1Y3Y";
+import { fetchPostgresLiveData } from "@/lib/postgresApi";
+
+const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefugeeroute.org";
 
 export default function CeoDashboard() {
-  const navigate = useNavigate();
-  const { language, t } = useLanguage();
+  // Selected Year & Department Filters
+  const [selectedYear, setSelectedYear] = useState<"2026" | "2025">("2026");
+  const [selectedDept, setSelectedDept] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Authentication states
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
-  const [enteredPasscode, setEnteredPasscode] = useState("");
+  // Modals & Forms
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
+  const [isAddEmpModalOpen, setIsAddEmpModalOpen] = useState<boolean>(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+  const [importText, setImportText] = useState<string>("");
 
-  // Load from localStorage or mock data
+  // Sync & Import States
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
+  const [previewGrid, setPreviewGrid] = useState<string[][]>([]);
+  const [previewHeaders, setPreviewHeaders] = useState<string[]>([]);
+  const [currentImportFileName, setCurrentImportFileName] = useState<string>("");
+  
+  const [pendingWorkbook, setPendingWorkbook] = useState<any>(null);
+  const [sheetNames, setSheetNames] = useState<string[]>([]);
+  const [isSheetSelectModalOpen, setIsSheetSelectModalOpen] = useState<boolean>(false);
+
+  // Column indexes for import mapping
+  const [mapIdIdx, setMapIdIdx] = useState<number>(0);
+  const [mapFnIdx, setMapFnIdx] = useState<number>(1);
+  const [mapLnIdx, setMapLnIdx] = useState<number>(2);
+  const [mapNickIdx, setMapNickIdx] = useState<number>(3);
+  const [mapDeptIdx, setMapDeptIdx] = useState<number>(4);
+
+  // Form States for Add Leave in Modal
+  const [modalLeaveForm, setModalLeaveForm] = useState({ date: "", sick: "", annual: "", personal: "", note: "" });
+
+  // Form States for Add & Edit Profile
+  const [newEmpCode, setNewEmpCode] = useState("");
+  const [newEmpName, setNewEmpName] = useState("");
+  const [newEmpNickname, setNewEmpNickname] = useState("");
+  const [newEmpDept, setNewEmpDept] = useState("SEO");
+  const [newEmpStartDate, setNewEmpStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newEmpAnnual, setNewEmpAnnual] = useState(12);
+  const [newEmpSick, setNewEmpSick] = useState(30);
+  const [newEmpPersonal, setNewEmpPersonal] = useState(3);
+  const [newEmpCarried, setNewEmpCarried] = useState(0);
+
+  const [editEmpCode, setEditEmpCode] = useState("");
+  const [editEmpName, setEditEmpName] = useState("");
+  const [editEmpNickname, setEditEmpNickname] = useState("");
+  const [editEmpDept, setEditEmpDept] = useState("SEO");
+  const [editEmpStartDate, setEditEmpStartDate] = useState("");
+  const [quotaAnnual, setQuotaAnnual] = useState(12);
+  const [quotaSick, setQuotaSick] = useState(30);
+  const [quotaPersonal, setQuotaPersonal] = useState(3);
+  const [quotaCarried, setQuotaCarried] = useState(0);
+
+  // Departments List
+  const departments = ["All", "SEO", "Web Developer", "UX/UI Designer", "Graphic", "Content", "PBN", "SEM", "Account", "Sale"];
+
+  // Load from localStorage or default mock data
   const [employees, setEmployees] = useState<Employee[]>(() => {
     const saved = localStorage.getItem("tbs_employees_db");
-    return saved ? JSON.parse(saved) : initialEmployees;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {
+        console.error("Error parsing saved DB:", e);
+      }
+    }
+    return initialEmployees;
   });
 
   useEffect(() => {
     localStorage.setItem("tbs_employees_db", JSON.stringify(employees));
   }, [employees]);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("bypass") === "true") {
-        setIsAdmin(true);
-        setCheckingAuth(false);
-        return;
-      }
-      
-      const localPass = localStorage.getItem("tbs_ceo_authenticated");
-      if (localPass === "true") {
-        setIsAdmin(true);
-        setCheckingAuth(false);
-        return;
-      }
-
-      try {
-        await liff.init({ liffId: LIFF_ID });
-        if (liff.isLoggedIn()) {
-          const profile = await liff.getProfile();
-          const ceoId = import.meta.env.VITE_CEO_USER_ID || "Uc229f2377a2b8839adab478d92c0c26f";
-          if (profile.userId === ceoId) {
-            setIsAdmin(true);
-            localStorage.setItem("tbs_ceo_authenticated", "true");
-            toast.success("Access Granted: Signed in as CEO");
-          }
-        }
-      } catch (err) {
-        console.error("LIFF Admin check error:", err);
-      } finally {
-        setCheckingAuth(false);
-      }
-    };
-    checkAuth();
-  }, []);
-
-  const handleUnlock = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (enteredPasscode === "tbs2026") {
-      setIsAdmin(true);
-      localStorage.setItem("tbs_ceo_authenticated", "true");
-      toast.success("Access Granted");
-    } else {
-      toast.error("Incorrect passcode");
-    }
-  };
-
-  // Search & Filter State
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedDept, setSelectedDept] = useState("All");
-  const [activeTab, setActiveTab] = useState<"employees" | "pending">("employees");
-
-  // Modal / Selection State
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
-  const [isAddLeaveOpen, setIsAddLeaveOpen] = useState(false);
-  const [isEditQuotaOpen, setIsEditQuotaOpen] = useState(false);
-
-  // Form States
-  const [newEmpName, setNewEmpName] = useState("");
-  const [newEmpNickname, setNewEmpNickname] = useState("");
-  const [newEmpDept, setNewEmpDept] = useState("Telesales");
-  const [newEmpStartDate, setNewEmpStartDate] = useState(new Date().toISOString().split("T")[0]);
-  const [newEmpAnnual, setNewEmpAnnual] = useState(12);
-  const [newEmpCarried, setNewEmpCarried] = useState(0);
-
-  const [leaveDate, setLeaveDate] = useState(new Date().toISOString().split("T")[0]);
-  const [leaveType, setLeaveType] = useState<"sick" | "annual" | "personal">("annual");
-  const [leaveDays, setLeaveDays] = useState(1);
-  const [leaveNote, setLeaveNote] = useState("");
-
-  const [quotaAnnual, setQuotaAnnual] = useState(12);
-  const [quotaSick, setQuotaSick] = useState(30);
-  const [quotaPersonal, setQuotaPersonal] = useState(3);
-  const [quotaCarried, setQuotaCarried] = useState(0);
-
-  // Helper date formatter: e.g. "2026-01-19" -> "19-Jan-26"
-  const formatDate = (dateStr: string) => {
+  // Date & Calculation Helpers
+  function formatDate(dateStr: string) {
     if (!dateStr) return "-";
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return dateStr;
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const day = date.getDate();
-    const month = months[date.getMonth()];
-    const year = date.getFullYear().toString().slice(-2);
-    return `${day}-${month}-${year}`;
-  };
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  }
 
-  // Helper to sum approved leave days
-  const sumLeaves = (leaves: LeaveRecord[], type: "sick" | "annual" | "personal") => {
+  function sumLeaves(leaves: LeaveRecord[] | undefined, type: string, year: string) {
+    if (!leaves || !Array.isArray(leaves)) return 0;
     return leaves
-      .filter((l) => l.type === type && l.status === "Approved")
-      .reduce((sum, item) => sum + item.days, 0);
-  };
+      .filter((l) => l.type === type && l.date && l.date.includes(year) && (l.status === "Approved" || !l.status))
+      .reduce((sum, l) => sum + (l.days || 0), 0);
+  }
 
-  // List of all unique departments for the dropdown
-  const departments = ["All", ...Array.from(new Set(employees.map((e) => e.department)))];
+  // Calculate Summary Metrics
+  const totalEmployeesCount = employees.length;
+  let totalSickTaken = 0;
+  let totalAnnualTaken = 0;
+  let totalPersonalTaken = 0;
 
-  // Filtered list of employees
-  const filteredEmployees = employees.filter((emp) => {
-    const matchesSearch =
-      emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.nickname.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDept = selectedDept === "All" || emp.department === selectedDept;
-    return matchesSearch && matchesDept;
+  const todayIso = new Date().toISOString().split("T")[0];
+  const onLeaveToday = employees.filter((emp) =>
+    emp.leaves ? emp.leaves.some((l) => (l.status === "Approved" || !l.status) && (l.date === todayIso || l.date.includes(todayIso))) : false
+  );
+
+  const quotaAlertList: { emp: Employee; type: string; remain: number }[] = [];
+
+  employees.forEach((emp) => {
+    const sTaken = sumLeaves(emp.leaves, "sick", selectedYear);
+    const aTaken = sumLeaves(emp.leaves, "annual", selectedYear);
+    const pTaken = sumLeaves(emp.leaves, "personal", selectedYear);
+
+    totalSickTaken += sTaken;
+    totalAnnualTaken += aTaken;
+    totalPersonalTaken += pTaken;
+
+    const aGranted = emp.quotas.annualTotal + emp.quotas.carriedOver;
+    const aRemain = aGranted - aTaken;
+    const sRemain = emp.quotas.sickTotal - sTaken;
+    const pRemain = emp.quotas.personalTotal - pTaken;
+
+    if (aRemain < 0 || sRemain < 0 || pRemain < 0) {
+      quotaAlertList.push({ emp, type: "Over Quota", remain: Math.min(aRemain, sRemain, pRemain) });
+    }
   });
 
-  // Calculate statistics
-  const totalEmployees = employees.length;
-  
-  // Pending requests from all employees
-  const allPendingRequests = employees.flatMap((emp) =>
-    emp.leaves
-      .filter((l) => l.status === "Pending")
-      .map((l) => ({ ...l, employeeId: emp.id, employeeName: emp.name, nickname: emp.nickname }))
-  );
+  const totalAllTaken = totalSickTaken + totalAnnualTaken + totalPersonalTaken;
 
-  const pendingCount = allPendingRequests.length;
+  // Filtered employees
+  const filteredEmployees = employees.filter((emp) => {
+    const matchesDept = selectedDept === "All" || emp.department === selectedDept;
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = 
+      !q ||
+      emp.name.toLowerCase().includes(q) ||
+      emp.nickname.toLowerCase().includes(q) ||
+      emp.empCode.toLowerCase().includes(q) ||
+      emp.department.toLowerCase().includes(q);
 
-  // On leave today (current date matches leave records)
-  const todayStr = new Date().toISOString().split("T")[0];
-  const onLeaveToday = employees.filter((emp) =>
-    emp.leaves.some((l) => l.date === todayStr && l.status === "Approved")
-  );
+    return matchesDept && matchesSearch;
+  });
 
-  // Actions
-  const handleApproveLeave = (empId: string, leaveId: string) => {
-    setEmployees((prev) =>
-      prev.map((emp) => {
-        if (emp.id !== empId) return emp;
-        return {
-          ...emp,
-          leaves: emp.leaves.map((l) => (l.id === leaveId ? { ...l, status: "Approved" } : l)),
-        };
-      })
-    );
-    toast.success("Leave request approved successfully");
-    // Update active selection modal if open
-    if (selectedEmployee && selectedEmployee.id === empId) {
-      setSelectedEmployee((curr) => {
-        if (!curr) return null;
-        return {
-          ...curr,
-          leaves: curr.leaves.map((l) => (l.id === leaveId ? { ...l, status: "Approved" } : l)),
-        };
-      });
+  // Sync Data
+  const handleSyncData = async () => {
+    setIsSyncing(true);
+    try {
+      const data = await fetchPostgresLiveData();
+      if (data && Array.isArray(data) && data.length > 0) {
+        const mappedEmployees: Employee[] = data.map((item: any, idx: number) => {
+          const id = item.id || item.UserID || item.userId || `U_pg_${idx}`;
+          const empCode = item.empCode || item.emp_code || `TBS-${String(idx + 1).padStart(3, "0")}`;
+          const name = item.name || `${item.FirstName || ""} ${item.LastName || ""}`.trim() || item.Nickname || `Employee ${idx + 1}`;
+          const nickname = item.nickname || item.Nickname || item.FirstName || name;
+          const department = item.department || item.Department || "General";
+
+          const quotas = {
+            annualTotal: item.annualTotal ?? item.annual_total ?? 12,
+            sickTotal: item.sickTotal ?? item.sick_total ?? 30,
+            personalTotal: item.personalTotal ?? item.personal_total ?? 3,
+            carriedOver: item.carriedOver ?? item.carried_over ?? 0,
+          };
+
+          const rawLeaves = Array.isArray(item.leaves) ? item.leaves : [];
+          const leaves: LeaveRecord[] = rawLeaves.map((l: any, lIdx: number) => ({
+            id: l.id || `l_pg_${idx}_${lIdx}`,
+            date: l.date || l.leave_date || l.leaveDate || "2026-01-01",
+            type: (l.type || l.leave_type || "annual") === "vacation" ? "annual" : (l.type || l.leave_type || "annual"),
+            days: parseFloat(l.days || l.leaveDays || 1),
+            note: l.note || l.reason || "",
+            status: l.status || "Approved",
+          }));
+
+          return {
+            id, empCode, name, nickname, department,
+            startDate: item.startDate || item.start_date || "2025-01-01",
+            quotas, leaves,
+          };
+        });
+
+        setEmployees(mappedEmployees);
+        localStorage.setItem("tbs_employees_db", JSON.stringify(mappedEmployees));
+        toast.success("Synced latest live leave records!");
+      }
+    } catch (err) {
+      toast.error("Failed to sync live data");
+    } finally {
+      setIsSyncing(false);
     }
   };
 
-  const handleRejectLeave = (empId: string, leaveId: string) => {
-    setEmployees((prev) =>
-      prev.map((emp) => {
-        if (emp.id !== empId) return emp;
-        return {
-          ...emp,
-          leaves: emp.leaves.map((l) => (l.id === leaveId ? { ...l, status: "Rejected" } : l)),
-        };
-      })
-    );
-    toast.error("Leave request rejected");
-    // Update active selection modal if open
-    if (selectedEmployee && selectedEmployee.id === empId) {
-      setSelectedEmployee((curr) => {
-        if (!curr) return null;
-        return {
-          ...curr,
-          leaves: curr.leaves.map((l) => (l.id === leaveId ? { ...l, status: "Rejected" } : l)),
-        };
-      });
+  // Import Handlers
+  const parseGoogleSheetGridToEmployees = (grid: string[][], sourceName: string = new Date().getFullYear().toString()) => {
+    const parsedEmployees: Employee[] = [];
+    const seenNames = new Set<string>();
+
+    for (let r = 0; r < grid.length; r++) {
+      const row = grid[r] || [];
+      for (let c = 0; c < row.length; c++) {
+        const cell = String(row[c] || "").trim();
+        if (/^name\s*:/i.test(cell) || cell.toLowerCase() === "name") {
+          let nameText = cell.replace(/name\s*:?/gi, "").trim();
+          if (!nameText && row[c + 1]) nameText = String(row[c + 1] || "").trim();
+
+          if (nameText && nameText.length > 1 && nameText.length < 50 && !seenNames.has(nameText.toLowerCase())) {
+            seenNames.add(nameText.toLowerCase());
+
+            const parts = nameText.split(/[()]/).map((p) => p.trim()).filter(Boolean);
+            const fullName = parts[0] || nameText;
+            const nickname = parts[1] || parts[0] || nameText;
+
+            const existing = employees.find(
+              (e) => e.name.toLowerCase().includes(fullName.toLowerCase()) || e.nickname.toLowerCase() === nickname.toLowerCase()
+            );
+
+            const empId = existing ? existing.id : `U_gs_${c}_${Date.now()}`;
+            const empCode = existing ? existing.empCode : `TBS-${String(parsedEmployees.length + 1).padStart(3, "0")}`;
+            const dept = existing ? existing.department : "General";
+
+            let startDate = "2025-01-01";
+            if (grid[r + 1]) {
+              const dateCell = String(grid[r + 1][c] || "").trim();
+              if (dateCell.toLowerCase().includes("start date")) {
+                const sDateMatch = dateCell.replace(/start date\s*:?/gi, "").trim();
+                if (sDateMatch) startDate = sDateMatch;
+              }
+            }
+
+            let sickTotal = 30;
+            let annualTotal = 12;
+            let personalTotal = 3;
+
+            for (let checkR = r + 1; checkR <= Math.min(grid.length - 1, r + 200); checkR++) {
+              const checkRow = grid[checkR] || [];
+              const label = String(checkRow[c] || "").trim().toLowerCase();
+              if (label.includes("all leave getting per year") || label.includes("all leave")) {
+                const s = parseFloat(String(checkRow[c + 1]));
+                const a = parseFloat(String(checkRow[c + 2]));
+                const p = parseFloat(String(checkRow[c + 3]));
+                if (!isNaN(s)) sickTotal = s;
+                if (!isNaN(a)) annualTotal = a;
+                if (!isNaN(p)) personalTotal = p;
+                break;
+              }
+            }
+
+            const leaves: LeaveRecord[] = [];
+            for (let lr = r + 1; lr < grid.length; lr++) {
+              const lRow = grid[lr] || [];
+              const dateStr = String(lRow[c] || "").trim();
+              const sickVal = String(lRow[c + 1] || "").trim();
+              const annualVal = String(lRow[c + 2] || "").trim();
+              const personalVal = String(lRow[c + 3] || "").trim();
+              const noteVal = String(lRow[c + 4] || "").trim();
+
+              if (dateStr.toLowerCase().includes("name") || dateStr.toLowerCase().includes("total remain")) {
+                if (lr > r + 3) break;
+              }
+
+              const dateStrLower = dateStr.toLowerCase();
+              if (
+                dateStr &&
+                !dateStrLower.includes("start date") &&
+                !dateStrLower.includes("date") &&
+                !dateStrLower.includes("all leave") &&
+                !dateStrLower.includes("total taken") &&
+                !dateStrLower.includes("total remain") &&
+                (sickVal || annualVal || personalVal || noteVal)
+              ) {
+                let type: "sick" | "annual" | "personal" = "annual";
+                let days = 1;
+                if (sickVal) { type = "sick"; days = parseFloat(sickVal) || 1; }
+                else if (personalVal) { type = "personal"; days = parseFloat(personalVal) || 1; }
+                else if (annualVal) { type = "annual"; days = parseFloat(annualVal) || 1; }
+
+                leaves.push({
+                  id: `l_gs_${c}_${lr}_${Date.now()}`,
+                  date: dateStr,
+                  type: type,
+                  days: days,
+                  note: noteVal,
+                  status: "Approved",
+                });
+              }
+            }
+
+            parsedEmployees.push({
+              id: empId, empCode, name: fullName, nickname, department: dept, startDate,
+              quotas: { annualTotal, sickTotal, personalTotal, carriedOver: existing?.quotas.carriedOver || 0 },
+              leaves,
+            });
+          }
+        }
+      }
+    }
+
+    if (parsedEmployees.length > 0) {
+      setEmployees(parsedEmployees);
+      localStorage.setItem("tbs_employees_db", JSON.stringify(parsedEmployees));
+      setIsImportModalOpen(false);
+      setIsSheetSelectModalOpen(false);
+      setIsPreviewOpen(false);
+      
+      const yearMatch = sourceName.match(/\d{4}/);
+      if (yearMatch && (yearMatch[0] === "2025" || yearMatch[0] === "2026")) {
+        setSelectedYear(yearMatch[0] as "2025" | "2026");
+      }
+      toast.success(`Successfully imported ${parsedEmployees.length} employee leave profiles!`);
+    } else {
+      toast.error("Could not parse leave report from sheet.");
     }
   };
 
-  const handleAddEmployee = (e: React.FormEvent) => {
+  const processSheet = (workbook: any, sheetName: string, fileName: string) => {
+    try {
+      const worksheet = workbook.Sheets[sheetName];
+      const rawGrid: string[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
+      
+      const isComplexLeaveReport = rawGrid.some(row => 
+        row.some(cell => typeof cell === 'string' && (cell.toLowerCase().includes('total remain') || cell.toLowerCase().includes('all leave')))
+      );
+
+      if (isComplexLeaveReport) {
+        parseGoogleSheetGridToEmployees(rawGrid, sheetName);
+      } else {
+        processRawGridForMapping(rawGrid, fileName);
+      }
+    } catch (err) {
+      toast.error(`Failed to process sheet: ${sheetName}`);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileName = file.name;
+    const isExcel = fileName.toLowerCase().endsWith(".xlsx") || fileName.toLowerCase().endsWith(".xls");
+    const reader = new FileReader();
+
+    if (isExcel) {
+      reader.onload = (event) => {
+        try {
+          const buffer = event.target?.result as ArrayBuffer;
+          const workbook = XLSX.read(buffer, { type: "array" });
+          
+          if (workbook.SheetNames.length > 1) {
+            setPendingWorkbook(workbook);
+            setSheetNames(workbook.SheetNames);
+            setCurrentImportFileName(fileName);
+            setIsSheetSelectModalOpen(true);
+          } else {
+            processSheet(workbook, workbook.SheetNames[0], fileName);
+          }
+        } catch (err) {
+          toast.error("Failed to read Microsoft Excel file.");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        if (content) {
+          const lines = content.split(/\r?\n/).filter((l) => l.trim().length > 0);
+          let delimiter = ",";
+          if (lines[0]?.includes("\t")) delimiter = "\t";
+          const grid = lines.map((line) => line.split(delimiter).map((c) => c.trim().replace(/^"|"$/g, '')));
+          parseGoogleSheetGridToEmployees(grid, fileName);
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const processRawGridForMapping = (grid: string[][], fileName: string) => {
+    if (!grid || grid.length === 0) return;
+    const cleanGrid = grid.map((r) => r.map((cell) => String(cell || "").trim())).filter((r) => r.some((c) => c.length > 0));
+    if (cleanGrid.length === 0) return;
+
+    const headers = cleanGrid[0].map((h, i) => h || `Column ${i + 1}`);
+    setPreviewGrid(cleanGrid);
+    setPreviewHeaders(headers);
+    setCurrentImportFileName(fileName);
+
+    setIsImportModalOpen(false);
+    setIsPreviewOpen(true);
+  };
+
+  const confirmColumnMappingImport = () => {
+    if (previewGrid.length < 2) return;
+    const dataRows = previewGrid.slice(1);
+    const imported: Employee[] = [];
+
+    dataRows.forEach((row, idx) => {
+      const fn = mapFnIdx !== -1 && row[mapFnIdx] ? row[mapFnIdx] : "";
+      const nick = mapNickIdx !== -1 && row[mapNickIdx] ? row[mapNickIdx] : "";
+      const dept = mapDeptIdx !== -1 && row[mapDeptIdx] ? row[mapDeptIdx] : "General";
+
+      if (fn || nick) {
+        imported.push({
+          id: `U_imp_${idx}_${Date.now()}`,
+          empCode: `TBS-${String(imported.length + 1).padStart(3, "0")}`,
+          name: fn || nick,
+          nickname: nick || fn,
+          department: dept,
+          startDate: "2025-01-01",
+          quotas: { annualTotal: 12, sickTotal: 30, personalTotal: 3, carriedOver: 0 },
+          leaves: [],
+        });
+      }
+    });
+
+    if (imported.length > 0) {
+      setEmployees(imported);
+      localStorage.setItem("tbs_employees_db", JSON.stringify(imported));
+      toast.success(`Imported ${imported.length} employee records!`);
+      setIsPreviewOpen(false);
+    }
+  };
+
+  const handleImportPastedText = () => {
+    if (!importText.trim()) return;
+    const lines = importText.trim().split(/\r?\n/).filter((l) => l.trim().length > 0);
+    let delimiter = "\t";
+    if (lines[0]?.includes(",")) delimiter = ",";
+    const grid = lines.map((line) => line.split(delimiter).map((c) => c.trim().replace(/^"|"$/g, '')));
+    parseGoogleSheetGridToEmployees(grid, "Pasted Sheet Text");
+  };
+
+  const handleClearAllData = () => {
+    if (confirm("Clear all employee records?")) {
+      setEmployees([]);
+      localStorage.removeItem("tbs_employees_db");
+      toast.success("All data cleared!");
+    }
+  };
+
+  const handleAddEmployeeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEmpName.trim() || !newEmpNickname.trim()) {
-      toast.error("Please enter both name and nickname");
+    if (!newEmpName.trim() || !newEmpNickname.trim() || !newEmpCode.trim()) {
+      toast.error("Please fill in Code, Name and Nickname");
       return;
     }
 
     const newEmp: Employee = {
-      id: `emp-${Date.now()}`,
+      id: `U_${Date.now()}`,
+      empCode: newEmpCode,
       name: newEmpName,
       nickname: newEmpNickname,
       department: newEmpDept,
       startDate: newEmpStartDate,
       quotas: {
         annualTotal: newEmpAnnual,
-        sickTotal: 30,
-        personalTotal: 3,
+        sickTotal: newEmpSick,
+        personalTotal: newEmpPersonal,
         carriedOver: newEmpCarried,
       },
       leaves: [],
     };
 
-    setEmployees((prev) => [...prev, newEmp]);
-    setIsAddEmployeeOpen(false);
-    // Reset form
+    setEmployees(prev => [newEmp, ...prev]);
+    setIsAddEmpModalOpen(false);
+    setNewEmpCode("");
     setNewEmpName("");
     setNewEmpNickname("");
-    setNewEmpDept("Telesales");
-    setNewEmpStartDate(new Date().toISOString().split("T")[0]);
-    setNewEmpAnnual(12);
-    setNewEmpCarried(0);
-    toast.success("New employee added successfully");
+    toast.success("Employee profile added successfully!");
   };
 
-  const handleDeleteEmployee = (empId: string) => {
-    if (window.confirm("Are you sure you want to delete this employee profile? All their leave records will be lost.")) {
-      setEmployees((prev) => prev.filter((e) => e.id !== empId));
-      setSelectedEmployee(null);
-      toast.success("Employee profile deleted successfully");
-    }
-  };
-
-  const handleAddManualLeave = (e: React.FormEvent) => {
+  const handleAddLeaveModalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEmployee) return;
+    if (!selectedEmployee || !modalLeaveForm.date.trim()) {
+      toast.error("Please enter a date");
+      return;
+    }
 
-    const newLeave: LeaveRecord = {
-      id: `l-${Date.now()}`,
-      date: leaveDate,
-      type: leaveType,
-      days: Number(leaveDays),
-      note: leaveNote,
-      status: "Approved", // CEO adds directly as Approved
-    };
+    const sickVal = parseFloat(modalLeaveForm.sick) || 0;
+    const annualVal = parseFloat(modalLeaveForm.annual) || 0;
+    const personalVal = parseFloat(modalLeaveForm.personal) || 0;
+
+    if (sickVal <= 0 && annualVal <= 0 && personalVal <= 0) {
+      toast.error("Please enter leave days");
+      return;
+    }
+
+    const newRecords: LeaveRecord[] = [];
+    if (sickVal > 0) newRecords.push({ id: Date.now().toString() + "_s", date: modalLeaveForm.date, type: "sick", days: sickVal, note: modalLeaveForm.note, status: "Approved" });
+    if (annualVal > 0) newRecords.push({ id: Date.now().toString() + "_a", date: modalLeaveForm.date, type: "annual", days: annualVal, note: modalLeaveForm.note, status: "Approved" });
+    if (personalVal > 0) newRecords.push({ id: Date.now().toString() + "_p", date: modalLeaveForm.date, type: "personal", days: personalVal, note: modalLeaveForm.note, status: "Approved" });
 
     setEmployees((prev) =>
       prev.map((emp) => {
         if (emp.id !== selectedEmployee.id) return emp;
-        return {
-          ...emp,
-          leaves: [newLeave, ...emp.leaves],
-        };
+        const updatedLeaves = [...(emp.leaves || []), ...newRecords];
+        setSelectedEmployee({ ...emp, leaves: updatedLeaves });
+        return { ...emp, leaves: updatedLeaves };
       })
     );
 
-    setSelectedEmployee((curr) => {
-      if (!curr) return null;
-      return {
-        ...curr,
-        leaves: [newLeave, ...curr.leaves],
-      };
-    });
+    setModalLeaveForm({ date: "", sick: "", annual: "", personal: "", note: "" });
+    toast.success("Leave record added!");
+  };
 
-    setIsAddLeaveOpen(false);
-    setLeaveNote("");
-    setLeaveDays(1);
-    toast.success("Manual leave record added successfully");
+  const handleDeleteLeave = (empId: string, leaveId: string) => {
+    if (confirm("Delete this leave record?")) {
+      setEmployees((prev) =>
+        prev.map((emp) => {
+          if (emp.id !== empId) return emp;
+          const updatedLeaves = emp.leaves.filter((l) => l.id !== leaveId);
+          if (selectedEmployee && selectedEmployee.id === empId) {
+            setSelectedEmployee({ ...selectedEmployee, leaves: updatedLeaves });
+          }
+          return { ...emp, leaves: updatedLeaves };
+        })
+      );
+      toast.success("Leave record deleted");
+    }
+  };
+
+  const handleDeleteEmployee = (empId: string) => {
+    if (confirm("Delete this employee profile?")) {
+      setEmployees((prev) => prev.filter((e) => e.id !== empId));
+      if (selectedEmployee?.id === empId) setSelectedEmployee(null);
+      toast.success("Employee deleted");
+    }
+  };
+
+  const openEditQuotaModal = (emp: Employee) => {
+    setEditingEmp(emp);
+    setEditEmpCode(emp.empCode || "");
+    setEditEmpName(emp.name);
+    setEditEmpNickname(emp.nickname);
+    setEditEmpDept(emp.department);
+    setEditEmpStartDate(emp.startDate);
+    setQuotaAnnual(emp.quotas.annualTotal);
+    setQuotaSick(emp.quotas.sickTotal);
+    setQuotaPersonal(emp.quotas.personalTotal);
+    setQuotaCarried(emp.quotas.carriedOver);
   };
 
   const handleUpdateQuota = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEmployee) return;
+    if (!editingEmp) return;
 
     setEmployees((prev) =>
       prev.map((emp) => {
-        if (emp.id !== selectedEmployee.id) return emp;
-        return {
+        if (emp.id !== editingEmp.id) return emp;
+        const updated = {
           ...emp,
+          empCode: editEmpCode,
+          name: editEmpName,
+          nickname: editEmpNickname,
+          department: editEmpDept,
+          startDate: editEmpStartDate,
           quotas: {
             annualTotal: quotaAnnual,
             sickTotal: quotaSick,
@@ -306,837 +575,670 @@ export default function CeoDashboard() {
             carriedOver: quotaCarried,
           },
         };
+        if (selectedEmployee?.id === emp.id) setSelectedEmployee(updated);
+        return updated;
       })
     );
 
-    setSelectedEmployee((curr) => {
-      if (!curr) return null;
-      return {
-        ...curr,
-        quotas: {
-          annualTotal: quotaAnnual,
-          sickTotal: quotaSick,
-          personalTotal: quotaPersonal,
-          carriedOver: quotaCarried,
-        },
-      };
-    });
-
-    setIsEditQuotaOpen(false);
-    toast.success("Leave quotas updated successfully");
+    setEditingEmp(null);
+    toast.success("Profile & quotas updated");
   };
-
-  // Open Quota edit dialog pre-filled
-  const openQuotaEdit = () => {
-    if (!selectedEmployee) return;
-    setQuotaAnnual(selectedEmployee.quotas.annualTotal);
-    setQuotaSick(selectedEmployee.quotas.sickTotal);
-    setQuotaPersonal(selectedEmployee.quotas.personalTotal);
-    setQuotaCarried(selectedEmployee.quotas.carriedOver);
-    setIsEditQuotaOpen(true);
-  };
-
-  if (checkingAuth) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
-        <Loader2 className="w-12 h-12 text-amber-400 animate-spin mb-4" />
-        <p className="text-slate-400 font-medium text-lg">Checking CEO Credentials...</p>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-slate-50/50 flex flex-col items-center justify-center font-inter-system font-normal p-4">
-        <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-2xl p-8 shadow-md">
-          <div className="flex flex-col items-center text-center mt-2 mb-6">
-            <div className="bg-slate-50 p-4 rounded-full text-slate-600 mb-4 border border-slate-100">
-              <Lock className="w-6 h-6" />
-            </div>
-            <h2 className="text-lg font-bold text-slate-800 tracking-tight">CEO Portal Access Control</h2>
-            <p className="text-sm text-slate-500 mt-2 max-w-[320px]">
-              This portal is restricted to the CEO and executives only. Please enter the passcode to access.
-            </p>
-          </div>
-
-          <form onSubmit={handleUnlock} className="space-y-5">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Passcode</label>
-              <Input
-                type="password"
-                value={enteredPasscode}
-                onChange={(e) => setEnteredPasscode(e.target.value)}
-                placeholder="Enter admin passcode..."
-                className="bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 h-12 rounded-lg focus-visible:ring-slate-900 text-center font-bold tracking-widest text-base"
-              />
-            </div>
-            
-            <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold h-12 rounded-lg shadow-sm mt-3 text-sm">
-              Sign In
-            </Button>
-          </form>
-
-          <div className="flex justify-center items-center mt-8 pt-5 border-t border-slate-100">
-            <img src={tbsLogo} alt="TBS Logo" className="h-6 w-auto opacity-50 grayscale" />
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 flex flex-col font-inter-system font-normal pb-12 text-sm">
-      {/* Header Banner */}
-      <div className="bg-white border-b border-slate-200/60 py-5 px-8 shadow-sm">
-        <div className="max-w-6xl mx-auto flex justify-between items-center gap-4">
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">
-              TBS Employee System
-            </p>
-            <h1 className="text-lg font-bold tracking-tight text-slate-800 mt-0.5">
-              CEO Dashboard & Admin Portal
-            </h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => {
-                localStorage.removeItem("tbs_ceo_authenticated");
-                setIsAdmin(false);
-                toast.info("Logged out successfully");
-              }}
-              className="text-xs font-bold text-slate-500 hover:text-slate-700 border border-slate-200 hover:bg-slate-50 px-3.5 py-2 rounded-lg transition-colors flex items-center gap-2"
-              title="Log Out"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              Log Out
-            </button>
-            <img src={tbsLogo} alt="TBS Logo" className="h-6 w-auto opacity-60 grayscale" />
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-6xl w-full mx-auto px-6 mt-8">
-        {/* Statistics Bar */}
-        <div className="grid grid-cols-3 gap-8 border-b border-slate-200/80 pb-8 mb-8">
-          <div className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Employees</span>
-            <h3 className="text-2xl font-bold text-slate-800">{totalEmployees} Employees</h3>
-          </div>
-          <div className="space-y-1.5 border-l border-slate-200/60 pl-8">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">On Leave Today</span>
-            <h3 className="text-2xl font-bold text-slate-800">{onLeaveToday.length} On Leave</h3>
-            {onLeaveToday.length > 0 && (
-              <p className="text-xs text-slate-400 font-medium mt-1">({onLeaveToday.map(e => e.nickname).join(", ")})</p>
-            )}
-          </div>
-          <div className="space-y-1.5 border-l border-slate-200/60 pl-8">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pending Requests</span>
-            <h3 className="text-2xl font-bold text-slate-800">{pendingCount} Requests</h3>
-          </div>
-        </div>
-
-        {/* Tab Controls */}
-        <div className="flex border-b border-slate-200 mb-8 gap-8 px-1">
-          <button
-            onClick={() => setActiveTab("employees")}
-            className={`pb-4 text-sm font-bold transition-all relative ${
-              activeTab === "employees"
-                ? "text-slate-800 border-b-2 border-slate-900"
-                : "text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            Employee Directory & Quotas
-          </button>
-          <button
-            onClick={() => setActiveTab("pending")}
-            className={`pb-4 text-sm font-bold transition-all relative ${
-              activeTab === "pending"
-                ? "text-slate-800 border-b-2 border-slate-900"
-                : "text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            Pending Leave Requests
-            {pendingCount > 0 && (
-              <span className="ml-2 px-2 py-0.5 bg-rose-500 text-white text-[10px] rounded-full">
-                {pendingCount}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Tab 1: Employee List Table */}
-        {activeTab === "employees" && (
-          <div className="space-y-6">
-            {/* Search & Filter Bar */}
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto flex-1">
-                {/* Search */}
-                <div className="relative w-full sm:w-72">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input
-                    placeholder="Search by name or nickname..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 h-10 bg-white border-slate-200 focus-visible:ring-slate-900 rounded-lg text-sm"
-                  />
-                </div>
-                {/* Department Dropdown */}
-                <div className="relative w-full sm:w-56 flex items-center">
-                  <select
-                    value={selectedDept}
-                    onChange={(e) => setSelectedDept(e.target.value)}
-                    className="pl-3.5 pr-8 w-full h-10 bg-white border border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-900 rounded-lg text-sm text-slate-600 appearance-none cursor-pointer"
+    <div className="min-h-screen bg-slate-100 font-sans text-slate-900 pb-16">
+      
+      {/* 1. Top Executive Navigation Header */}
+      <header className="bg-slate-900 text-white sticky top-0 z-30 shadow-md border-b border-slate-800">
+        <div className="h-1 w-full bg-gradient-to-r from-[#00B5E2] via-[#F5A623] to-[#68BD24]"></div>
+        <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between gap-4">
+          
+          {/* Logo & Year Switcher */}
+          <div className="flex items-center gap-3">
+            <div className="bg-white p-1 rounded shadow-xs">
+              <img src={tbsLogo} alt="TBS Logo" className="h-6 w-auto object-contain" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-extrabold text-white tracking-tight">CEO Leave Management Portal</h1>
+                <div className="flex bg-slate-800 p-0.5 rounded border border-slate-700">
+                  <button
+                    onClick={() => setSelectedYear("2026")}
+                    className={`px-2.5 py-0.5 text-xs font-bold rounded transition-colors ${
+                      selectedYear === "2026" ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"
+                    }`}
                   >
-                    {departments.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept === "All" ? "All Departments" : dept}
-                      </option>
-                    ))}
-                  </select>
-                  <Filter className="absolute right-3.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                    2026
+                  </button>
+                  <button
+                    onClick={() => setSelectedYear("2025")}
+                    className={`px-2.5 py-0.5 text-xs font-bold rounded transition-colors ${
+                      selectedYear === "2025" ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    2025
+                  </button>
                 </div>
               </div>
+              <p className="text-[10px] text-slate-400 font-medium">TBS Marketing &bull; Executive Data System</p>
+            </div>
+          </div>
 
-              {/* Add Employee Action */}
-              <Dialog open={isAddEmployeeOpen} onOpenChange={setIsAddEmployeeOpen}>
-                <DialogTrigger asChild>
-                  <Button className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white font-bold h-10 px-5 rounded-lg text-sm flex items-center justify-center gap-2">
-                    <UserPlus className="h-4 w-4" />
-                    Add Employee
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md bg-white rounded-xl p-6 border border-slate-100">
-                  <DialogHeader>
-                    <DialogTitle className="text-base font-bold text-slate-800">
-                      Add New Employee
-                    </DialogTitle>
-                    <DialogDescription className="text-xs text-slate-500">
-                      Fill in the details to create a new employee profile.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleAddEmployee} className="space-y-5 mt-2">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</label>
-                      <Input
-                        value={newEmpName}
-                        onChange={(e) => setNewEmpName(e.target.value)}
-                        placeholder="e.g. Orathai Sangwannum"
-                        className="h-10 bg-slate-50 text-sm rounded-lg border-slate-200"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nickname</label>
-                      <Input
-                        value={newEmpNickname}
-                        onChange={(e) => setNewEmpNickname(e.target.value)}
-                        placeholder="e.g. Orn"
-                        className="h-10 bg-slate-50 text-sm rounded-lg border-slate-200"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
-                        <select
-                          value={newEmpDept}
-                          onChange={(e) => setNewEmpDept(e.target.value)}
-                          className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none"
-                        >
-                          <option value="Telesales">Telesales</option>
-                          <option value="Web Developer">Web Developer</option>
-                          <option value="UX/UI Designer">UX/UI Designer</option>
-                          <option value="Graphic">Graphic</option>
-                          <option value="Content">Content</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Start Date</label>
-                        <Input
-                          type="date"
-                          value={newEmpStartDate}
-                          onChange={(e) => setNewEmpStartDate(e.target.value)}
-                          className="h-10 bg-slate-50 text-sm rounded-lg border-slate-200"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Annual Leave Quota</label>
-                        <Input
-                          type="number"
-                          value={newEmpAnnual}
-                          onChange={(e) => setNewEmpAnnual(Number(e.target.value))}
-                          className="h-10 bg-slate-50 text-sm rounded-lg border-slate-200"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Carried Over Leave</label>
-                        <Input
-                          type="number"
-                          value={newEmpCarried}
-                          onChange={(e) => setNewEmpCarried(Number(e.target.value))}
-                          className="h-10 bg-slate-50 text-sm rounded-lg border-slate-200"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-3 justify-end pt-4">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setIsAddEmployeeOpen(false)}
-                        className="rounded-lg font-bold text-sm h-10"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        className="bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-sm h-10"
-                      >
-                        Save Profile
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            <div className="hidden lg:flex items-center gap-1.5 text-emerald-400 font-bold bg-emerald-950/80 border border-emerald-800 px-2.5 py-1 rounded-full text-[11px] mr-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Live Sync Connected
             </div>
 
-            {/* Employee List Table (Clean, Minimal, spacious) */}
-            <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm">
-              <Table>
-                <TableHeader className="bg-slate-50/70 border-b border-slate-100">
-                  <TableRow className="hover:bg-transparent border-b-0">
-                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider pl-6 py-5">Employee</TableHead>
-                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-5">Annual Leave</TableHead>
-                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-5">Sick Leave</TableHead>
-                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider py-5">Personal Leave</TableHead>
-                    <TableHead className="font-bold text-slate-600 text-xs uppercase tracking-wider text-right pr-6 py-5">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEmployees.map((emp) => {
-                    const sickTaken = sumLeaves(emp.leaves, "sick");
-                    const annualTaken = sumLeaves(emp.leaves, "annual");
-                    const personalTaken = sumLeaves(emp.leaves, "personal");
+            <button
+              onClick={handleSyncData}
+              disabled={isSyncing}
+              className="h-9 px-3 bg-[#68BD24] hover:bg-[#5ca81f] text-slate-950 font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-xs"
+            >
+              <RotateCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+              {isSyncing ? "Syncing..." : "Sync Live Data"}
+            </button>
 
-                    const totalAnnualQuota = emp.quotas.annualTotal + emp.quotas.carriedOver;
-                    const annualRemain = totalAnnualQuota - annualTaken;
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="h-9 px-3 bg-[#F5A623] hover:bg-[#e0951a] text-slate-950 font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-xs"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              Import Excel
+            </button>
+
+            <button
+              onClick={() => setIsAddEmpModalOpen(true)}
+              className="h-9 px-3 bg-[#00B5E2] hover:bg-[#0099c4] text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-xs"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              + Add Employee
+            </button>
+
+            <button
+              onClick={handleClearAllData}
+              className="h-9 px-2.5 bg-rose-600/80 hover:bg-rose-600 text-white font-bold rounded-lg text-xs transition-colors border border-rose-700"
+              title="Clear all data"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* 2. Executive Metric Cards Strip */}
+      <div className="max-w-[1600px] mx-auto px-6 mt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Staff</p>
+              <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{totalEmployeesCount} <span className="text-xs font-semibold text-slate-500">Employees</span></p>
+              <p className="text-[11px] text-[#68BD24] font-bold mt-1 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Across {departments.length - 1} Departments
+              </p>
+            </div>
+            <div className="p-3 bg-sky-50 text-[#00B5E2] rounded-xl">
+              <Users className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">On Leave Today</p>
+              <p className="text-2xl font-extrabold text-amber-600 mt-0.5">{onLeaveToday.length} <span className="text-xs font-semibold text-slate-500">Staff</span></p>
+              <p className="text-[11px] text-slate-500 font-medium mt-1 truncate max-w-[180px]">
+                {onLeaveToday.length > 0 ? onLeaveToday.map(e => e.nickname).join(", ") : "No employees on leave today"}
+              </p>
+            </div>
+            <div className="p-3 bg-amber-50 text-[#F5A623] rounded-xl">
+              <Palmtree className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Quota Warnings</p>
+              <p className="text-2xl font-extrabold text-rose-600 mt-0.5">{quotaAlertList.length} <span className="text-xs font-semibold text-slate-500">Alerts</span></p>
+              <p className="text-[11px] text-rose-500 font-medium mt-1">
+                {quotaAlertList.length > 0 ? "Requires CEO quota review" : "All staff within quota limits"}
+              </p>
+            </div>
+            <div className="p-3 bg-rose-50 text-rose-600 rounded-xl">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Days Taken ({selectedYear})</p>
+              <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{totalAllTaken} <span className="text-xs font-semibold text-slate-500">Days</span></p>
+              <p className="text-[11px] text-slate-500 font-medium mt-1">
+                Sick: {totalSickTaken}d | Annual: {totalAnnualTaken}d | Pers: {totalPersonalTaken}d
+              </p>
+            </div>
+            <div className="p-3 bg-emerald-50 text-[#68BD24] rounded-xl">
+              <Calendar className="w-5 h-5" />
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Main Master Executive Datatable Container */}
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+          
+          {/* Department Filters & Search Toolbar */}
+          <div className="p-4 bg-slate-900 border-b border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            {/* Department Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto no-scrollbar py-0.5">
+              {departments.map((dept) => {
+                const count = dept === "All" ? employees.length : employees.filter(e => e.department === dept).length;
+                const isActive = selectedDept === dept;
+
+                return (
+                  <button
+                    key={dept}
+                    onClick={() => setSelectedDept(dept)}
+                    className={`px-3 py-1.5 text-xs font-extrabold rounded-lg whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                      isActive
+                        ? "bg-[#00B5E2] text-white shadow-xs"
+                        : "bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
+                    }`}
+                  >
+                    {dept}
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                      isActive ? "bg-white/25 text-white" : "bg-slate-700 text-slate-300"
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search Input Box */}
+            <div className="relative w-full md:w-64 shrink-0">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                type="text"
+                placeholder="Search name, nickname, code..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-9 text-xs bg-slate-800 border-slate-700 text-white placeholder:text-slate-400 rounded-lg focus-visible:ring-[#00B5E2]"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-white">âœ•</button>
+              )}
+            </div>
+          </div>
+
+          {/* Table Directory */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-slate-800 font-extrabold border-b border-slate-300">
+                  <th className="py-3 px-3 text-left border-r border-slate-200 w-24">Code</th>
+                  <th className="py-3 px-4 text-left border-r border-slate-200">Employee Name</th>
+                  <th className="py-3 px-3 text-left border-r border-slate-200 w-28">Department</th>
+                  <th className="py-3 px-3 text-left border-r border-slate-200 w-28">Start Date</th>
+                  <th className="py-3 px-3 text-center border-r border-slate-200 bg-rose-50 text-rose-900 w-32">Sick Leave</th>
+                  <th className="py-3 px-3 text-center border-r border-slate-200 bg-amber-50 text-amber-900 w-36">Annual Leave</th>
+                  <th className="py-3 px-3 text-center border-r border-slate-200 bg-sky-50 text-sky-900 w-36">Personal Leave</th>
+                  <th className="py-3 px-3 text-center border-r border-slate-200 w-32">Annual Remain</th>
+                  <th className="py-3 px-3 text-center border-r border-slate-200 w-28">Status</th>
+                  <th className="py-3 px-3 text-center w-36">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {filteredEmployees.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-400 font-medium italic">
+                      No matching employee records found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredEmployees.map((emp) => {
+                    const sickTaken = sumLeaves(emp.leaves, "sick", selectedYear);
+                    const annualTaken = sumLeaves(emp.leaves, "annual", selectedYear);
+                    const personalTaken = sumLeaves(emp.leaves, "personal", selectedYear);
+                    const annualGranted = emp.quotas.annualTotal + emp.quotas.carriedOver;
+                    const annualRemain = annualGranted - annualTaken;
+                    const sickRemain = emp.quotas.sickTotal - sickTaken;
                     const personalRemain = emp.quotas.personalTotal - personalTaken;
 
+                    const isOver = annualRemain < 0 || sickRemain < 0 || personalRemain < 0;
+
                     return (
-                      <TableRow
-                        key={emp.id}
+                      <tr 
+                        key={emp.id} 
+                        className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
                         onClick={() => setSelectedEmployee(emp)}
-                        className="border-b border-slate-150 hover:bg-slate-50/45 transition-colors cursor-pointer"
                       >
-                        <TableCell className="pl-6 py-5">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-600 text-sm">
-                              {emp.nickname[0]}
+                        <td className="py-3 px-3 font-mono font-extrabold text-slate-600 border-r border-slate-200">{emp.empCode}</td>
+                        <td className="py-3 px-4 border-r border-slate-200">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-extrabold flex items-center justify-center text-xs shadow-xs shrink-0">
+                              {emp.nickname.charAt(0)}
                             </div>
                             <div>
-                              <p className="font-bold text-slate-800 text-sm">
-                                {emp.name} ({emp.nickname})
-                              </p>
-                              <div className="flex items-center gap-3 mt-1.5">
-                                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                                  {emp.department}
-                                </span>
-                                <span className="text-xs text-slate-400 font-medium">
-                                  Started: {formatDate(emp.startDate)}
-                                </span>
-                              </div>
+                              <div className="font-extrabold text-slate-900 text-sm group-hover:text-[#00B5E2] transition-colors">{emp.name} <span className="text-amber-600">({emp.nickname})</span></div>
+                              <div className="text-[10px] text-slate-400">{emp.leaves ? emp.leaves.filter(l => l.date.includes(selectedYear)).length : 0} leave records</div>
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell className="py-5">
-                          <p className="text-sm font-bold text-slate-800">
-                            {annualTaken} / {totalAnnualQuota} <span className="text-slate-400 font-normal">days</span>
-                          </p>
-                          <p className="text-xs text-slate-500 mt-1 font-medium">
-                            {annualRemain} days left {emp.quotas.carriedOver > 0 && `(carried over: ${emp.quotas.carriedOver})`}
-                          </p>
-                        </TableCell>
-                        <TableCell className="py-5">
-                          <p className="text-sm font-bold text-slate-800">
-                            {sickTaken} / {emp.quotas.sickTotal} <span className="text-slate-400 font-normal">days</span>
-                          </p>
-                          <p className="text-xs text-slate-500 mt-1 font-medium">
-                            {emp.quotas.sickTotal - sickTaken} days left
-                          </p>
-                        </TableCell>
-                        <TableCell className="py-5">
-                          <p className="text-sm font-bold text-slate-800">
-                            {personalTaken} / {emp.quotas.personalTotal} <span className="text-slate-400 font-normal">days</span>
-                          </p>
-                          <p className="text-xs text-slate-500 mt-1 font-medium">
-                            {personalRemain} days left
-                          </p>
-                        </TableCell>
-                        <TableCell className="text-right pr-6 py-5">
-                          <span className="text-sm font-bold text-slate-400 hover:text-slate-900 group-hover:translate-x-1 transition-all">
-                            View Logs ➔
-                          </span>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                        <td className="py-3 px-3 border-r border-slate-200">
+                          <span className="px-2.5 py-1 bg-slate-100 font-bold text-slate-700 rounded text-[11px] border border-slate-200">{emp.department}</span>
+                        </td>
+                        <td className="py-3 px-3 text-slate-600 border-r border-slate-200 font-semibold">{formatDate(emp.startDate)}</td>
+                        <td className="py-3 px-3 text-center border-r border-slate-200 bg-rose-50/30">
+                          <div className="font-extrabold text-rose-700 text-xs">{sickTaken} / {emp.quotas.sickTotal}d</div>
+                        </td>
+                        <td className="py-3 px-3 text-center border-r border-slate-200 bg-amber-50/30">
+                          <div className="font-extrabold text-amber-900 text-xs">{annualTaken} / {annualGranted}d</div>
+                        </td>
+                        <td className="py-3 px-3 text-center border-r border-slate-200 bg-sky-50/30">
+                          <div className="font-extrabold text-sky-900 text-xs">{personalTaken} / {emp.quotas.personalTotal}d</div>
+                        </td>
+                        <td className={`py-3 px-3 text-center font-extrabold border-r border-slate-200 ${annualRemain < 0 ? "text-rose-600 bg-rose-50" : "text-slate-900"}`}>
+                          {annualRemain} days
+                        </td>
+                        <td className="py-3 px-3 text-center border-r border-slate-200">
+                          {isOver ? (
+                            <span className="px-2.5 py-0.5 bg-rose-100 text-rose-700 font-extrabold rounded-full text-[10px] border border-rose-200">Over Quota</span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-700 font-extrabold rounded-full text-[10px] border border-emerald-200">Normal</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedEmployee(emp); }}
+                            className="px-3 py-1 bg-[#00B5E2] hover:bg-[#0099c4] text-white font-extrabold rounded transition-colors text-xs shadow-xs"
+                          >
+                            View Sheet &rarr;
+                          </button>
+                        </td>
+                      </tr>
                     );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-
-            {filteredEmployees.length === 0 && (
-              <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm">
-                <Users className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500 font-medium text-sm">No employees found</p>
-              </div>
-            )}
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
-
-        {/* Tab 2: Pending Requests */}
-        {activeTab === "pending" && (
-          <Card className="bg-white border border-slate-200/60 shadow-sm rounded-2xl overflow-hidden">
-            <CardHeader className="p-6 pb-2">
-              <CardTitle className="text-base font-bold text-slate-800">
-                Pending Leave Requests Queue
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 pt-2">
-              {allPendingRequests.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader className="bg-slate-50">
-                      <TableRow className="border-b border-slate-100 hover:bg-transparent">
-                        <TableHead className="font-bold text-slate-500 text-sm">Employee Name</TableHead>
-                        <TableHead className="font-bold text-slate-500 text-sm">Leave Type</TableHead>
-                        <TableHead className="font-bold text-slate-500 text-sm">Leave Date</TableHead>
-                        <TableHead className="font-bold text-slate-500 text-sm">Duration</TableHead>
-                        <TableHead className="font-bold text-slate-500 text-sm">Remarks</TableHead>
-                        <TableHead className="font-bold text-slate-500 text-sm text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {allPendingRequests.map((req) => {
-                        return (
-                          <TableRow key={req.id} className="border-b border-slate-100 hover:bg-slate-50/50">
-                            <TableCell className="font-bold text-slate-800 text-sm">
-                              {req.employeeName} ({req.nickname})
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={`border-0 rounded-md font-bold text-xs px-2 py-0.5 ${
-                                req.type === "sick" 
-                                  ? "bg-rose-50 text-rose-600" 
-                                  : req.type === "personal" 
-                                    ? "bg-amber-50 text-amber-600" 
-                                    : "bg-sky-50 text-sky-600"
-                              }`}>
-                                {req.type === "sick" ? "Sick" : req.type === "personal" ? "Personal" : "Annual"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="font-medium text-slate-600 text-sm">
-                              {formatDate(req.date)}
-                            </TableCell>
-                            <TableCell className="font-bold text-slate-800 text-sm">
-                              {req.days} day(s)
-                            </TableCell>
-                            <TableCell className="text-sm text-slate-500 max-w-[200px] truncate" title={req.note}>
-                              {req.note || "-"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button
-                                  onClick={() => handleApproveLeave(req.employeeId, req.id)}
-                                  size="sm"
-                                  className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg px-3 py-1.5 h-9 text-xs font-bold flex items-center gap-1"
-                                >
-                                  Approve
-                                </Button>
-                                <Button
-                                  onClick={() => handleRejectLeave(req.employeeId, req.id)}
-                                  size="sm"
-                                  className="bg-rose-500 hover:bg-rose-600 text-white rounded-lg px-3 py-1.5 h-9 text-xs font-bold flex items-center gap-1"
-                                >
-                                  Reject
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="text-center py-12 opacity-70">
-                  <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
-                  <p className="text-sm font-semibold text-slate-500">
-                    No pending leave requests at the moment.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        </div>
       </div>
 
-      {/* Employee Detail Drawer / Dialog */}
+      {/* 4. Google Sheet Employee Detail Modal */}
       {selectedEmployee && (
         <Dialog open={!!selectedEmployee} onOpenChange={(open) => !open && setSelectedEmployee(null)}>
-          <DialogContent className="max-w-4xl bg-white rounded-xl p-6 border border-slate-100 overflow-y-auto max-h-[90vh]">
-            <DialogHeader className="border-b border-slate-100 pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <DialogContent className="max-w-4xl bg-white rounded-xl p-6 border border-slate-200 overflow-y-auto max-h-[90vh]">
+            <DialogHeader className="border-b border-slate-200 pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
-                <DialogTitle className="text-base font-bold text-slate-800">
-                  Leave History: {selectedEmployee.name} ({selectedEmployee.nickname})
+                <DialogTitle className="text-lg font-extrabold text-slate-900">
+                  Name : {selectedEmployee.name} <span className="text-amber-600">({selectedEmployee.nickname})</span>
                 </DialogTitle>
-                <div className="flex flex-wrap gap-2.5 mt-2">
-                  <Badge className="bg-slate-100 border-0 text-slate-600 text-xs font-bold px-3 py-1 rounded-md">
-                    Dept: {selectedEmployee.department}
-                  </Badge>
-                  <Badge className="bg-slate-50 border-0 text-slate-500 text-xs font-medium px-3 py-1 rounded-md">
-                    Started: {formatDate(selectedEmployee.startDate)}
-                  </Badge>
+                <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs">
+                  <span className="bg-slate-100 text-slate-700 font-bold px-2.5 py-0.5 rounded border border-slate-200">{selectedEmployee.department}</span>
+                  <span className="font-mono text-slate-500 font-bold">{selectedEmployee.empCode}</span>
+                  <span className="text-slate-500 font-bold">&bull; Start Date: {formatDate(selectedEmployee.startDate)}</span>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button
-                  onClick={openQuotaEdit}
-                  variant="outline"
-                  className="rounded-lg border-slate-200 text-slate-600 font-bold text-sm h-10 px-4"
-                >
-                  Adjust Quota
-                </Button>
-                <Button
-                  onClick={() => setIsAddLeaveOpen(true)}
-                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-sm h-10 px-4 flex items-center gap-1.5"
-                >
-                  <Plus className="h-4 w-4" />
-                  Log Manual Leave
+                <Button onClick={() => { openEditQuotaModal(selectedEmployee); }} variant="outline" className="h-9 font-bold text-xs">
+                  <Edit className="w-3.5 h-3.5 mr-1" /> Edit Profile & Quotas
                 </Button>
               </div>
             </DialogHeader>
 
-            {/* Content block: Quota cards on top, History table on bottom */}
-            <div className="space-y-8 mt-6">
-              {/* Individual Quota Summary Cards */}
-              <div className="grid grid-cols-3 gap-6">
-                {/* Annual */}
-                <div className="border border-slate-100 bg-slate-50/50 p-5 rounded-xl flex flex-col justify-between">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Annual Leave</span>
-                  <div className="flex items-baseline gap-1 mt-3">
-                    <span className="text-2xl font-bold text-slate-800">
-                      {sumLeaves(selectedEmployee.leaves, "annual")}
-                    </span>
-                    <span className="text-sm font-bold text-slate-400">
-                      / {selectedEmployee.quotas.annualTotal + selectedEmployee.quotas.carriedOver} days
-                    </span>
-                  </div>
-                </div>
+            <div className="space-y-6 mt-4">
+              {/* Individual Employee Leave Table (Matches Google Sheet) */}
+              <div className="border border-slate-300 rounded-lg overflow-hidden shadow-xs">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-900 text-white font-extrabold">
+                      <th className="py-2.5 px-3 text-left border-r border-slate-800 w-32">Date</th>
+                      <th className="py-2.5 px-3 text-center border-r border-slate-800 bg-[#CC0000] text-white w-24">Sick Leave</th>
+                      <th className="py-2.5 px-3 text-center border-r border-slate-800 bg-[#FFD700] text-slate-900 w-24">Annual Leave</th>
+                      <th className="py-2.5 px-3 text-center border-r border-slate-800 bg-[#0099FF] text-white w-24">Personal Leave</th>
+                      <th className="py-2.5 px-3 text-left border-r border-slate-800">Reason / Notes</th>
+                      <th className="py-2.5 px-2 text-center w-12">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {selectedEmployee.leaves && selectedEmployee.leaves.filter(l => (l.status === "Approved" || !l.status) && l.date.includes(selectedYear)).length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-6 text-center text-slate-400 font-medium italic">
+                          No leave records for {selectedYear}
+                        </td>
+                      </tr>
+                    ) : (
+                      selectedEmployee.leaves && selectedEmployee.leaves
+                        .filter(l => (l.status === "Approved" || !l.status) && l.date.includes(selectedYear))
+                        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                        .map((l) => (
+                          <tr key={l.id} className="hover:bg-slate-50">
+                            <td className="py-2 px-3 font-semibold text-slate-800 border-r border-slate-200">{formatDate(l.date)}</td>
+                            <td className="py-2 px-3 text-center font-extrabold text-rose-700 border-r border-slate-200">{l.type === "sick" ? l.days : ""}</td>
+                            <td className="py-2 px-3 text-center font-extrabold text-amber-900 border-r border-slate-200">{l.type === "annual" ? l.days : ""}</td>
+                            <td className="py-2 px-3 text-center font-extrabold text-sky-800 border-r border-slate-200">{l.type === "personal" ? l.days : ""}</td>
+                            <td className="py-2 px-3 text-rose-600 font-semibold border-r border-slate-200">{l.note || "-"}</td>
+                            <td className="py-2 px-2 text-center">
+                              <button onClick={() => handleDeleteLeave(selectedEmployee.id, l.id)} className="text-slate-400 hover:text-rose-600 font-bold">âœ•</button>
+                            </td>
+                          </tr>
+                        ))
+                    )}
 
-                {/* Sick */}
-                <div className="border border-slate-100 bg-slate-50/50 p-5 rounded-xl flex flex-col justify-between">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sick Leave</span>
-                  <div className="flex items-baseline gap-1 mt-3">
-                    <span className="text-2xl font-bold text-slate-800">
-                      {sumLeaves(selectedEmployee.leaves, "sick")}
-                    </span>
-                    <span className="text-sm font-bold text-slate-400">
-                      / {selectedEmployee.quotas.sickTotal} days
-                    </span>
-                  </div>
-                </div>
-
-                {/* Personal */}
-                <div className="border border-slate-100 bg-slate-50/50 p-5 rounded-xl flex flex-col justify-between">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Personal Leave</span>
-                  <div className="flex items-baseline gap-1 mt-3">
-                    <span className="text-2xl font-bold text-slate-800">
-                      {sumLeaves(selectedEmployee.leaves, "personal")}
-                    </span>
-                    <span className="text-sm font-bold text-slate-400">
-                      / {selectedEmployee.quotas.personalTotal} days
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* History Table */}
-              <div className="space-y-3">
-                <h5 className="font-bold text-slate-700 text-xs uppercase tracking-wide px-1">
-                  Remarks & Detailed Leave Logs
-                </h5>
-                <div className="border border-slate-100 rounded-xl overflow-hidden max-h-[300px] overflow-y-auto">
-                  <Table>
-                    <TableHeader className="bg-slate-50/80 sticky top-0 backdrop-blur-sm z-10">
-                      <TableRow className="border-b border-slate-100 hover:bg-transparent">
-                        <TableHead className="font-bold text-slate-500 text-xs py-3">Date</TableHead>
-                        <TableHead className="font-bold text-slate-500 text-xs py-3">Type</TableHead>
-                        <TableHead className="font-bold text-slate-500 text-xs py-3">Duration</TableHead>
-                        <TableHead className="font-bold text-slate-500 text-xs py-3">Remarks / Notes</TableHead>
-                        <TableHead className="font-bold text-slate-500 text-xs py-3">Status</TableHead>
-                        <TableHead className="font-bold text-slate-500 text-xs py-3 text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {selectedEmployee.leaves.length > 0 ? (
-                        selectedEmployee.leaves.map((l) => {
-                          const isApproved = l.status === "Approved";
-                          const isRejected = l.status === "Rejected" || l.status.includes("ปฏิเสธ");
-                          const isPending = l.status === "Pending";
-
-                          return (
-                            <TableRow key={l.id} className="border-b border-slate-50 hover:bg-slate-50/30">
-                              <TableCell className="font-medium text-slate-700 text-sm py-3">
-                                {formatDate(l.date)}
-                              </TableCell>
-                              <TableCell className="py-3">
-                                <span className={`text-xs font-bold ${
-                                  l.type === "sick" ? "text-rose-500" : l.type === "personal" ? "text-amber-500" : "text-sky-500"
-                                }`}>
-                                  {l.type === "sick" ? "Sick" : l.type === "personal" ? "Personal" : "Annual"}
-                                </span>
-                              </TableCell>
-                              <TableCell className="font-bold text-slate-800 text-sm py-3">
-                                {l.days} day(s)
-                              </TableCell>
-                              <TableCell className="text-sm text-slate-600 py-3 max-w-[220px] truncate" title={l.note}>
-                                {l.note || "-"}
-                              </TableCell>
-                              <TableCell className="py-3">
-                                <Badge className={`border-0 rounded-md font-bold text-[10px] px-2.5 py-1 ${
-                                  isApproved 
-                                    ? "bg-emerald-50 text-emerald-600" 
-                                    : isRejected 
-                                      ? "bg-rose-50 text-rose-600" 
-                                      : "bg-amber-50 text-amber-600"
-                                }`}>
-                                  {isApproved ? "Approved" : isRejected ? "Rejected" : "Pending"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="py-3 text-right">
-                                {isPending ? (
-                                  <div className="flex justify-end gap-2">
-                                    <button
-                                      onClick={() => handleApproveLeave(selectedEmployee.id, l.id)}
-                                      className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-md transition-colors"
-                                      title="Approve"
-                                    >
-                                      <Check className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleRejectLeave(selectedEmployee.id, l.id)}
-                                      className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-md transition-colors"
-                                      title="Reject"
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <button
-                                    onClick={() => {
-                                      // Toggle approve / reject as simple action for already processed leaves
-                                      if (isApproved) {
-                                        handleRejectLeave(selectedEmployee.id, l.id);
-                                      } else {
-                                        handleApproveLeave(selectedEmployee.id, l.id);
-                                      }
-                                    }}
-                                    className="text-xs text-slate-400 hover:text-slate-600 underline font-bold"
-                                  >
-                                    Change Status
-                                  </button>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-slate-400 text-sm">
-                            No leave history recorded for this employee.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-
-              {/* Danger zone footer: Delete employee */}
-              <div className="pt-5 border-t border-slate-100 flex justify-between items-center">
-                <span className="text-xs text-slate-400">
-                  Employee ID: {selectedEmployee.id}
-                </span>
-                <Button
-                  onClick={() => handleDeleteEmployee(selectedEmployee.id)}
-                  variant="ghost"
-                  className="text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg font-bold text-xs h-9 flex items-center gap-1.5"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete Employee Profile
-                </Button>
+                    {/* Inline Quick Add Leave Record Form */}
+                    <tr className="bg-blue-50/50 border-t border-slate-300">
+                      <td className="p-1 border-r border-slate-200">
+                        <Input type="text" placeholder="Date (e.g. 2026-03-15)" value={modalLeaveForm.date} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, date: e.target.value })} className="h-8 text-xs font-semibold" />
+                      </td>
+                      <td className="p-1 border-r border-slate-200">
+                        <Input type="text" placeholder="Sick (0)" value={modalLeaveForm.sick} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, sick: e.target.value })} className="h-8 text-xs text-center font-bold text-rose-700" />
+                      </td>
+                      <td className="p-1 border-r border-slate-200">
+                        <Input type="text" placeholder="Annual (0)" value={modalLeaveForm.annual} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, annual: e.target.value })} className="h-8 text-xs text-center font-bold text-amber-900" />
+                      </td>
+                      <td className="p-1 border-r border-slate-200">
+                        <Input type="text" placeholder="Personal (0)" value={modalLeaveForm.personal} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, personal: e.target.value })} className="h-8 text-xs text-center font-bold text-sky-800" />
+                      </td>
+                      <td className="p-1 border-r border-slate-200">
+                        <Input type="text" placeholder="Reason / Notes..." value={modalLeaveForm.note} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, note: e.target.value })} className="h-8 text-xs text-rose-600 font-medium" />
+                      </td>
+                      <td className="p-1 text-center">
+                        <Button type="button" onClick={handleAddLeaveModalSubmit} size="sm" className="h-8 bg-[#00B5E2] hover:bg-[#0099c4] text-xs font-bold px-2">
+                          + Add
+                        </Button>
+                      </td>
+                    </tr>
+                  </tbody>
+                  
+                  {/* Summary Footer */}
+                  <tfoot>
+                    <tr className="bg-slate-100 font-extrabold border-t border-slate-300">
+                      <td className="py-2.5 px-3 border-r border-slate-300">All leave getting per year</td>
+                      <td className="py-2.5 px-3 text-center text-rose-700 border-r border-slate-300">{selectedEmployee.quotas.sickTotal}</td>
+                      <td className="py-2.5 px-3 text-center text-amber-900 border-r border-slate-300">{selectedEmployee.quotas.annualTotal + selectedEmployee.quotas.carriedOver}</td>
+                      <td className="py-2.5 px-3 text-center text-sky-800 border-r border-slate-300">{selectedEmployee.quotas.personalTotal}</td>
+                      <td colSpan={2} className="py-2.5 px-3 text-red-600 font-bold text-xs">
+                        {selectedEmployee.quotas.carriedOver > 0 && `${selectedEmployee.quotas.carriedOver} extra days awarded`}
+                      </td>
+                    </tr>
+                    <tr className="bg-slate-100 font-extrabold border-t border-slate-200">
+                      <td className="py-2.5 px-3 border-r border-slate-300">Total taken in {selectedYear}</td>
+                      <td className="py-2.5 px-3 text-center text-rose-700 border-r border-slate-300">{sumLeaves(selectedEmployee.leaves, "sick", selectedYear)}</td>
+                      <td className="py-2.5 px-3 text-center text-amber-900 border-r border-slate-300">{sumLeaves(selectedEmployee.leaves, "annual", selectedYear)}</td>
+                      <td className="py-2.5 px-3 text-center text-sky-800 border-r border-slate-300">{sumLeaves(selectedEmployee.leaves, "personal", selectedYear)}</td>
+                      <td colSpan={2}></td>
+                    </tr>
+                    <tr className="bg-slate-200 font-extrabold text-slate-900 border-t border-slate-300">
+                      <td className="py-2.5 px-3 border-r border-slate-300">Total remain</td>
+                      <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.quotas.sickTotal - sumLeaves(selectedEmployee.leaves, "sick", selectedYear)}</td>
+                      <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.quotas.annualTotal + selectedEmployee.quotas.carriedOver - sumLeaves(selectedEmployee.leaves, "annual", selectedYear)}</td>
+                      <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.quotas.personalTotal - sumLeaves(selectedEmployee.leaves, "personal", selectedYear)}</td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </div>
           </DialogContent>
         </Dialog>
       )}
 
-      {/* Dialog: Add Leave Record Manually */}
-      {selectedEmployee && isAddLeaveOpen && (
-        <Dialog open={isAddLeaveOpen} onOpenChange={setIsAddLeaveOpen}>
-          <DialogContent className="max-w-md bg-white rounded-xl p-6 border border-slate-100">
+      {/* Add Employee Modal */}
+      {isAddEmpModalOpen && (
+        <Dialog open={isAddEmpModalOpen} onOpenChange={setIsAddEmpModalOpen}>
+          <DialogContent className="max-w-md bg-white rounded-xl p-6 border border-slate-200">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold text-slate-800">
-                Log Manual Leave Record
-              </DialogTitle>
-              <DialogDescription className="text-xs text-slate-505">
-                Log a manual leave record for {selectedEmployee.name} directly into the database (automatically approved).
-              </DialogDescription>
+              <DialogTitle className="text-base font-extrabold text-slate-900">Add New Employee Profile</DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">Create a new employee profile in the system</DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleAddManualLeave} className="space-y-5 mt-2">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500">Leave Date</label>
-                <Input
-                  type="date"
-                  value={leaveDate}
-                  onChange={(e) => setLeaveDate(e.target.value)}
-                  className="h-10 bg-slate-50 text-sm border-slate-200 rounded-lg"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500">Leave Type</label>
-                  <select
-                    value={leaveType}
-                    onChange={(e) => setLeaveType(e.target.value as any)}
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none"
-                  >
-                    <option value="annual">Annual Leave</option>
-                    <option value="sick">Sick Leave</option>
-                    <option value="personal">Personal Leave</option>
-                  </select>
+            <form onSubmit={handleAddEmployeeSubmit} className="space-y-4 mt-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700">Employee Code *</label>
+                  <Input placeholder="TBS-040" value={newEmpCode} onChange={(e) => setNewEmpCode(e.target.value)} className="h-9 text-xs mt-1" />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500">Duration</label>
-                  <select
-                    value={leaveDays}
-                    onChange={(e) => setLeaveDays(Number(e.target.value))}
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none"
-                  >
-                    <option value={1}>1 Day</option>
-                    <option value={0.5}>0.5 Day (Half Day)</option>
-                    <option value={0.25}>0.25 Day (2 Hours)</option>
-                    <option value={2}>2 Days</option>
-                    <option value={3}>3 Days</option>
+                <div>
+                  <label className="text-xs font-bold text-slate-700">Department *</label>
+                  <select value={newEmpDept} onChange={(e) => setNewEmpDept(e.target.value)} className="w-full h-9 text-xs border rounded-md px-2 mt-1">
+                    {departments.filter(d => d !== "All").map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
               </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500">Remarks / Notes</label>
-                <Input
-                  value={leaveNote}
-                  onChange={(e) => setLeaveNote(e.target.value)}
-                  placeholder="e.g., Doctor appointment, Vacation, Personal errand..."
-                  className="h-10 bg-slate-50 text-sm border-slate-200 rounded-lg"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700">Full Name *</label>
+                  <Input placeholder="John Doe" value={newEmpName} onChange={(e) => setNewEmpName(e.target.value)} className="h-9 text-xs mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700">Nickname *</label>
+                  <Input placeholder="John" value={newEmpNickname} onChange={(e) => setNewEmpNickname(e.target.value)} className="h-9 text-xs mt-1" />
+                </div>
               </div>
-
-              <div className="flex gap-3 justify-end pt-3">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setIsAddLeaveOpen(false)}
-                  className="rounded-lg font-bold text-sm h-10"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-sm h-10"
-                >
-                  Submit Record
-                </Button>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700">Annual Quota</label>
+                  <Input type="number" value={newEmpAnnual} onChange={(e) => setNewEmpAnnual(Number(e.target.value))} className="h-9 text-xs mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700">Sick Quota</label>
+                  <Input type="number" value={newEmpSick} onChange={(e) => setNewEmpSick(Number(e.target.value))} className="h-9 text-xs mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700">Personal Quota</label>
+                  <Input type="number" value={newEmpPersonal} onChange={(e) => setNewEmpPersonal(Number(e.target.value))} className="h-9 text-xs mt-1" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-3">
+                <Button type="button" variant="ghost" onClick={() => setIsAddEmpModalOpen(false)} className="h-9 text-xs">Cancel</Button>
+                <Button type="submit" className="h-9 text-xs bg-[#00B5E2] hover:bg-[#0099c4] text-white font-bold">Save Employee</Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
       )}
 
-      {/* Dialog: Edit Quota */}
-      {selectedEmployee && isEditQuotaOpen && (
-        <Dialog open={isEditQuotaOpen} onOpenChange={setIsEditQuotaOpen}>
-          <DialogContent className="max-w-md bg-white rounded-xl p-6 border border-slate-100">
+      {/* Edit Quota / Profile Modal */}
+      {editingEmp && (
+        <Dialog open={!!editingEmp} onOpenChange={() => setEditingEmp(null)}>
+          <DialogContent className="max-w-md bg-white rounded-xl p-6 border border-slate-200">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold text-slate-800">
-                Adjust Leave Quotas
-              </DialogTitle>
+              <DialogTitle className="text-base font-bold text-slate-900">Adjust Leave Quotas & Profile</DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">Edit details for {editingEmp.name}</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUpdateQuota} className="space-y-4 mt-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-600">Employee Code</label>
+                  <Input value={editEmpCode} onChange={(e) => setEditEmpCode(e.target.value)} className="h-9 text-xs mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-600">Department</label>
+                  <select value={editEmpDept} onChange={(e) => setEditEmpDept(e.target.value)} className="w-full h-9 text-xs border rounded-md px-2 mt-1">
+                    {departments.filter(d => d !== "All").map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-600">Full Name</label>
+                  <Input value={editEmpName} onChange={(e) => setEditEmpName(e.target.value)} className="h-9 text-xs mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-600">Nickname</label>
+                  <Input value={editEmpNickname} onChange={(e) => setEditEmpNickname(e.target.value)} className="h-9 text-xs mt-1" />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-600">Annual Quota</label>
+                  <Input type="number" value={quotaAnnual} onChange={(e) => setQuotaAnnual(Number(e.target.value))} className="h-9 text-xs mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-600">Sick Quota</label>
+                  <Input type="number" value={quotaSick} onChange={(e) => setQuotaSick(Number(e.target.value))} className="h-9 text-xs mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-600">Carried Over</label>
+                  <Input type="number" value={quotaCarried} onChange={(e) => setQuotaCarried(Number(e.target.value))} className="h-9 text-xs mt-1" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-3">
+                <Button type="button" variant="ghost" onClick={() => setEditingEmp(null)} className="h-9 text-xs">Cancel</Button>
+                <Button type="submit" className="h-9 text-xs bg-[#00B5E2] hover:bg-[#0099c4]">Save Changes</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Sheet Selection Modal */}
+      {isSheetSelectModalOpen && (
+        <Dialog open={isSheetSelectModalOpen} onOpenChange={setIsSheetSelectModalOpen}>
+          <DialogContent className="max-w-md bg-white rounded-xl p-6 shadow-xl border border-slate-200">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900">Select Sheet Tab</DialogTitle>
               <DialogDescription className="text-xs text-slate-500">
-                Adjust the allowed annual leave limits for {selectedEmployee.name}.
+                The file <strong>{currentImportFileName}</strong> contains multiple sheets. Choose which tab to import:
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleUpdateQuota} className="space-y-5 mt-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500">Annual Leave Limit</label>
-                  <Input
-                    type="number"
-                    value={quotaAnnual}
-                    onChange={(e) => setQuotaAnnual(Number(e.target.value))}
-                    className="h-10 bg-slate-50 text-sm border-slate-200 rounded-lg"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500">Carried Over Limit</label>
-                  <Input
-                    type="number"
-                    value={quotaCarried}
-                    onChange={(e) => setQuotaCarried(Number(e.target.value))}
-                    className="h-10 bg-slate-50 text-sm border-slate-200 rounded-lg"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500">Sick Leave Limit (days/year)</label>
-                  <Input
-                    type="number"
-                    value={quotaSick}
-                    onChange={(e) => setQuotaSick(Number(e.target.value))}
-                    className="h-10 bg-slate-50 text-sm border-slate-200 rounded-lg"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500">Personal Leave Limit (days/year)</label>
-                  <Input
-                    type="number"
-                    value={quotaPersonal}
-                    onChange={(e) => setQuotaPersonal(Number(e.target.value))}
-                    className="h-10 bg-slate-50 text-sm border-slate-200 rounded-lg"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3 justify-end pt-3">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setIsEditQuotaOpen(false)}
-                  className="rounded-lg font-bold text-sm h-10"
+            <div className="space-y-2 mt-3 max-h-60 overflow-y-auto">
+              {sheetNames.map((name) => (
+                <button
+                  key={name}
+                  onClick={() => {
+                    if (pendingWorkbook) {
+                      processSheet(pendingWorkbook, name, currentImportFileName);
+                      setIsSheetSelectModalOpen(false);
+                      setPendingWorkbook(null);
+                    }
+                  }}
+                  className="w-full text-left p-3 rounded-lg border border-slate-200 hover:border-[#00B5E2] hover:bg-sky-50 transition-all font-bold text-xs text-slate-800 flex items-center justify-between group"
                 >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-sm h-10"
-                >
-                  Update Quotas
-                </Button>
-              </div>
-            </form>
+                  <span className="flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-[#00B5E2]" />
+                    {name}
+                  </span>
+                  <span className="text-[10px] text-[#00B5E2] opacity-0 group-hover:opacity-100 font-bold">â†’ Import</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-end pt-3">
+              <Button variant="ghost" onClick={() => setIsSheetSelectModalOpen(false)} className="h-9 text-xs">Cancel</Button>
+            </div>
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Column Mapping Preview Dialog */}
+      {isPreviewOpen && (
+        <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+          <DialogContent className="max-w-4xl bg-white rounded-xl p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900">Configure Column Mapping ({currentImportFileName})</DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">Match your Excel/CSV columns to system fields before importing.</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6 mt-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Emp Code / ID</label>
+                  <select value={mapIdIdx} onChange={(e) => setMapIdIdx(Number(e.target.value))} className="w-full h-8 text-xs border border-slate-300 rounded bg-white px-2 font-medium">
+                    <option value={-1}>-- Auto Generate --</option>
+                    {previewHeaders.map((h, i) => <option key={i} value={i}>{h}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">First Name</label>
+                  <select value={mapFnIdx} onChange={(e) => setMapFnIdx(Number(e.target.value))} className="w-full h-8 text-xs border border-slate-300 rounded bg-white px-2 font-medium">
+                    <option value={-1}>-- None --</option>
+                    {previewHeaders.map((h, i) => <option key={i} value={i}>{h}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Last Name</label>
+                  <select value={mapLnIdx} onChange={(e) => setMapLnIdx(Number(e.target.value))} className="w-full h-8 text-xs border border-slate-300 rounded bg-white px-2 font-medium">
+                    <option value={-1}>-- None --</option>
+                    {previewHeaders.map((h, i) => <option key={i} value={i}>{h}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Nickname</label>
+                  <select value={mapNickIdx} onChange={(e) => setMapNickIdx(Number(e.target.value))} className="w-full h-8 text-xs border border-slate-300 rounded bg-white px-2 font-medium">
+                    <option value={-1}>-- None --</option>
+                    {previewHeaders.map((h, i) => <option key={i} value={i}>{h}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Department</label>
+                  <select value={mapDeptIdx} onChange={(e) => setMapDeptIdx(Number(e.target.value))} className="w-full h-8 text-xs border border-slate-300 rounded bg-white px-2 font-medium">
+                    <option value={-1}>-- Default (General) --</option>
+                    {previewHeaders.map((h, i) => <option key={i} value={i}>{h}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold text-slate-800 mb-2">Raw Sheet Data Preview (First 5 Rows):</h4>
+                <div className="border border-slate-200 rounded-lg overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100 border-b border-slate-200">
+                        {previewHeaders.map((h, i) => (
+                          <th key={i} className="py-2 px-3 text-left font-bold text-slate-700 border-r border-slate-200 whitespace-nowrap">
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {previewGrid.slice(0, 5).map((row, rIdx) => (
+                        <tr key={rIdx} className={rIdx === 0 ? "bg-amber-50/50 font-bold" : ""}>
+                          {previewHeaders.map((_, cIdx) => (
+                            <td key={cIdx} className="py-1.5 px-3 text-slate-600 border-r border-slate-200 whitespace-nowrap max-w-[150px] truncate">
+                              {row[cIdx] || "-"}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-xs text-slate-400 font-medium">Total {previewGrid.length - 1} data rows detected</span>
+                <div className="flex gap-2">
+                  <Button variant="ghost" onClick={() => setIsPreviewOpen(false)} className="h-9 text-xs">Cancel</Button>
+                  <Button onClick={confirmColumnMappingImport} className="h-9 text-xs bg-[#68BD24] hover:bg-[#5ca81f] text-slate-950 font-bold">Confirm & Import Data</Button>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Import Modal */}
+      {isImportModalOpen && (
+        <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+          <DialogContent className="max-w-lg bg-white rounded-xl p-6">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900">Import Excel / Google Sheet</DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">Upload .xlsx or paste text directly</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} className="text-xs border p-2 rounded w-full" />
+              <div className="text-center text-xs text-slate-400 font-bold">OR PASTE TEXT</div>
+              <Textarea value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Paste sheet content here..." className="h-32 text-xs" />
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setIsImportModalOpen(false)} className="h-9 text-xs">Cancel</Button>
+                <Button onClick={handleImportPastedText} className="h-9 text-xs bg-[#00B5E2]">Process Text</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
     </div>
   );
 }

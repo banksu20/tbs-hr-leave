@@ -65,8 +65,7 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        // เพิ่มบรรทัดนี้ลงไป
-        sans: ['"Anuphan"', "sans-serif"],
+        sans: ['"Plus Jakarta Sans"', '"Prompt"', '"Inter"', "sans-serif"],
       },
       keyframes: {
         "accordion-down": {

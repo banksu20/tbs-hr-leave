@@ -23,7 +23,7 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
   
   const [annualTotal, setAnnualTotal] = useState<number | null>(null);
   const [sickTotal, setSickTotal] = useState<number | null>(null);
-  const [sickTaken, setSickTaken] = useState<number | null>(null); // 🌟 2. สร้าง State มารับค่าที่ใช้ไปแล้ว
+  const [sickTaken, setSickTaken] = useState<number | null>(null);
 
   const [personalRemaining, setPersonalRemaining] = useState<number | null>(null);
   const [personalTotal, setPersonalTotal] = useState<number | null>(null);
@@ -39,6 +39,7 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
     setError(null);
 
     try {
+      // Fetch PostgreSQL quota via n8n / Backend API
       const response = await fetch(`${QUOTA_API_URL}?userId=${userId}`, {
         method: "GET",
         headers: {
@@ -64,7 +65,7 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
       setPersonalTaken(data.personalTaken ?? null);
 
     } catch (err: any) {
-      console.error("Failed to fetch leave quota:", err);
+      console.error("Failed to fetch leave quota from PostgreSQL:", err);
       setError(err.message || "Failed to load quota");
     } finally {
       setIsLoading(false);

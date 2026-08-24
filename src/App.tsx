@@ -14,6 +14,7 @@ import NotFound from "@/pages/NotFound";
 import RejectForm from "@/pages/RejectForm";
 import ProfileSetup from "@/components/ProfileSetup"; 
 import CeoDashboard from "@/pages/CeoDashboard"; 
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 import { useLanguage } from "./hooks/useLanguage";
 
@@ -131,7 +132,7 @@ const App = () => {
         <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
           <Routes>
             <Route path="/reject-form" element={<RejectForm />} />
-            <Route path="/ceo" element={<CeoDashboard />} />
+            <Route path="/ceo" element={<ErrorBoundary><CeoDashboard /></ErrorBoundary>} />
 
             <Route 
               path="/" 

@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import liff from "@line/liff";
 import Swal from "sweetalert2";
 import { format } from "date-fns";
+import { submitLeaveToPostgres } from "@/lib/postgresApi";
 import { th, enUS } from "date-fns/locale"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,7 +74,13 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   const [halfDayType, setHalfDayType] = useState<"morning" | "afternoon">("morning");
 
   const requestedDays = (selectedDates.length === 1 && isHalfDay) ? 0.5 : selectedDates.length;
-  const [takenDates, setTakenDates] = useState<Date[]>([]);
+  interface TakenLeaveRecord {
+    dateStr: string;
+    isHalfDay: boolean;
+    period?: "morning" | "afternoon" | null;
+  }
+
+  const [takenLeaves, setTakenLeaves] = useState<TakenLeaveRecord[]>([]);
 
   const { startDateTime, endDateTime } = useMemo(() => {
     if (selectedDates.length === 0) return { startDateTime: "", endDateTime: "" };
@@ -137,44 +144,97 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     if (currentUserId) {
       fetch(`${N8N_URL}/webhook/get-leave-history?userId=${currentUserId}`, {
         headers: { "ngrok-skip-browser-warning": "true" }
-        
       })
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
-          const disabledDatesArray: Date[] = [];
+          const leaves: TakenLeaveRecord[] = [];
           data.forEach((item: any) => {
             if (item.status && (item.status.includes('Rejected') || item.status.includes('ปฏิเสธ'))) return;
             
-            if (item.selected_dates && typeof item.selected_dates === 'string' && !item.selected_dates.includes('$(')) {
+            const leaveDays = Number(item.leave_days ?? item.leaveDays ?? (item.is_half_day || item.isHalfDay ? 0.5 : 1));
+            const isHalf = leaveDays === 0.5 || item.is_half_day === true || item.is_half_day === 'true' || item.isHalfDay === true || item.isHalfDay === 'true';
+            
+            const rawPeriod = String(item.half_day_period || item.halfDayPeriod || item.period || '').toLowerCase();
+            let period: "morning" | "afternoon" | null = null;
+            if (rawPeriod.includes('เช้า') || rawPeriod.includes('morning')) {
+              period = 'morning';
+            } else if (rawPeriod.includes('บ่าย') || rawPeriod.includes('afternoon')) {
+              period = 'afternoon';
+            }
+
+            const addDateStr = (dateStr: string) => {
+              leaves.push({
+                dateStr,
+                isHalfDay: isHalf,
+                period: isHalf ? period : null,
+              });
+            };
+
+            if (item.selected_dates && typeof item.selected_dates === 'string' && !item.selected_dates.includes('$')) {
               const dateStrings = item.selected_dates.split(',');
               dateStrings.forEach((dStr: string) => {
                 const cleanStr = dStr.trim();
-                const parts = cleanStr.split('-');
-                if (parts.length === 3 && parts[0].length === 4) {
-                  disabledDatesArray.push(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 0, 0, 0, 0));
+                if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) {
+                  addDateStr(cleanStr);
                 }
               });
             }
             else if (item.date && !item.date.includes('ถึง')) {
                 const p = item.date.trim().split('-');
                 if (p.length === 3) {
-                    const mMap: any = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
+                    const mMap: any = { jan:'01', feb:'02', mar:'03', apr:'04', may:'05', jun:'06', jul:'07', aug:'08', sep:'09', oct:'10', nov:'11', dec:'12' };
                     let y = parseInt(p[2], 10);
                     if (y < 100) y += 2000;
                     const m = mMap[p[1].toLowerCase().substring(0, 3)];
-                    if (m !== undefined) {
-                        disabledDatesArray.push(new Date(y, m, parseInt(p[0], 10), 0, 0, 0, 0));
+                    const d = p[0].padStart(2, '0');
+                    if (m) {
+                        addDateStr(`${y}-${m}-${d}`);
                     }
                 }
             }
           });
-          setTakenDates(disabledDatesArray);
+          setTakenLeaves(leaves);
         }
       })
       .catch(console.error);
     }
   }, [currentUserId]);
+
+  const getDateLeaveStatus = (date: Date) => {
+    const formattedDate = format(date, "yyyy-MM-dd");
+    const records = takenLeaves.filter(l => l.dateStr === formattedDate);
+
+    if (records.length === 0) {
+      return { isFullyTaken: false, hasMorning: false, hasAfternoon: false };
+    }
+
+    const hasFullDay = records.some(r => !r.isHalfDay);
+    const hasMorning = records.some(r => r.isHalfDay && r.period === 'morning');
+    const hasAfternoon = records.some(r => r.isHalfDay && r.period === 'afternoon');
+    const hasUnspecifiedHalf = records.some(r => r.isHalfDay && !r.period);
+
+    const isFullyTaken = hasFullDay || (hasMorning && hasAfternoon) || (hasUnspecifiedHalf && (hasMorning || hasAfternoon));
+
+    return { isFullyTaken, hasMorning, hasAfternoon };
+  };
+
+  const selectedDateStatus = useMemo(() => {
+    if (selectedDates.length !== 1) return { hasMorning: false, hasAfternoon: false, isFullyTaken: false };
+    return getDateLeaveStatus(selectedDates[0]);
+  }, [selectedDates, takenLeaves]);
+
+  useEffect(() => {
+    if (selectedDates.length === 1) {
+      if (selectedDateStatus.hasMorning && !selectedDateStatus.hasAfternoon) {
+        setIsHalfDay(true);
+        setHalfDayType("afternoon");
+      } else if (selectedDateStatus.hasAfternoon && !selectedDateStatus.hasMorning) {
+        setIsHalfDay(true);
+        setHalfDayType("morning");
+      }
+    }
+  }, [selectedDates, selectedDateStatus]);
 
   const handleDateSelect = (dates: Date[] | undefined) => {
     const safeDates = dates || [];
@@ -206,6 +266,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     setIsSubmitting(true);
 
     try {
+      // 1. Submit to n8n Webhook / PostgreSQL Backend
       const response = await fetch(`${N8N_URL}/webhook/submit-leave`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
@@ -420,24 +481,22 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         
-                        // Normalize the date to local midnight to prevent timezone mismatch issues
                         const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
                         const isPast = checkDate < today;
                         
-                        // Sick leave can be taken retroactively, so we do not disable past dates for it
                         const isPastDisabled = formData.leaveType === 'sick' ? false : isPast;
                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                         
-                        const isTaken = takenDates.some(takenDate => 
-                          takenDate.getDate() === date.getDate() &&
-                          takenDate.getMonth() === date.getMonth() &&
-                          takenDate.getFullYear() === date.getFullYear()
-                        );
+                        const { isFullyTaken } = getDateLeaveStatus(date);
                         
-                        return isPastDisabled || isWeekend || isTaken;
+                        return isPastDisabled || isWeekend || isFullyTaken;
                       }}
                       modifiers={{
-                        taken: takenDates
+                        taken: (date) => getDateLeaveStatus(date).isFullyTaken,
+                        partiallyTaken: (date) => {
+                          const status = getDateLeaveStatus(date);
+                          return !status.isFullyTaken && (status.hasMorning || status.hasAfternoon);
+                        }
                       }}
                       initialFocus
                       className="pointer-events-auto bg-white rounded-2xl p-3"
@@ -457,6 +516,12 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                           fontWeight: "bold",
                           borderRadius: "12px",
                           opacity: "0.6" 
+                        },
+                        partiallyTaken: {
+                          color: "#d97706",
+                          backgroundColor: "#fef3c7",
+                          fontWeight: "bold",
+                          borderRadius: "12px",
                         }
                       }}
                     />
@@ -474,6 +539,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                       <Button
                         type="button"
                         variant={!isHalfDay ? "default" : "outline"}
+                        disabled={selectedDateStatus.hasMorning || selectedDateStatus.hasAfternoon}
                         className={cn("flex-1 h-10 rounded-xl shadow-sm text-xs font-bold transition-all", !isHalfDay ? (formData.leaveType === 'sick' ? "bg-rose-500 hover:bg-rose-600 text-white" : "bg-sky-500 hover:bg-sky-600 text-white") : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
                         onClick={() => setIsHalfDay(false)}
                       >
@@ -495,18 +561,20 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                         <Button
                           type="button"
                           variant={halfDayType === "morning" ? "default" : "outline"}
+                          disabled={selectedDateStatus.hasMorning}
                           className={cn("flex-1 h-9 rounded-lg text-xs font-semibold transition-all", halfDayType === "morning" ? "bg-slate-800 text-white" : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
                           onClick={() => setHalfDayType("morning")}
                         >
-                          {language === 'th' ? "ช่วงเช้า" : "Morning"}
+                          {language === 'th' ? "ช่วงเช้า" : "Morning"} {selectedDateStatus.hasMorning ? "(ลาแล้ว)" : ""}
                         </Button>
                         <Button
                           type="button"
                           variant={halfDayType === "afternoon" ? "default" : "outline"}
+                          disabled={selectedDateStatus.hasAfternoon}
                           className={cn("flex-1 h-9 rounded-lg text-xs font-semibold transition-all", halfDayType === "afternoon" ? "bg-slate-800 text-white" : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
                           onClick={() => setHalfDayType("afternoon")}
                         >
-                          {language === 'th' ? "ช่วงบ่าย" : "Afternoon"}
+                          {language === 'th' ? "ช่วงบ่าย" : "Afternoon"} {selectedDateStatus.hasAfternoon ? "(ลาแล้ว)" : ""}
                         </Button>
                       </div>
                     )}
