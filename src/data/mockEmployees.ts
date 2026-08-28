@@ -15,11 +15,14 @@ export interface Employee {
   department: string;
   startDate: string;
   quotas: {
-    annualTotal: number;
-    sickTotal: number;
+    annualTotal: number | null;
+    sickTotal: number | null;
     personalTotal: number;
     carriedOver: number;
   };
+  quotasKnown?: boolean;
+  quotaNote?: string;
+  status?: "active" | "inactive";
   leaves: LeaveRecord[];
 }
 

@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import liff from "@line/liff";
 import Swal from "sweetalert2";
+import { buildLeaveDateRange } from "@/lib/localDate";
 import { format } from "date-fns";
-import { submitLeaveToPostgres } from "@/lib/postgresApi";
 import { th, enUS } from "date-fns/locale"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,14 +82,10 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
   const [takenLeaves, setTakenLeaves] = useState<TakenLeaveRecord[]>([]);
 
-  const { startDateTime, endDateTime } = useMemo(() => {
-    if (selectedDates.length === 0) return { startDateTime: "", endDateTime: "" };
-    const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
-    return {
-      startDateTime: sortedDates[0].toISOString(),
-      endDateTime: sortedDates[sortedDates.length - 1].toISOString(),
-    };
-  }, [selectedDates]);
+  const { startDate, endDate, dates: localDates } = useMemo(
+    () => buildLeaveDateRange(selectedDates),
+    [selectedDates]
+  );
 
   const displayRemainingDays = remainingDays ?? 10;
   const isOverQuota = (formData.leaveType === "sick" || formData.leaveType === "personal") ? false : requestedDays > displayRemainingDays;
@@ -275,10 +271,12 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
           userId: formData.userId,
           department: formData.department,
           leaveType: formData.leaveType,
-          startDateTime: startDateTime,
-          endDateTime: endDateTime,
+          startDateTime: startDate,
+          endDateTime: endDate,
+          startDate: startDate,
+          endDate: endDate,
           leaveDays: requestedDays, 
-          selectedDates: selectedDates.map(d => format(d, "yyyy-MM-dd")),
+          selectedDates: localDates,
           reason: formData.reason,
           submittedAt: new Date().toISOString(),
           isHalfDay: isHalfDay,

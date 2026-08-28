@@ -20,7 +20,7 @@ import { useLanguage } from "./hooks/useLanguage";
 
 
 const queryClient = new QueryClient();
-const LIFF_ID = "2008617589-89gR1Y3Y";
+const LIFF_ID = import.meta.env.VITE_LIFF_ID || "2008617589-89gR1Y3Y";
 
 const WEBHOOK_CHECK_USER = "https://n8n.womenrefugeeroute.org/webhook/check-user";
 const WEBHOOK_REGISTER_USER = "https://n8n.womenrefugeeroute.org/webhook/register-user";
