@@ -1,5 +1,5 @@
 ﻿import LeaveRecordDialog from "@/components/ceo/LeaveRecordDialog";
-import { BASE, LeaveRequestUpdate } from "@/lib/api";
+import { LeaveRequestUpdate } from "@/lib/api";
 import { useState, useEffect, useMemo } from "react";
 import { 
   Users, Calendar, Clock, Plus, Trash2, Edit, FileText,
@@ -18,7 +18,6 @@ import tbsLogo from "@/image/TBS-Logo.png";
 import SheetView from "@/components/ceo/SheetView";
 import QuickAddLeaveModal from "@/components/ceo/QuickAddLeaveModal";
 import { useEmployeesData } from "@/hooks/useEmployeesData";
-import CeoLogin from "@/components/ceo/CeoLogin";
 import OverviewDashboard from "@/components/ceo/OverviewDashboard";
 import RemoveEmployeeDialog from "@/components/ceo/RemoveEmployeeDialog";
 import ManageRoster from "@/components/ceo/ManageRoster";
@@ -34,14 +33,6 @@ const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefuge
 const KNOWN_DEPARTMENTS = ["SEO", "Web Developer", "UX/UI Designer", "Graphic", "Content", "PBN", "SEM", "Account", "Sale"];
 
 export default function CeoDashboard() {
-  const [signedIn, setSignedIn] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    fetch(`${BASE}/api/auth`, { credentials: "include" })
-      .then(async (res) => setSignedIn(res.ok && (await res.json()).signedIn === true))
-      .catch(() => setSignedIn(false));
-  }, []);
-
   // Selected Year & Department Filters
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
@@ -93,7 +84,7 @@ export default function CeoDashboard() {
     partial: employeesPartial,
     warning: employeesWarning,
     refetch: refetchEmployees,
-  } = useEmployeesData(selectedYear, signedIn === true);
+  } = useEmployeesData(selectedYear);
 
   useEffect(() => {
     localStorage.setItem("tbs_ceo_view_mode", viewMode);
@@ -325,12 +316,6 @@ export default function CeoDashboard() {
       /* mutation toasts the failure */
     }
   };
-
-  if (signedIn === null) return <div className="p-8 text-center">Checking access…</div>;
-
-  if (signedIn === false) {
-    return <CeoLogin onSuccess={() => { setSignedIn(true); refetchEmployees(); }} />;
-  }
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-900 pb-16">
