@@ -1,4 +1,5 @@
-import { cleanString, normalizeDays, normalizeLeaveType } from "./normalize";
+import { cleanString, normalizeDays, normalizeLeaveType, normalizeId } from "./normalize";
+import { isPlainDate } from "./date";
 import type { NormalizedLeave } from "./n8nClient";
 
 const PLAIN = /^\d{4}-\d{2}-\d{2}$/;
@@ -22,22 +23,22 @@ export function parseShortDate(raw: unknown): string | null {
 
 export function parseSelectedDates(raw: unknown): string[] {
   if (Array.isArray(raw)) {
-    return raw.map((v) => cleanString(v).split("T")[0]).filter((v) => PLAIN.test(v));
+    return [...new Set(raw.map((v) => cleanString(v).split("T")[0]).filter(isPlainDate))].sort();
   }
 
   const text = cleanString(raw);
   if (!text) return [];
 
   const stripped = text.replace(/^[[{"']+/, "").replace(/[\]}"']+$/, "");
-  return stripped
+  return [...new Set(stripped
     .split(",")
     .map((token) => cleanString(token).replace(/^["']|["']$/g, "").split("T")[0])
-    .filter((token) => PLAIN.test(token));
+    .filter(isPlainDate))].sort();
 }
 
 export function datesBetween(start: string, end: string): string[] {
-  if (!PLAIN.test(start)) return [];
-  if (!PLAIN.test(end) || end < start) return [start];
+  if (!isPlainDate(start)) return [];
+  if (!isPlainDate(end) || end < start) return [start];
 
   const out: string[] = [];
   const [sy, sm, sd] = start.split("-").map(Number);
@@ -88,10 +89,14 @@ export function expandRequest(raw: unknown, index: number): NormalizedLeave[] {
 
   const status = normalizeRequestStatus(row.status);
   const note = cleanString(row.reason ?? row.note);
-  const requestId = cleanString(row.id ?? row.request_id) || `req_${index}`;
+  const requestId = normalizeId(row.id ?? row.request_id);
+  const period = row.half_day_period ?? row.halfDayPeriod;
 
   return dates.map((date, i) => ({
-    id: `${requestId}_${i}`,
+    id: `${requestId || `legacy_${index}`}@${date}`,
+    requestId: /^\d+$/.test(requestId) ? requestId : undefined,
+    requestDates: dates,
+    halfDayPeriod: period === "morning" || period === "afternoon" ? period : null,
     date,
     type,
     days: perDay,

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { ceoAuthorised, currentYear, json, queryParam } from "./_lib/http";
-import { N8nNotRegisteredError, N8nUnavailableError, n8nGet, n8nPost, normalizeEmployeeList } from "./_lib/n8nClient";
+import { ceoAuthorised, currentYear, json, queryParam, writesAllowed } from "./_lib/http";
+import { N8nMutationError, N8nNotRegisteredError, N8nUnavailableError, n8nGet, n8nPost, normalizeEmployeeList } from "./_lib/n8nClient";
 import { cleanString, parseEmpNo } from "./_lib/normalize";
 
 async function setStatus(req: VercelRequest, res: VercelResponse) {
@@ -19,6 +19,7 @@ async function setStatus(req: VercelRequest, res: VercelResponse) {
     const result = await n8nPost("dashboard-employee-status", { userId, status });
     return json(res, 200, { ok: true, userId, status, n8n: result });
   } catch (err) {
+    if (err instanceof N8nMutationError) return json(res, err.status, { error: err.message });
     if (err instanceof N8nNotRegisteredError) {
       return json(res, 503, { error: err.message, hint: "create the dashboard-employee-status workflow in n8n" });
     }
@@ -64,6 +65,7 @@ async function setProfile(req: VercelRequest, res: VercelResponse) {
     });
     return json(res, 200, { ok: true, userId, n8n: result });
   } catch (err) {
+    if (err instanceof N8nMutationError) return json(res, err.status, { error: err.message });
     if (err instanceof N8nNotRegisteredError) {
       return json(res, 503, { error: err.message, hint: "create the dashboard-employee-profile workflow in n8n" });
     }
@@ -80,6 +82,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === "PATCH") {
+    if (!writesAllowed(req)) return json(res, 401, { error: "not authorised" });
     const body = typeof req.body === "object" && req.body !== null ? (req.body as Record<string, unknown>) : {};
     return body.status === undefined ? setProfile(req, res) : setStatus(req, res);
   }
@@ -117,6 +120,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       employees,
     });
   } catch (err) {
+    if (err instanceof N8nMutationError) return json(res, err.status, { error: err.message });
     if (err instanceof N8nNotRegisteredError) {
       return json(res, 503, {
         error: "the n8n get-all-leaves workflow is not active",

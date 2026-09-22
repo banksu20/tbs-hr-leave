@@ -89,6 +89,7 @@ export default function EditableCell({
           focusCell(gridId, row + 1, col);
         } else if (e.key === "Escape") {
           e.preventDefault();
+          justCommitted.current = true;
           setDraft(value);
           inputRef.current?.blur();
         } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {

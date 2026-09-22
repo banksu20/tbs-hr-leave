@@ -4,7 +4,7 @@ const EMP_CODE_ANYWHERE = /TBS[\s-]?0*(\d{1,4})/i;
 
 export function parseEmpNo(value: unknown): number | null {
   if (typeof value === "number") {
-    return Number.isInteger(value) && value > 0 ? value : null;
+    return Number.isInteger(value) && value >= 0 ? value : null;
   }
   if (typeof value !== "string") return null;
 
@@ -14,12 +14,12 @@ export function parseEmpNo(value: unknown): number | null {
   const coded = EMP_CODE_ANYWHERE.exec(raw);
   if (coded) {
     const n = Number(coded[1]);
-    return n > 0 ? n : null;
+    return n >= 0 ? n : null;
   }
 
   if (/^\d{1,4}$/.test(raw)) {
     const n = Number(raw);
-    return n > 0 ? n : null;
+    return n >= 0 ? n : null;
   }
 
   return null;

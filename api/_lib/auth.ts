@@ -4,7 +4,7 @@ export const SESSION_COOKIE = "tbs_ceo";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 export function authRequired(): boolean {
-  return Boolean(process.env.CEO_PASSWORD);
+  return process.env.NODE_ENV === "production" || Boolean(process.env.CEO_PASSWORD);
 }
 
 function secret(): string {
@@ -24,7 +24,7 @@ function safeEqual(a: string, b: string): boolean {
 
 export function verifyPassword(password: unknown): boolean {
   const expected = process.env.CEO_PASSWORD;
-  if (!expected) return true;
+  if (!expected) return !authRequired();
   if (typeof password !== "string" || password.length === 0) return false;
   return safeEqual(expected, password);
 }
@@ -39,6 +39,7 @@ export function clearedCookie(): string {
 
 export function signedIn(cookieHeader: string | undefined): boolean {
   if (!authRequired()) return true;
+  if (!process.env.CEO_PASSWORD) return false;
 
   const match = String(cookieHeader ?? "").match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=([^;]*)`));
   if (!match) return false;

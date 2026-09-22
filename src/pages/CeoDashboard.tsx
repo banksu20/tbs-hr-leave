@@ -1,4 +1,6 @@
-﻿import { useState, useEffect, useMemo } from "react";
+﻿import LeaveRecordDialog from "@/components/ceo/LeaveRecordDialog";
+import { BASE, LeaveRequestUpdate } from "@/lib/api";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Users, Calendar, Clock, Plus, Trash2, Edit, FileText,
   Search, AlertCircle, CheckCircle2, LayoutGrid, BarChart3,
@@ -29,17 +31,20 @@ import { LeaveType } from "@/components/ceo/leaveSheetUtils";
 const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefugeeroute.org";
 
 
+const KNOWN_DEPARTMENTS = ["SEO", "Web Developer", "UX/UI Designer", "Graphic", "Content", "PBN", "SEM", "Account", "Sale"];
+
 export default function CeoDashboard() {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
-    fetch("/api/employees?year=" + new Date().getFullYear())
-      .then((res) => setSignedIn(res.status !== 401))
-      .catch(() => setSignedIn(true));
+    fetch(`${BASE}/api/auth`, { credentials: "include" })
+      .then(async (res) => setSignedIn(res.ok && (await res.json()).signedIn === true))
+      .catch(() => setSignedIn(false));
   }, []);
 
   // Selected Year & Department Filters
-  const [selectedYear, setSelectedYear] = useState<"2026" | "2025">("2026");
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(String(currentYear));
   const [selectedDept, setSelectedDept] = useState<string>("All");
   const [viewMode, setViewMode] = useState<"overview" | "roster" | "sheet" | "removed">(
     () => (localStorage.getItem("tbs_ceo_view_mode") as "overview" | "roster" | "sheet" | "removed") || "overview"
@@ -76,11 +81,10 @@ export default function CeoDashboard() {
   const [quotaCarried, setQuotaCarried] = useState(0);
 
   // Departments List
-  const KNOWN_DEPARTMENTS = ["SEO", "Web Developer", "UX/UI Designer", "Graphic", "Content", "PBN", "SEM", "Account", "Sale"];
+
 
   const {
     employees,
-    setEmployees,
     source: dataSource,
     isLoading: isLoadingEmployees,
     isFetching: isFetchingEmployees,
@@ -89,7 +93,7 @@ export default function CeoDashboard() {
     partial: employeesPartial,
     warning: employeesWarning,
     refetch: refetchEmployees,
-  } = useEmployeesData(selectedYear);
+  } = useEmployeesData(selectedYear, signedIn === true);
 
   useEffect(() => {
     localStorage.setItem("tbs_ceo_view_mode", viewMode);
@@ -182,15 +186,7 @@ export default function CeoDashboard() {
 
   // Import Handlers
 
-  const handleClearAllData = () => {
-    if (confirm("Clear all employee records?")) {
-      setEmployees([]);
-      localStorage.removeItem("tbs_employees_db");
-      toast.success("All data cleared!");
-    }
-  };
-
-  const handleAddLeaveModalSubmit = (e: React.FormEvent) => {
+  const handleAddLeaveModalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEmployee) return;
 
@@ -209,102 +205,74 @@ export default function CeoDashboard() {
       return;
     }
 
-    entries.forEach((entry) =>
-      addLeaveRecord(selectedEmployee.id, {
-        date,
-        type: entry.type,
-        days: entry.days,
-        note: modalLeaveForm.note,
-      })
-    );
-
-    setModalLeaveForm({ date: "", sick: "", annual: "", personal: "", note: "" });
+    try {
+      for (const entry of entries) {
+        await addLeaveRecord(selectedEmployee.id, { date, type: entry.type, days: entry.days, note: modalLeaveForm.note });
+        setModalLeaveForm((current) => ({ ...current, [entry.type]: "" }));
+      }
+      setModalLeaveForm({ date: "", sick: "", annual: "", personal: "", note: "" });
+    } catch { /* Keep the form on failure. */ }
   };
 
-  const updateLeaveRecord = (empId: string, leaveId: string, patch: Partial<LeaveRecord>) => {
-    leaveMutations.update.mutate({
-      id: leaveId,
-      patch: {
-        date: patch.date,
-        type: patch.type,
-        days: patch.days,
-        note: patch.note,
-        status: patch.status,
-      },
-    });
+  const [requestEditor, setRequestEditor] = useState<{
+    empId: string; requestId?: string; value: LeaveRequestUpdate; creating?: boolean;
+  } | null>(null);
 
-    setEmployees((prev) =>
-      prev.map((emp) => {
-        if (emp.id !== empId) return emp;
-        const updatedLeaves = (emp.leaves || []).map((l) => (l.id === leaveId ? { ...l, ...patch } : l));
-        if (selectedEmployee && selectedEmployee.id === empId) {
-          setSelectedEmployee({ ...emp, leaves: updatedLeaves });
-        }
-        return { ...emp, leaves: updatedLeaves };
-      })
-    );
-  };
+  useEffect(() => {
+    if (selectedEmployee) {
+      const fresh = employees.find((employee) => employee.id === selectedEmployee.id);
+      if (fresh) setSelectedEmployee(fresh);
+    }
+  }, [employees, selectedEmployee]);
 
-  const addLeaveRecord = (
-    empId: string,
-    draft: { date: string; type: LeaveType; days: number; note: string }
-  ) => {
-    leaveMutations.create.mutate({ empId, ...draft });
-
-    const record: LeaveRecord = {
-      id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      date: draft.date,
-      type: draft.type,
-      days: draft.days,
-      note: draft.note,
-      status: "Approved",
+  const updateLeaveRecord = async (empId: string, leaveId: string, patch: Partial<LeaveRecord>) => {
+    const leave = employees.find((emp) => emp.id === empId)?.leaves.find((row) => row.id === leaveId);
+    if (!leave?.requestId || !leave.requestDates?.length) {
+      toast.error("Refresh the dashboard before editing this request."); return;
+    }
+    const next = { ...leave, ...patch };
+    const value: LeaveRequestUpdate = {
+      scope: "request", expectedDates: leave.requestDates,
+      dates: leave.requestDates.map((date) => date === leave.date ? next.date : date),
+      type: next.type, daysPerDate: next.days,
+      halfDayPeriod: next.days === 0.5 ? next.halfDayPeriod ?? null : null,
+      note: next.note, status: next.status,
     };
-    setEmployees((prev) =>
-      prev.map((emp) => {
-        if (emp.id !== empId) return emp;
-        const updatedLeaves = [...(emp.leaves || []), record];
-        if (selectedEmployee && selectedEmployee.id === empId) {
-          setSelectedEmployee({ ...emp, leaves: updatedLeaves });
-        }
-        return { ...emp, leaves: updatedLeaves };
-      })
-    );
-    toast.success(`Added ${draft.days}d ${draft.type} leave`);
+    if (leave.requestDates.length > 1 || (next.days === 0.5 && !value.halfDayPeriod)) {
+      setRequestEditor({ empId, requestId: leave.requestId, value }); return;
+    }
+    try { await leaveMutations.update.mutateAsync({ id: leave.requestId, patch: value }); }
+    catch { /* The unchanged server data remains visible. */ }
   };
 
-  const updateQuotaNote = (empId: string, note: string) => {
-    setEmployees((prev) => prev.map((emp) => (emp.id === empId ? { ...emp, quotaNote: note } : emp)));
-    const employee = employees.find((e) => e.id === empId);
-    if (employee) leaveMutations.quota.mutate({ employee, patch: { note } });
+  const addLeaveRecord = async (
+    empId: string,
+    draft: { date: string; type: LeaveType; days: number; note: string; halfDayPeriod?: "morning" | "afternoon" | null }
+  ) => {
+    if (draft.days === 0.5 && !draft.halfDayPeriod) {
+      setRequestEditor({ empId, creating: true, value: {
+        scope: "request", expectedDates: [draft.date], dates: [draft.date], type: draft.type,
+        daysPerDate: draft.days, halfDayPeriod: null, note: draft.note, status: "Approved",
+      } }); return;
+    }
+    await leaveMutations.create.mutateAsync({ empId, ...draft });
+  };
+
+  const updateQuotaNote = async (empId: string, note: string) => {
+    const employee = employees.find((emp) => emp.id === empId);
+    if (employee) await leaveMutations.quota.mutateAsync({ employee, patch: { note } });
   };
 
   const removeLeaveRecord = (empId: string, leaveId: string) => {
-    leaveMutations.remove.mutate(leaveId);
-
-    setEmployees((prev) =>
-      prev.map((emp) => {
-        if (emp.id !== empId) return emp;
-        const updatedLeaves = (emp.leaves || []).filter((l) => l.id !== leaveId);
-        if (selectedEmployee && selectedEmployee.id === empId) {
-          setSelectedEmployee({ ...emp, leaves: updatedLeaves });
-        }
-        return { ...emp, leaves: updatedLeaves };
-      })
-    );
-  };
-
-  const handleDeleteLeave = (empId: string, leaveId: string) => {
-    if (!confirm("Delete this leave record?")) return;
-    removeLeaveRecord(empId, leaveId);
-  };
-
-  const handleDeleteEmployee = (empId: string) => {
-    if (confirm("Delete this employee profile?")) {
-      setEmployees((prev) => prev.filter((e) => e.id !== empId));
-      if (selectedEmployee?.id === empId) setSelectedEmployee(null);
-      toast.success("Employee deleted");
+    const leave = employees.find((emp) => emp.id === empId)?.leaves.find((row) => row.id === leaveId);
+    if (!leave?.requestId || !leave.requestDates?.length) {
+      toast.error("Refresh the dashboard before removing this request."); return;
     }
+    if (!confirm(`Remove this entire leave request (${leave.requestDates.length} date(s)): ${leave.requestDates.join(", ")}?`)) return;
+    leaveMutations.remove.mutate({ id: leave.requestId, expectedDates: leave.requestDates });
   };
+
+  const handleDeleteLeave = removeLeaveRecord;
 
   const openEditQuotaModal = (emp: Employee) => {
     setEditingEmp(emp);
@@ -358,6 +326,8 @@ export default function CeoDashboard() {
     }
   };
 
+  if (signedIn === null) return <div className="p-8 text-center">Checking access…</div>;
+
   if (signedIn === false) {
     return <CeoLogin onSuccess={() => { setSignedIn(true); refetchEmployees(); }} />;
   }
@@ -378,24 +348,9 @@ export default function CeoDashboard() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base font-extrabold text-white tracking-tight">TBS HR - Leave Request System</h1>
-                <div className="flex bg-slate-800 p-0.5 rounded border border-slate-700">
-                  <button
-                    onClick={() => setSelectedYear("2026")}
-                    className={`px-2.5 py-0.5 text-xs font-bold rounded transition-colors ${
-                      selectedYear === "2026" ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    2026
-                  </button>
-                  <button
-                    onClick={() => setSelectedYear("2025")}
-                    className={`px-2.5 py-0.5 text-xs font-bold rounded transition-colors ${
-                      selectedYear === "2025" ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    2025
-                  </button>
-                </div>
+                <select aria-label="Leave year" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="bg-slate-800 text-white border border-slate-700 rounded px-2 py-1 text-xs font-bold">
+                  {Array.from({ length: 5 }, (_, index) => currentYear + 1 - index).map((year) => <option key={year} value={year}>{year}</option>)}
+                </select>
               </div>
               <p className="text-[10px] text-slate-400 font-medium">TBS Marketing &bull; Staff leave and quotas</p>
             </div>
@@ -429,13 +384,7 @@ export default function CeoDashboard() {
               Add Leave
             </button>
 
-            <button
-              onClick={handleClearAllData}
-              className="h-9 px-2.5 bg-rose-600/80 hover:bg-rose-600 text-white font-bold rounded-lg text-xs transition-colors border border-rose-700"
-              title="Clear all data"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+
           </div>
         </div>
       </header>
@@ -793,6 +742,20 @@ export default function CeoDashboard() {
           );
         }}
       />
+
+      {requestEditor && <LeaveRecordDialog
+        initial={requestEditor.value}
+        employeeName={employees.find((employee) => employee.id === requestEditor.empId)?.name ?? "Employee"}
+        creating={requestEditor.creating}
+        onClose={() => setRequestEditor(null)}
+        onSave={async (value) => {
+          if (requestEditor.creating) await leaveMutations.create.mutateAsync({
+            empId: requestEditor.empId, date: value.dates[0], type: value.type,
+            days: value.daysPerDate, halfDayPeriod: value.halfDayPeriod, note: value.note,
+          });
+          else await leaveMutations.update.mutateAsync({ id: requestEditor.requestId!, patch: value });
+        }}
+      />}
 
       <QuickAddLeaveModal
         open={isQuickAddOpen}

@@ -12,7 +12,7 @@ export interface QuickAddLeaveModalProps {
   onOpenChange: (open: boolean) => void;
   employees: Employee[];
   defaultYear: string;
-  onSubmit: (empId: string, draft: { date: string; type: LeaveType; days: number; note: string }) => void;
+  onSubmit: (empId: string, draft: { date: string; type: LeaveType; days: number; note: string; halfDayPeriod?: "morning" | "afternoon" | null }) => Promise<void>;
 }
 
 const DAY_OPTIONS: { value: number; label: string }[] = [
@@ -34,6 +34,8 @@ export default function QuickAddLeaveModal({
   const [days, setDays] = useState<number>(1);
   const [dateInput, setDateInput] = useState("");
   const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [halfDayPeriod, setHalfDayPeriod] = useState<"morning" | "afternoon" | "">("");
   const [error, setError] = useState("");
 
   const matches = useMemo(() => {
@@ -48,17 +50,19 @@ export default function QuickAddLeaveModal({
     setSelected(null);
     setType("annual");
     setDays(1);
+    setHalfDayPeriod("");
     setDateInput("");
     setNote("");
     setError("");
   };
 
   const close = (next: boolean) => {
+    if (busy) return;
     if (!next) reset();
     onOpenChange(next);
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!selected) {
       setError("Choose an employee from the list");
       return;
@@ -67,9 +71,13 @@ export default function QuickAddLeaveModal({
       setError("Enter a valid date, for example 2026-08-25 or 25 Aug 26");
       return;
     }
-    onSubmit(selected.id, { date: normalizedDate, type, days, note });
-    reset();
-    onOpenChange(false);
+    if (days === 0.5 && !halfDayPeriod) { setError("Choose morning or afternoon"); return; }
+    setBusy(true);
+    try {
+      await onSubmit(selected.id, { date: normalizedDate, type, days, note, halfDayPeriod: days === 0.5 ? halfDayPeriod as "morning" | "afternoon" : null });
+      reset(); onOpenChange(false);
+    } catch { setError("Not saved. Your entries are retained. Please retry."); }
+    finally { setBusy(false); }
   };
 
   return (
@@ -209,6 +217,12 @@ export default function QuickAddLeaveModal({
             />
           </div>
 
+          {days === 0.5 && <label className="block text-sm">Half-day period
+            <select className="w-full mt-1 border rounded p-2" value={halfDayPeriod} disabled={busy} onChange={(e) => setHalfDayPeriod(e.target.value as "morning" | "afternoon")}>
+              <option value="" disabled>Choose a period</option><option value="morning">Morning</option><option value="afternoon">Afternoon</option>
+            </select>
+          </label>}
+
           {error && <p className="text-xs font-bold text-rose-600">{error}</p>}
         </div>
 
@@ -218,10 +232,10 @@ export default function QuickAddLeaveModal({
           </Button>
           <Button
             onClick={submit}
-            disabled={!selected || !normalizedDate}
+            disabled={busy || !selected || !normalizedDate}
             className="bg-[#00B5E2] hover:bg-[#0099c4] text-white font-bold text-xs disabled:opacity-40"
           >
-            Add record
+            {busy ? "Saving…" : "Add record"}
           </Button>
         </div>
       </DialogContent>

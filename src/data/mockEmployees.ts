@@ -1,5 +1,8 @@
 export interface LeaveRecord {
   id: string;
+  requestId?: string;
+  requestDates?: string[];
+  halfDayPeriod?: "morning" | "afternoon" | null;
   date: string; // "YYYY-MM-DD"
   type: "sick" | "annual" | "personal";
   days: number;

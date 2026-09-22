@@ -1,4 +1,4 @@
-const ZERO_WIDTH = /[​-‍﻿ ]/g;
+const ZERO_WIDTH = /[\u200B-\u200D\uFEFF\u00A0]/g;
 
 export function cleanString(value: unknown): string {
   if (typeof value !== "string") return "";
@@ -15,6 +15,11 @@ const THAI_LEAVE_TYPES: Record<string, string> = {
   "ลากิจส่วนตัว": "personal",
 };
 
+export function normalizeId(value: unknown): string {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) return String(value);
+  return cleanString(value);
+}
+
 export function normalizeLeaveType(value: unknown): string {
   const trimmed = cleanString(value);
   if (THAI_LEAVE_TYPES[trimmed]) return THAI_LEAVE_TYPES[trimmed];
@@ -27,7 +32,7 @@ export function normalizeLeaveType(value: unknown): string {
 }
 
 export function normalizeDays(value: unknown): number | null {
-  if (typeof value === "number") return value;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
   const raw = cleanString(value).replace(",", ".");
   if (!raw) return null;
   const parsed = Number(raw);
@@ -36,10 +41,10 @@ export function normalizeDays(value: unknown): number | null {
 
 export function parseEmpNo(value: unknown): number | null {
   if (typeof value === "number") {
-    return Number.isInteger(value) && value > 0 ? value : null;
+    return Number.isInteger(value) && value >= 0 ? value : null;
   }
   const raw = cleanString(value).toUpperCase().replace(/^TBS[-\s]?/, "");
   if (!/^\d+$/.test(raw)) return null;
   const parsed = Number(raw);
-  return parsed > 0 ? parsed : null;
+  return parsed >= 0 ? parsed : null;
 }

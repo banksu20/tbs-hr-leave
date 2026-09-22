@@ -14,7 +14,7 @@ export class NetworkError extends Error {
   }
 }
 
-const BASE = import.meta.env.VITE_API_BASE_URL || "";
+export const BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
@@ -22,6 +22,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     response = await fetch(`${BASE}${path}`, {
       ...init,
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         ...(init?.headers ?? {}),
@@ -51,6 +52,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export interface ApiLeaveRecord {
   id: string;
+  requestId?: string;
+  requestDates?: string[];
   date: string;
   type: LeaveRecord["type"];
   days: number;
@@ -112,6 +115,9 @@ export function toEmployee(api: ApiEmployee): Employee {
     status: api.status ?? "active",
     leaves: api.leaves.map((l) => ({
       id: l.id,
+      requestId: l.requestId,
+      requestDates: l.requestDates,
+      halfDayPeriod: l.halfDayPeriod,
       date: l.date,
       type: l.type,
       days: l.days,
@@ -160,18 +166,23 @@ export async function createLeave(draft: LeaveDraft) {
   });
 }
 
-export async function updateLeave(id: string, patch: Partial<Omit<LeaveDraft, "empNo" | "userId">> & { status?: LeaveRecord["status"] }) {
-  const body: Record<string, unknown> = {};
-  if (patch.date !== undefined) body.leave_date = patch.date;
-  if (patch.type !== undefined) body.leave_type = patch.type;
-  if (patch.days !== undefined) body.days = patch.days;
-  if (patch.halfDayPeriod !== undefined) body.half_day_period = patch.halfDayPeriod;
-  if (patch.note !== undefined) body.note = patch.note;
-  if (patch.status !== undefined) body.status = patch.status;
+export interface RequestTarget {
+  scope: "request";
+  expectedDates: string[];
+}
+export interface LeaveRequestUpdate extends RequestTarget {
+  dates: string[];
+  type: LeaveRecord["type"];
+  daysPerDate: number;
+  halfDayPeriod: "morning" | "afternoon" | null;
+  note: string;
+  status: LeaveRecord["status"];
+}
 
+export async function updateLeave(id: string, patch: LeaveRequestUpdate) {
   return request<{ id: string }>(`/api/leave?id=${encodeURIComponent(id)}`, {
     method: "PATCH",
-    body: JSON.stringify(body),
+    body: JSON.stringify(patch),
   });
 }
 
@@ -214,8 +225,9 @@ export async function updateQuota(patch: QuotaPatch) {
   });
 }
 
-export async function deleteLeave(id: string) {
+export async function deleteLeave(id: string, target: RequestTarget) {
   return request<{ id: string; deleted: boolean }>(`/api/leave?id=${encodeURIComponent(id)}`, {
     method: "DELETE",
+    body: JSON.stringify(target),
   });
 }

@@ -1,3 +1,4 @@
+import { BASE } from "@/lib/api";
 import { useState } from "react";
 import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,8 +19,9 @@ export default function CeoLogin({ onSuccess }: CeoLoginProps) {
     setBusy(true);
     setError("");
     try {
-      const res = await fetch("/api/auth", {
+      const res = await fetch(`${BASE}/api/auth`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
       });

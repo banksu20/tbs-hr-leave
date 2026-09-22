@@ -1,60 +1,52 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Employee } from "@/data/mockEmployees";
 import { ApiError, NetworkError, fetchEmployees } from "@/lib/api";
 
 export type DataSource = "live" | "cached" | "empty";
-
-const CACHE_KEY = "tbs_employees_db";
-
-function keyFor(year: string) {
-  return `${CACHE_KEY}_${year}`;
-}
+// A new cache version discards legacy optimistic records and invalid request IDs.
+const CACHE_KEY = "tbs_employees_v2";
+const keyFor = (year: string) => `${CACHE_KEY}_${year}`;
 
 export function readCache(year: string): Employee[] | null {
   try {
-    const saved = localStorage.getItem(keyFor(year)) ?? localStorage.getItem(CACHE_KEY);
-    if (!saved) return null;
-    const parsed = JSON.parse(saved);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
-  } catch {
-    return null;
-  }
+    const saved = localStorage.getItem(keyFor(year));
+    const parsed = saved ? JSON.parse(saved) : null;
+    return Array.isArray(parsed) ? parsed : null;
+  } catch { return null; }
 }
 
 export function readCacheTime(year: string): number {
-  const raw = localStorage.getItem(`${keyFor(year)}_at`);
-  const parsed = raw ? Number(raw) : NaN;
-  return Number.isFinite(parsed) ? parsed : 0;
+  try {
+    const time = Number(localStorage.getItem(`${keyFor(year)}_at`));
+    return Number.isFinite(time) ? time : 0;
+  } catch { return 0; }
 }
 
 export function writeCache(year: string, employees: Employee[]) {
   try {
     localStorage.setItem(keyFor(year), JSON.stringify(employees));
     localStorage.setItem(`${keyFor(year)}_at`, String(Date.now()));
-  } catch {
-    return;
-  }
+  } catch { /* Storage can be unavailable. The network result remains usable. */ }
 }
 
 export function describeError(error: unknown): string {
-  if (error instanceof NetworkError) {
-    return "Cannot reach the server. Check your connection.";
-  }
+  if (error instanceof NetworkError) return "Cannot reach the server. Check your connection.";
   if (error instanceof ApiError) {
-    if (error.status === 503) return "The n8n get-all-leaves workflow is not running yet.";
+    if (error.status === 503) return "The server or n8n workflow is not configured yet.";
     if (error.status === 502) return "n8n did not respond. The workflow may be failing.";
     return error.message;
   }
   return error instanceof Error ? error.message : "Unknown error";
 }
 
-export function useEmployeesData(year: string) {
+export function useEmployeesData(year: string, enabled = true) {
   const query = useQuery({
     queryKey: ["employees", year],
     queryFn: () => fetchEmployees(year, true),
+    enabled,
     initialData: () => {
-      const cached = readCache(year);
+      const cached = enabled ? readCache(year) : null;
       return cached ? { employees: cached, partial: false, warning: undefined } : undefined;
     },
     initialDataUpdatedAt: () => readCacheTime(year),
@@ -62,51 +54,27 @@ export function useEmployeesData(year: string) {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchInterval: 120_000,
-    refetchIntervalInBackground: false,
-    staleTime: 60_000,
+    staleTime: 0,
     gcTime: 24 * 60 * 60 * 1000,
-    placeholderData: (previous) => previous,
   });
 
-  const [local, setLocal] = useState<Employee[] | null>(() => readCache(year));
-
+  // No placeholderData: an old year's result must never be saved under a new year.
   useEffect(() => {
-    setLocal(readCache(year));
-  }, [year]);
-
-  useEffect(() => {
-    if (query.data?.employees) {
-      setLocal(query.data.employees);
+    if (enabled && query.isFetched && query.isSuccess && query.data) {
       writeCache(year, query.data.employees);
     }
-  }, [query.data, year]);
+  }, [enabled, query.isFetched, query.isSuccess, query.data, year]);
 
-  const employees = useMemo(() => local ?? [], [local]);
-
-  const source: DataSource = query.isSuccess ? "live" : local ? "cached" : "empty";
-  const lastUpdated = query.dataUpdatedAt || readCacheTime(year);
-
-  const update = useCallback(
-    (value: Employee[] | ((prev: Employee[]) => Employee[])) => {
-      setLocal((prev) => {
-        const next = typeof value === "function" ? value(prev ?? []) : value;
-        writeCache(year, next);
-        return next;
-      });
-    },
-    [year]
-  );
-
+  const employees = enabled ? query.data?.employees ?? [] : [];
+  const source: DataSource = query.isFetched && query.isSuccess ? "live" : query.data ? "cached" : "empty";
   return {
-    employees,
-    setEmployees: update,
-    source,
+    employees, source,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error ? describeError(query.error) : null,
     partial: query.data?.partial === true,
     warning: query.data?.warning,
-    lastUpdated,
+    lastUpdated: query.dataUpdatedAt || readCacheTime(year),
     refetch: query.refetch,
   };
 }

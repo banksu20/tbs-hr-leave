@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { ceoAuthorised, currentYear, json, queryParam, writesAllowed } from "./_lib/http";
-import { N8nNotRegisteredError, N8nUnavailableError, n8nGet, n8nPost } from "./_lib/n8nClient";
+import { N8nMutationError, N8nNotRegisteredError, N8nUnavailableError, n8nGet, n8nPost } from "./_lib/n8nClient";
 import { cleanString, normalizeDays } from "./_lib/normalize";
 
 function num(source: Record<string, unknown>, keys: string[], fallback: number | null): number | null {
@@ -44,6 +44,7 @@ async function updateQuota(req: VercelRequest, res: VercelResponse) {
     });
     return json(res, 200, { ok: true, userId, year, n8n: result });
   } catch (err) {
+    if (err instanceof N8nMutationError) return json(res, err.status, { error: err.message });
     if (err instanceof N8nNotRegisteredError) {
       return json(res, 503, { error: err.message, hint: "create the dashboard-quota-update workflow in n8n" });
     }
@@ -112,6 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       personalRemaining: personalRemaining ?? personalTotal - (personalTaken ?? 0),
     });
   } catch (err) {
+    if (err instanceof N8nMutationError) return json(res, err.status, { error: err.message });
     if (err instanceof N8nNotRegisteredError) {
       return json(res, 503, { error: "the n8n get-quota workflow is not active" });
     }

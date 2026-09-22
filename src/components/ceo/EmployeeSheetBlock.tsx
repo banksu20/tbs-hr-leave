@@ -20,10 +20,10 @@ export interface EmployeeSheetBlockProps {
   year: string;
   compact?: boolean;
   onUpdateLeave: (empId: string, leaveId: string, patch: Partial<LeaveRecord>) => void;
-  onAddLeave: (empId: string, draft: { date: string; type: LeaveType; days: number; note: string }) => void;
+  onAddLeave: (empId: string, draft: { date: string; type: LeaveType; days: number; note: string }) => Promise<void>;
   onDeleteLeave: (empId: string, leaveId: string) => void;
   onEditProfile: (emp: Employee) => void;
-  onQuotaNoteChange?: (empId: string, note: string) => void;
+  onQuotaNoteChange?: (empId: string, note: string) => Promise<void>;
   onRemoveEmployee?: (emp: Employee) => void;
 }
 
@@ -61,14 +61,19 @@ export default function EmployeeSheetBlock({
   const overQuota = quotasKnown && !quotaReview && totals.some((t) => !t.unlimited && t.remain < 0);
   const rowPad = compact ? "py-0.5" : "py-1.5";
 
-  const commitDraft = (next: typeof EMPTY_DRAFT) => {
+  const commitDraft = async (next: typeof EMPTY_DRAFT) => {
     setDraft(next);
     const date = normalizeDateInput(next.date, year);
     if (!date) return;
     const entered = LEAVE_TYPES.map((t) => ({ type: t, days: parseFloat(next[t]) || 0 })).filter((e) => e.days > 0);
     if (entered.length === 0) return;
-    entered.forEach((e) => onAddLeave(employee.id, { date, type: e.type, days: e.days, note: next.note }));
-    setDraft(EMPTY_DRAFT);
+    try {
+      for (const entry of entered) {
+        await onAddLeave(employee.id, { date, ...entry, note: next.note });
+        setDraft((current) => ({ ...current, [entry.type]: "" }));
+      }
+      setDraft(EMPTY_DRAFT);
+    } catch { /* Retain the draft when the request fails. */ }
   };
 
   const updateDays = (leave: LeaveRecord, type: LeaveType, raw: string) => {
@@ -174,6 +179,7 @@ export default function EmployeeSheetBlock({
               <tr key={leave.id} className="group hover:bg-slate-50/80">
                 <td className={`sticky left-0 z-10 bg-white group-hover:bg-slate-50/80 border-r border-slate-200 px-1 ${rowPad}`}>
                   <EditableCell
+                    title={leave.requestDates && leave.requestDates.length > 1 ? "Editing opens the complete multi-day request" : undefined}
                     gridId={gridId}
                     cellId={`c:${rowIdx}:0`}
                     value={leave.date}
@@ -218,7 +224,7 @@ export default function EmployeeSheetBlock({
                   <button
                     onClick={() => onDeleteLeave(employee.id, leave.id)}
                     className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-300 hover:text-rose-600 transition-opacity"
-                    title="Delete record"
+                    title={`Remove entire request (${leave.requestDates?.length ?? 1} dates)`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -299,8 +305,11 @@ export default function EmployeeSheetBlock({
                     <input
                       value={noteDraft}
                       onChange={(e) => setNoteDraft(e.target.value)}
-                      onBlur={() => {
-                        if (noteDraft !== (employee.quotaNote ?? "")) onQuotaNoteChange?.(employee.id, noteDraft);
+                      onBlur={async () => {
+                        if (noteDraft !== (employee.quotaNote ?? "")) {
+                          try { await onQuotaNoteChange?.(employee.id, noteDraft); }
+                          catch { setNoteDraft(employee.quotaNote ?? ""); }
+                        }
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") (e.target as HTMLInputElement).blur();

@@ -1,11 +1,13 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { requestTargetSchema, requestUpdateSchema } from "./_lib/requestMutation";
 import { isWithinWindow } from "./_lib/date";
 import { ceoAuthorised, json, queryParam, writesAllowed } from "./_lib/http";
 import { leaveRowSchema, normalizeRow } from "./_lib/leaveSchema";
-import { N8nNotRegisteredError, N8nUnavailableError, n8nPost } from "./_lib/n8nClient";
+import { N8nMutationError, N8nNotRegisteredError, N8nUnavailableError, n8nPost } from "./_lib/n8nClient";
 import { cleanString } from "./_lib/normalize";
 
 function n8nFailure(res: VercelResponse, err: unknown) {
+  if (err instanceof N8nMutationError) return json(res, err.status, { error: err.message });
   if (err instanceof N8nNotRegisteredError) {
     return json(res, 503, {
       error: err.message,
@@ -62,40 +64,29 @@ async function create(req: VercelRequest, res: VercelResponse) {
 }
 
 async function update(req: VercelRequest, res: VercelResponse, id: string) {
-  const raw = typeof req.body === "object" && req.body !== null ? (req.body as Record<string, unknown>) : {};
-  const normalized = normalizeRow(raw);
-
-  const patch: Record<string, unknown> = { id };
-  if (raw.leave_date !== undefined || raw.date !== undefined) patch.leaveDate = normalized.leave_date;
-  if (raw.leave_type !== undefined || raw.type !== undefined) patch.leaveType = normalized.leave_type;
-  if (raw.days !== undefined) patch.leaveDays = normalized.days;
-  if (raw.half_day_period !== undefined) patch.halfDayPeriod = normalized.half_day_period;
-  if (raw.note !== undefined || raw.reason !== undefined) patch.reason = normalized.note;
-  if (raw.status !== undefined) patch.status = normalized.status;
-
-  if (Object.keys(patch).length === 1) {
-    return json(res, 422, { error: "no fields to update" });
-  }
-
-  if (patch.leaveDate !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(String(patch.leaveDate))) {
-    return json(res, 422, { error: "leave_date must be a plain YYYY-MM-DD date with no timezone" });
-  }
-
+  const parsed = requestUpdateSchema.safeParse(req.body);
+  if (!parsed.success) return json(res, 422, {
+    error: "Invalid leave request", issues: parsed.error.issues.map((issue) => issue.message),
+  });
+  const row = parsed.data;
   try {
-    const result = await n8nPost("dashboard-leave-update", patch);
+    const result = await n8nPost("dashboard-leave-update", {
+      id, scope: row.scope, expectedDates: row.expectedDates,
+      leaveDates: [...row.dates].sort(), leaveType: row.type,
+      leaveDays: row.daysPerDate * row.dates.length,
+      halfDayPeriod: row.halfDayPeriod, reason: row.note, status: row.status,
+    });
     return json(res, 200, { ok: true, id, n8n: result });
-  } catch (err) {
-    return n8nFailure(res, err);
-  }
+  } catch (err) { return n8nFailure(res, err); }
 }
 
-async function remove(res: VercelResponse, id: string) {
+async function remove(req: VercelRequest, res: VercelResponse, id: string) {
+  const parsed = requestTargetSchema.safeParse(req.body);
+  if (!parsed.success) return json(res, 422, { error: "Explicit request scope and expectedDates are required" });
   try {
-    const result = await n8nPost("dashboard-leave-delete", { id });
+    const result = await n8nPost("dashboard-leave-delete", { id, ...parsed.data });
     return json(res, 200, { ok: true, id, deleted: true, n8n: result });
-  } catch (err) {
-    return n8nFailure(res, err);
-  }
+  } catch (err) { return n8nFailure(res, err); }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -112,8 +103,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "POST") return create(req, res);
 
   if (req.method === "PATCH" || req.method === "DELETE") {
-    if (!id) return json(res, 422, { error: "id query parameter is required" });
-    return req.method === "PATCH" ? update(req, res, id) : remove(res, id);
+    if (!id || !/^[1-9]\d*$/.test(id)) return json(res, 422, { error: "A numeric request id is required" });
+    return req.method === "PATCH" ? update(req, res, id) : remove(req, res, id);
   }
 
   res.setHeader("Allow", "POST, PATCH, DELETE");

@@ -1,5 +1,5 @@
 import { expandRequest } from "./expandRequests";
-import { cleanString, normalizeDays, normalizeLeaveType, parseEmpNo } from "./normalize";
+import { cleanString, normalizeDays, normalizeLeaveType, normalizeId, parseEmpNo } from "./normalize";
 
 export const N8N_BASE = process.env.N8N_WEBHOOK_URL || "https://n8n.womenrefugeeroute.org";
 
@@ -31,6 +31,7 @@ async function callN8n(endpoint: string, init?: RequestInit): Promise<unknown> {
       headers: {
         "Content-Type": "application/json",
         "ngrok-skip-browser-warning": "true",
+        ...(process.env.CEO_WEBHOOK_SECRET ? { "x-ceo-webhook-secret": process.env.CEO_WEBHOOK_SECRET } : {}),
         ...(init?.headers ?? {}),
       },
     });
@@ -68,12 +69,31 @@ export function n8nGet(endpoint: string, params: Record<string, string | undefin
   return callN8n(suffix ? `${endpoint}?${suffix}` : endpoint);
 }
 
-export function n8nPost(endpoint: string, body: unknown) {
-  return callN8n(endpoint, { method: "POST", body: JSON.stringify(body) });
+export class N8nMutationError extends Error {
+  constructor(public status: number, message: string) { super(message); }
+}
+
+export async function n8nPost(endpoint: string, body: unknown) {
+  if (process.env.NODE_ENV === "production" && !process.env.CEO_WEBHOOK_SECRET) {
+    throw new N8nMutationError(503, "CEO_WEBHOOK_SECRET is not configured on the server");
+  }
+  const result = await callN8n(endpoint, { method: "POST", body: JSON.stringify(body) });
+  const row = (Array.isArray(result) ? result[0] : result) as Record<string, unknown> | null;
+  if (!row || typeof row !== "object" || Object.keys(row).length === 0) {
+    throw new N8nMutationError(502, "The workflow did not confirm a saved record");
+  }
+  if (row.ok === false || row.error) {
+    const status = Number(row.statusCode);
+    throw new N8nMutationError([404, 409, 422, 503].includes(status) ? status : 502, String(row.error || "The workflow rejected this change"));
+  }
+  return result;
 }
 
 export interface NormalizedLeave {
   id: string;
+  requestId?: string;
+  requestDates?: string[];
+  halfDayPeriod?: "morning" | "afternoon" | null;
   date: string;
   type: "sick" | "annual" | "personal";
   days: number;
@@ -89,7 +109,7 @@ export interface NormalizedEmployee {
   nickname: string;
   department: string;
   startDate: string;
-  quotas: { annualTotal: number; sickTotal: number | null; personalTotal: number; carriedOver: number };
+  quotas: { annualTotal: number | null; sickTotal: number | null; personalTotal: number; carriedOver: number };
   quotasKnown: boolean;
   quotaNote: string;
   status: "active" | "inactive";
@@ -134,7 +154,7 @@ export function normalizeLeave(raw: unknown, index: number): NormalizedLeave | n
   if (days === null || days <= 0) return null;
 
   return {
-    id: cleanString(pick(row, ["id", "record_id", "recordId"])) || `n8n_${index}_${date}_${type}`,
+    id: normalizeId(pick(row, ["id", "record_id", "recordId"])) || `n8n_${index}_${date}_${type}`,
     date,
     type,
     days,
@@ -184,7 +204,7 @@ export function normalizeEmployee(raw: unknown, index: number): NormalizedEmploy
 
   const sickRaw = pick(row, ["sickTotal", "sick_total"]);
   const quotas = {
-    annualTotal: num(["annualTotal", "annual_total"], 12),
+    annualTotal: row.annualTotal === null || row.annual_total === null ? null : num(["annualTotal", "annual_total"], 12),
     sickTotal: sickRaw === undefined ? null : normalizeDays(sickRaw),
     personalTotal: num(["personalTotal", "personal_total"], 3),
     carriedOver: num(["carriedOver", "carried_over"], 0),
@@ -199,7 +219,7 @@ export function normalizeEmployee(raw: unknown, index: number): NormalizedEmploy
     department: cleanString(pick(row, ["department", "Department"])) || "General",
     startDate: cleanString(pick(row, ["startDate", "start_date"])).split("T")[0],
     quotas,
-    quotasKnown: sawQuota,
+    quotasKnown: typeof row.quotasKnown === "boolean" ? row.quotasKnown : sawQuota,
     quotaNote: cleanString(pick(row, ["quotaNote", "quota_note", "note"])),
     status: cleanString(pick(row, ["status", "employeeStatus"])).toLowerCase() === "inactive" ? "inactive" : "active",
     leaves,

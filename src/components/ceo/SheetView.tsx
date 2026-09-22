@@ -7,10 +7,10 @@ export interface SheetViewProps {
   year: string;
   compact: boolean;
   onUpdateLeave: (empId: string, leaveId: string, patch: Partial<LeaveRecord>) => void;
-  onAddLeave: (empId: string, draft: { date: string; type: LeaveType; days: number; note: string }) => void;
+  onAddLeave: (empId: string, draft: { date: string; type: LeaveType; days: number; note: string }) => Promise<void>;
   onDeleteLeave: (empId: string, leaveId: string) => void;
   onEditProfile: (emp: Employee) => void;
-  onQuotaNoteChange?: (empId: string, note: string) => void;
+  onQuotaNoteChange?: (empId: string, note: string) => Promise<void>;
   onRemoveEmployee?: (emp: Employee) => void;
 }
 
