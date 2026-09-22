@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { ceoAuthorised, currentYear, json, queryParam, writesAllowed } from "./_lib/http";
-import { N8nMutationError, N8nNotRegisteredError, N8nUnavailableError, n8nGet, n8nPost } from "./_lib/n8nClient";
-import { cleanString, normalizeDays } from "./_lib/normalize";
+import { ceoAuthorised, currentYear, json, queryParam, writesAllowed } from "./_lib/http.js";
+import { N8nMutationError, N8nNotRegisteredError, N8nUnavailableError, n8nGet, n8nPost } from "./_lib/n8nClient.js";
+import { cleanString, normalizeDays } from "./_lib/normalize.js";
 
 function num(source: Record<string, unknown>, keys: string[], fallback: number | null): number | null {
   for (const key of keys) {

@@ -1,6 +1,6 @@
-import { cleanString, normalizeDays, normalizeLeaveType, normalizeId } from "./normalize";
-import { isPlainDate } from "./date";
-import type { NormalizedLeave } from "./n8nClient";
+import { cleanString, normalizeDays, normalizeLeaveType, normalizeId } from "./normalize.js";
+import { isPlainDate } from "./date.js";
+import type { NormalizedLeave } from "./n8nClient.js";
 
 const PLAIN = /^\d{4}-\d{2}-\d{2}$/;
 

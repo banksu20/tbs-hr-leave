@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { authRequired, signedIn } from "./auth";
+import { authRequired, signedIn } from "./auth.js";
 
 export function secretMatches(provided: unknown): boolean {
   const expected = process.env.CEO_WEBHOOK_SECRET;

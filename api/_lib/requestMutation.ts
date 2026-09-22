@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isPlainDate, isWithinWindow } from "./date";
+import { isPlainDate, isWithinWindow } from "./date.js";
 
 const dates = z.array(z.string().refine(isPlainDate, "Invalid date"))
   .min(1).max(366).refine((items) => new Set(items).size === items.length, "Dates must be unique");

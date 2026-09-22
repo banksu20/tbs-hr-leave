@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { requestTargetSchema, requestUpdateSchema } from "./_lib/requestMutation";
-import { isWithinWindow } from "./_lib/date";
-import { ceoAuthorised, json, queryParam, writesAllowed } from "./_lib/http";
-import { leaveRowSchema, normalizeRow } from "./_lib/leaveSchema";
-import { N8nMutationError, N8nNotRegisteredError, N8nUnavailableError, n8nPost } from "./_lib/n8nClient";
-import { cleanString } from "./_lib/normalize";
+import { requestTargetSchema, requestUpdateSchema } from "./_lib/requestMutation.js";
+import { isWithinWindow } from "./_lib/date.js";
+import { ceoAuthorised, json, queryParam, writesAllowed } from "./_lib/http.js";
+import { leaveRowSchema, normalizeRow } from "./_lib/leaveSchema.js";
+import { N8nMutationError, N8nNotRegisteredError, N8nUnavailableError, n8nPost } from "./_lib/n8nClient.js";
+import { cleanString } from "./_lib/normalize.js";
 
 function n8nFailure(res: VercelResponse, err: unknown) {
   if (err instanceof N8nMutationError) return json(res, err.status, { error: err.message });

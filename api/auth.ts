@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { authRequired, clearedCookie, sessionCookie, signedIn, verifyPassword } from "./_lib/auth";
-import { json } from "./_lib/http";
+import { authRequired, clearedCookie, sessionCookie, signedIn, verifyPassword } from "./_lib/auth.js";
+import { json } from "./_lib/http.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "GET") {

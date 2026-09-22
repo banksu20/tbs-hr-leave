@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { ceoAuthorised, currentYear, json, queryParam, writesAllowed } from "./_lib/http";
-import { N8nMutationError, N8nNotRegisteredError, N8nUnavailableError, n8nGet, n8nPost, normalizeEmployeeList } from "./_lib/n8nClient";
-import { cleanString, parseEmpNo } from "./_lib/normalize";
+import { ceoAuthorised, currentYear, json, queryParam, writesAllowed } from "./_lib/http.js";
+import { N8nMutationError, N8nNotRegisteredError, N8nUnavailableError, n8nGet, n8nPost, normalizeEmployeeList } from "./_lib/n8nClient.js";
+import { cleanString, parseEmpNo } from "./_lib/normalize.js";
 
 async function setStatus(req: VercelRequest, res: VercelResponse) {
   const body = typeof req.body === "object" && req.body !== null ? (req.body as Record<string, unknown>) : {};

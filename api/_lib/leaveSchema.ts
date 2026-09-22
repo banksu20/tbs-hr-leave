@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { isPlainDate } from "./date";
-import { cleanString, normalizeDays, normalizeLeaveType } from "./normalize";
+import { isPlainDate } from "./date.js";
+import { cleanString, normalizeDays, normalizeLeaveType } from "./normalize.js";
 
 export const leaveRowSchema = z
   .object({

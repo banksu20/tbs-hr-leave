@@ -1,5 +1,5 @@
-import { expandRequest } from "./expandRequests";
-import { cleanString, normalizeDays, normalizeLeaveType, normalizeId, parseEmpNo } from "./normalize";
+import { expandRequest } from "./expandRequests.js";
+import { cleanString, normalizeDays, normalizeLeaveType, normalizeId, parseEmpNo } from "./normalize.js";
 
 export const N8N_BASE = process.env.N8N_WEBHOOK_URL || "https://n8n.womenrefugeeroute.org";
 
