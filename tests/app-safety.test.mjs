@@ -47,6 +47,36 @@ test('n8n receives a server-only secret; empty and rejected writes are not succe
   }
 });
 
+test('production writes accept ceowebhook and still fail closed without either secret', async () => {
+  const keys = ['CEO_WEBHOOK_SECRET', 'ceowebhook', 'NODE_ENV'];
+  const before = {...process.env};
+  const savedFetch = global.fetch;
+  const n8n = loadTS()('api/_lib/n8nClient.ts');
+  try {
+    delete process.env.CEO_WEBHOOK_SECRET;
+    process.env.ceowebhook = 'test-only-alias';
+    process.env.NODE_ENV = 'production';
+    let expected = 'test-only-alias';
+    global.fetch = async (_url, options) => {
+      assert.equal(options.headers['x-ceo-webhook-secret'], expected);
+      return new Response(JSON.stringify([{ok:true}]));
+    };
+    await n8n.n8nPost('dashboard-quota-update', {});
+    assert.equal(http.secretMatches(expected), true);
+    process.env.CEO_WEBHOOK_SECRET = expected = 'test-only-primary';
+    await n8n.n8nPost('dashboard-quota-update', {});
+    delete process.env.CEO_WEBHOOK_SECRET;
+    delete process.env.ceowebhook;
+    global.fetch = async () => { assert.fail('Missing secret must block network requests'); };
+    await assert.rejects(n8n.n8nPost('dashboard-quota-update', {}), error => error.status === 503);
+  } finally {
+    global.fetch = savedFetch;
+    for (const key of keys) {
+      if (before[key] === undefined) delete process.env[key]; else process.env[key] = before[key];
+    }
+  }
+});
+
 test('year switch never copies previous-year data into the new cache, including failed fetch', async () => {
   const memory=new Map();
   global.localStorage={getItem:key=>memory.get(key)??null,setItem:(key,value)=>memory.set(key,value)};

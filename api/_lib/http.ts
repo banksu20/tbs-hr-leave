@@ -1,9 +1,10 @@
 import { timingSafeEqual } from "node:crypto";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { authRequired, signedIn } from "./auth.js";
+import { webhookSecret } from "./webhookSecret.js";
 
 export function secretMatches(provided: unknown): boolean {
-  const expected = process.env.CEO_WEBHOOK_SECRET;
+  const expected = webhookSecret();
   if (!expected) return false;
   if (typeof provided !== "string" || provided.length === 0) return false;
   const a = Buffer.from(provided);

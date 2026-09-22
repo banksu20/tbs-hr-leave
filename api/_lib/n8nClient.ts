@@ -1,4 +1,5 @@
 import { expandRequest } from "./expandRequests.js";
+import { webhookSecret } from "./webhookSecret.js";
 import { cleanString, normalizeDays, normalizeLeaveType, normalizeId, parseEmpNo } from "./normalize.js";
 
 export const N8N_BASE = process.env.N8N_WEBHOOK_URL || "https://n8n.womenrefugeeroute.org";
@@ -20,6 +21,7 @@ export class N8nNotRegisteredError extends Error {
 }
 
 async function callN8n(endpoint: string, init?: RequestInit): Promise<unknown> {
+  const secret = webhookSecret();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -31,7 +33,7 @@ async function callN8n(endpoint: string, init?: RequestInit): Promise<unknown> {
       headers: {
         "Content-Type": "application/json",
         "ngrok-skip-browser-warning": "true",
-        ...(process.env.CEO_WEBHOOK_SECRET ? { "x-ceo-webhook-secret": process.env.CEO_WEBHOOK_SECRET } : {}),
+        ...(secret ? { "x-ceo-webhook-secret": secret } : {}),
         ...(init?.headers ?? {}),
       },
     });
@@ -74,8 +76,8 @@ export class N8nMutationError extends Error {
 }
 
 export async function n8nPost(endpoint: string, body: unknown) {
-  if (process.env.NODE_ENV === "production" && !process.env.CEO_WEBHOOK_SECRET) {
-    throw new N8nMutationError(503, "CEO_WEBHOOK_SECRET is not configured on the server");
+  if (process.env.NODE_ENV === "production" && !webhookSecret()) {
+    throw new N8nMutationError(503, "CEO_WEBHOOK_SECRET or ceowebhook is not configured on the server");
   }
   const result = await callN8n(endpoint, { method: "POST", body: JSON.stringify(body) });
   const row = (Array.isArray(result) ? result[0] : result) as Record<string, unknown> | null;
