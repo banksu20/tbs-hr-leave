@@ -3,7 +3,7 @@ SELECT COALESCE(jsonb_agg(to_jsonb(events) ORDER BY events.id::bigint DESC),'[]'
 FROM (
   SELECT h.id::text, h.changed_at AS "changedAt", h.entity, h.record_id AS "recordId", h.user_id AS "userId",
     concat_ws(' ',e.first_name,e.last_name) AS "employeeName", e.department,
-    h.action, h.actor, h.before_value AS "before", h.after_value AS "after",
+    h.action, h.actor, (h.before_value - 'decision_token') AS "before", (h.after_value - 'decision_token') AS "after",
     (h.action='cancel' AND h.after_value=to_jsonb(r) AND e.status='active'
       AND NOT EXISTS(SELECT 1 FROM tbs_change_history newer WHERE newer.entity=h.entity AND newer.record_id=h.record_id AND newer.id>h.id)) AS "canRestore"
   FROM tbs_change_history h

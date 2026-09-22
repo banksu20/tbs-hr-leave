@@ -6,6 +6,7 @@ const dates = z.array(z.string().refine(isPlainDate, "Invalid date"))
 export const requestTargetSchema = z.object({
   scope: z.literal("request"),
   expectedDates: dates,
+  expectedRevision: z.string().regex(/^[a-f0-9]{32}$/, "Refresh the request before saving"),
 });
 
 // A complete request is required. No partial day can accidentally overwrite a range.

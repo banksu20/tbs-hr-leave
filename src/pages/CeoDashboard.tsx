@@ -222,12 +222,12 @@ export default function CeoDashboard() {
 
   const updateLeaveRecord = async (empId: string, leaveId: string, patch: Partial<LeaveRecord>) => {
     const leave = employees.find((emp) => emp.id === empId)?.leaves.find((row) => row.id === leaveId);
-    if (!leave?.requestId || !leave.requestDates?.length) {
+    if (!leave?.requestId || !leave.requestDates?.length || !leave.requestRevision) {
       toast.error("Refresh the dashboard before editing this request."); return;
     }
     const next = { ...leave, ...patch };
     const value: LeaveRequestUpdate = {
-      scope: "request", expectedDates: leave.requestDates,
+      scope: "request", expectedDates: leave.requestDates, expectedRevision: leave.requestRevision,
       dates: leave.requestDates.map((date) => date === leave.date ? next.date : date),
       type: next.type, daysPerDate: next.days,
       halfDayPeriod: next.days === 0.5 ? next.halfDayPeriod ?? null : null,
@@ -246,7 +246,7 @@ export default function CeoDashboard() {
   ) => {
     if (draft.days === 0.5 && !draft.halfDayPeriod) {
       setRequestEditor({ empId, creating: true, value: {
-        scope: "request", expectedDates: [draft.date], dates: [draft.date], type: draft.type,
+        scope: "request", expectedRevision: "", expectedDates: [draft.date], dates: [draft.date], type: draft.type,
         daysPerDate: draft.days, halfDayPeriod: null, note: draft.note, status: "Approved",
       } }); return;
     }
@@ -260,11 +260,11 @@ export default function CeoDashboard() {
 
   const removeLeaveRecord = (empId: string, leaveId: string) => {
     const leave = employees.find((emp) => emp.id === empId)?.leaves.find((row) => row.id === leaveId);
-    if (!leave?.requestId || !leave.requestDates?.length) {
+    if (!leave?.requestId || !leave.requestDates?.length || !leave.requestRevision) {
       toast.error("Refresh the dashboard before removing this request."); return;
     }
     if (!confirm(`Remove this entire leave request (${leave.requestDates.length} date(s)): ${leave.requestDates.join(", ")}?`)) return;
-    leaveMutations.remove.mutate({ id: leave.requestId, expectedDates: leave.requestDates });
+    leaveMutations.remove.mutate({ id: leave.requestId, expectedDates: leave.requestDates, expectedRevision: leave.requestRevision });
   };
 
   const handleDeleteLeave = removeLeaveRecord;
@@ -322,7 +322,7 @@ export default function CeoDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans text-slate-900 pb-16">
+    <div className="min-h-screen bg-slate-100 font-sans text-slate-900 pb-3">
       
       {/* 1. Top Executive Navigation Header */}
       <header className="bg-slate-900 text-white sticky top-0 z-30 shadow-md border-b border-slate-800">
@@ -379,7 +379,7 @@ export default function CeoDashboard() {
       </header>
 
       {/* 2. Executive Metric Cards Strip */}
-      <div className="max-w-[1600px] mx-auto px-6 mt-6">
+      <div className="max-w-[1600px] mx-auto px-4 mt-2">
         <DataSourceBanner
           source={dataSource}
           error={employeesError}
@@ -391,15 +391,15 @@ export default function CeoDashboard() {
         />
 
         {/* 3. Main Master Executive Datatable Container */}
-        <aside className="mb-4 rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-slate-700">
-          <p className="font-semibold text-slate-900">Manage leave here</p>
+        <details className="mb-2 rounded-lg border border-sky-100 bg-sky-50 px-3 py-1 text-xs text-slate-700">
+          <summary className="font-semibold text-slate-900 cursor-pointer">Using this dashboard</summary>
           <p className="mt-1">Use this dashboard for approvals, employee details and leave allowances. Overview, Roster and Sheet share the same saved records. Download CSV or PDF copies when you need a report.</p>
           <p className="mt-1 text-xs text-slate-600">Approve requests here or through LINE. Refresh records to see the latest decisions. Existing Google Sheets connections remain in place during the transition.</p>
-        </aside>
+        </details>
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
           
           {/* Department Filters & Search Toolbar */}
-          <div className="p-4 bg-slate-900 border-b border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 flex-wrap">
+          <div className="px-3 py-2 bg-slate-900 border-b border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-2 flex-wrap">
             <label className="flex items-center gap-2 text-xs font-bold text-slate-300 shrink-0">
               Department
               <select aria-label="Department filter" value={selectedDept} onChange={e => setSelectedDept(e.target.value)} className="rounded-lg border border-slate-700 bg-slate-800 text-white px-3 py-2 max-w-[220px]">
@@ -468,7 +468,7 @@ export default function CeoDashboard() {
           </div>
 
           {viewMode === "pending" ? <PendingRequests employees={filteredEmployees} ready={dataSource === "live" && !employeesError && !employeesPartial && !isFetchingEmployees} /> : viewMode === "rollover" ? <YearRollover key={selectedYear} year={selectedYear} /> : viewMode === "calendar" ? <TeamCalendar employees={filteredEmployees} year={selectedYear} /> : viewMode === "history" ? <ChangeHistory employees={employees} /> : viewMode === "overview" ? (
-            <div className="p-4 bg-slate-100/70">
+            <div className="p-2 bg-slate-100/70">
               <OverviewDashboard
                 employees={filteredEmployees}
                 year={selectedYear}

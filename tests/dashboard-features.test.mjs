@@ -11,10 +11,14 @@ async function fixture(){
   CREATE TABLE leave_quotas(user_id text,year int,annual_total numeric,sick_total numeric,personal_total numeric,carried_over numeric,note text,updated_at timestamptz,UNIQUE(user_id,year));
   CREATE TABLE leave_requests(id serial PRIMARY KEY,user_id text,user_name text,department text,leave_type text,leave_days numeric,start_date date,end_date date,selected_dates text,reason text,status text,source text);
   INSERT INTO tbs_employees VALUES('test',1,'Test','Person','','QA','active','2020-01-01');`);
-  for(const file of ['001_request_safety.sql','002_history_and_conflicts.sql','003_year_rollover.sql','004_line_decisions.sql'])await db.exec(sql(file));
+  for(const file of ['001_request_safety.sql','002_history_and_conflicts.sql','003_year_rollover.sql','004_line_decisions.sql','005_sync_outbox.sql','006_employee_submission.sql'])await db.exec(sql(file));
   return db;
 }
-const mutate=async(db,op,body)=>(await db.query('SELECT tbs_dashboard_request_v2($1,$2::jsonb) result',[op,JSON.stringify(body)])).rows[0].result;
+const requestRevision=async(db,id)=>(await db.query('SELECT md5(to_jsonb(r)::text) revision FROM leave_requests r WHERE id=$1',[id])).rows[0]?.revision;
+const mutate=async(db,op,body)=>{
+ if(['update','delete'].includes(op)&&body.expectedRevision===undefined)body={...body,expectedRevision:await requestRevision(db,body.id)};
+ return (await db.query('SELECT tbs_dashboard_request_v2($1,$2::jsonb) result',[op,JSON.stringify(body)])).rows[0].result;
+};
 const draft={userId:'test',leaveDate:'2026-01-05',leaveType:'annual',leaveDays:0.5,halfDayPeriod:'morning',status:'Approved',reason:'Test'};
 
 test('approval rejects stale, inactive and already handled requests and audits the status-only change',async()=>{
@@ -52,7 +56,10 @@ test('rejection only decides a current pending request and records a rejection, 
 
 test('LINE and dashboard share the first decision and preserve employee reason',async()=>{
  const db=await fixture();try{
-  const line=async(action,body)=>(await db.query('SELECT tbs_line_decision($1,$2::jsonb) r',[action,JSON.stringify(body)])).rows[0].r;
+  const line=async(action,body)=>{
+ const row=(await db.query('SELECT decision_token FROM leave_requests WHERE id=$1',[body.id])).rows[0];
+ return (await db.query('SELECT tbs_line_decision($1,$2::jsonb) r',[action,JSON.stringify({...body,expectedRevision:await requestRevision(db,body.id),decisionToken:row?.decision_token})])).rows[0].r;
+ };
   const created=await mutate(db,'create',{...draft,status:'Pending'});
   const revision=(await db.query('SELECT md5(to_jsonb(r)::text) revision FROM leave_requests r WHERE id=$1',[created.id])).rows[0].revision;
   assert.equal((await line('approve',{id:created.id,userId:'wrong'})).statusCode,409);
@@ -151,4 +158,64 @@ test('feature workflow patch adds authenticated read and rollover branches witho
  assert.match(patched.nodes.find(n=>n.name==='dashboard-leave-update').parameters.query,/restore/);
  assert.match(patched.nodes.find(n=>n.name==='Get all leaves').parameters.query,/effective_carried/);
  assert.equal(patchDashboardFeatures(patched).nodes.length,patched.nodes.length);
+});
+
+test('daily chart includes every calendar day and respects year, employee scope, status and type',()=>{
+ const {dailyTotals,monthlyTotals}=loadTS()('src/components/ceo/overviewData.ts');
+ const employee={leaves:[{date:'2026-02-03',type:'annual',days:.5,status:'Approved'},{date:'2026-02-03',type:'sick',days:1,status:'Approved'},{date:'2026-02-04',type:'annual',days:1,status:'Pending'},{date:'2026-03-03',type:'annual',days:1,status:'Approved'},{date:'2025-02-03',type:'annual',days:1,status:'Approved'}]};
+ const days=dailyTotals([employee],'2026',2,['annual']);
+ assert.equal(days.length,28);assert.equal(days[2].total,.5);assert.equal(days[3].total,0);
+ assert.equal(days.reduce((sum,r)=>sum+r.total,0),monthlyTotals([employee],'2026',['annual'])[1].total);
+ assert.equal(dailyTotals([],'2028',2).length,29);assert.equal(dailyTotals([],'2026',4).length,30);assert.equal(dailyTotals([],'2026',1).length,31);
+});
+
+
+test('stale edits, stale cancellation and old LINE snapshots cannot overwrite a decision',async()=>{
+ const db=await fixture();try{
+  const created=await mutate(db,'create',{...draft,status:'Pending'});
+  const before=await requestRevision(db,created.id);
+  const token=(await db.query('SELECT decision_token FROM leave_requests WHERE id=$1',[created.id])).rows[0].decision_token;
+  assert.equal((await mutate(db,'approve',{id:created.id,expectedRevision:before})).ok,true);
+  const edit={...draft,id:created.id,scope:'request',expectedDates:[draft.leaveDate],leaveDates:[draft.leaveDate],expectedRevision:before,status:'Pending'};
+  assert.equal((await mutate(db,'update',edit)).statusCode,409);
+  assert.equal((await mutate(db,'delete',edit)).statusCode,409);
+  assert.equal((await mutate(db,'update',{...edit,expectedRevision:await requestRevision(db,created.id)})).statusCode,409);
+  const other=await mutate(db,'create',{...draft,leaveDate:'2026-01-06',status:'Pending'});
+  const old=await requestRevision(db,other.id), otherToken=(await db.query('SELECT decision_token FROM leave_requests WHERE id=$1',[other.id])).rows[0].decision_token;
+  assert.equal((await mutate(db,'update',{...edit,id:other.id,expectedDates:['2026-01-06'],leaveDates:['2026-01-07'],expectedRevision:old})).ok,true);
+  const line=async(body)=>(await db.query("SELECT tbs_line_decision('approve',$1::jsonb) r",[JSON.stringify(body)])).rows[0].r;
+  assert.equal((await line({id:other.id,userId:'test',expectedRevision:old,decisionToken:otherToken})).statusCode,409);
+  assert.equal((await line({id:other.id,userId:'test',expectedRevision:await requestRevision(db,other.id)})).statusCode,409);
+  assert.equal((await db.query('SELECT status FROM leave_requests WHERE id=$1',[other.id])).rows[0].status,'Pending');
+ }finally{await db.close();}
+});
+
+test('decision queues one notification; failed delivery is retryable without another decision',async()=>{
+ const db=await fixture();try{
+  const created=await mutate(db,'create',{...draft,status:'Pending'});const rev=await requestRevision(db,created.id);
+  await mutate(db,'approve',{id:created.id,expectedRevision:rev});
+  await mutate(db,'approve',{id:created.id,expectedRevision:rev});
+  assert.equal(Number((await db.query("SELECT count(*) n FROM tbs_sync_jobs WHERE kind='line'")).rows[0].n),1);
+  let job=(await db.query("SELECT * FROM tbs_claim_sync('line')")).rows[0];assert.ok(job.id);
+  assert.equal((await db.query("SELECT * FROM tbs_claim_sync('line')")).rows.length,0);
+  assert.equal((await db.query('SELECT tbs_finish_sync($1,$2,$3,$4) ok',[job.id,job.lease_token,job.generation,'Temporary failure'])).rows[0].ok,true);
+  await db.exec("UPDATE tbs_sync_jobs SET lease_until=now()-interval '1 second' WHERE kind='line'");
+  const retry=(await db.query("SELECT * FROM tbs_claim_sync('line')")).rows[0];assert.equal(retry.id,job.id);assert.deepEqual(retry.payload,job.payload);
+  await db.query('SELECT tbs_finish_sync($1,$2,$3,NULL)',[retry.id,retry.lease_token,retry.generation]);
+  assert.equal((await db.query("SELECT * FROM tbs_claim_sync('line')")).rows.length,0);
+ }finally{await db.close();}
+});
+
+test('employee half-day submission retains period and rolls back both queues on overlap',async()=>{
+ const db=await fixture();try{
+ const submit=async(p)=>(await db.query('SELECT tbs_employee_request($1::jsonb) r',[JSON.stringify(p)])).rows[0].r;
+ const p={userId:'test',selectedDates:['2027-01-05','2027-01-06'],leaveDays:1,leaveType:'annual',halfDayPeriod:'morning',approverIds:['test-manager']};
+ const r=await submit(p);assert.equal(r.ok,true);assert.equal(r.half_day_period,'morning');
+ assert.equal((await submit(p)).statusCode,409);
+ assert.equal((await submit({...p,halfDayPeriod:'afternoon'})).ok,true);
+ const jobs=(await db.query("SELECT * FROM tbs_sync_jobs WHERE kind='line'")).rows;assert.equal(jobs.length,2);
+ const action=jobs[0].payload.messages[0].contents.footer.contents[0].action.data;
+ assert.match(action,/revision=[a-f0-9]{32}/);assert.match(action,/token=/);assert.ok(action.length<300);
+ assert.equal((await db.query("SELECT year FROM tbs_sync_jobs WHERE kind='sheet'")).rows[0].year,2027);
+ }finally{await db.close();}
 });

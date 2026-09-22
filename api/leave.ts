@@ -89,7 +89,7 @@ async function update(req: VercelRequest, res: VercelResponse, id: string) {
   const row = parsed.data;
   try {
     const result = await n8nPost("dashboard-leave-update", {
-      id, scope: row.scope, expectedDates: row.expectedDates,
+      id, scope: row.scope, expectedDates: row.expectedDates, expectedRevision: row.expectedRevision,
       leaveDates: [...row.dates].sort(), leaveType: row.type,
       leaveDays: row.daysPerDate * row.dates.length,
       halfDayPeriod: row.halfDayPeriod, reason: row.note, status: row.status,

@@ -34,6 +34,25 @@ export function monthlyTotals(employees: Employee[], year: string, types: LeaveT
   }));
 }
 
+// Keep empty days so a selected month remains a complete calendar timeline.
+export function dailyTotals(employees: Employee[], year: string, month: number, types: LeaveType[] = LEAVE_TYPES): MonthRow[] {
+  const count = new Date(Date.UTC(Number(year), month, 0)).getUTCDate();
+  const rows: MonthRow[] = Array.from({ length: count }, (_, index) => ({
+    month: String(index + 1), sick: 0, annual: 0, personal: 0, total: 0,
+  }));
+  for (const employee of employees) {
+    for (const leave of leavesForYear(employee.leaves, year)) {
+      if (Number(leave.date.slice(5, 7)) !== month || !types.includes(leave.type)) continue;
+      const row = rows[Number(leave.date.slice(8, 10)) - 1];
+      if (!row) continue;
+      const days = Number(leave.days) || 0;
+      row[leave.type] += days;
+      row.total += days;
+    }
+  }
+  return rows;
+}
+
 export interface DepartmentRow {
   department: string;
   days: number;
@@ -107,7 +126,7 @@ export function overQuotaList(employees: Employee[], year: string): OverQuotaRow
       if (isUnlimited(emp, type)) continue;
       const granted = grantedFor(emp, type);
       const taken = sumLeavesByType(emp.leaves, type, year);
-      if (granted > 0 && taken > granted) {
+      if (taken > granted) {
         out.push({ employee: emp, type, over: Math.round((taken - granted) * 100) / 100 });
       }
     }
@@ -117,7 +136,7 @@ export function overQuotaList(employees: Employee[], year: string): OverQuotaRow
 }
 
 export function awaitingQuota(employees: Employee[]): Employee[] {
-  return employees.filter((emp) => emp.quotas.annualTotal === 0);
+  return employees.filter((emp) => emp.quotasKnown === false);
 }
 
 export function busiestMonth(rows: MonthRow[]): MonthRow | null {

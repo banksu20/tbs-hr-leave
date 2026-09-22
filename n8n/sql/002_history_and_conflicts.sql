@@ -80,6 +80,10 @@ BEGIN
       PERFORM 1 FROM tbs_employees WHERE user_id=(SELECT user_id FROM leave_requests WHERE id=(payload->>'id')::int) FOR UPDATE;
       SELECT * INTO current_row FROM leave_requests WHERE id=(payload->>'id')::int FOR UPDATE;
       IF NOT FOUND THEN result := jsonb_build_object('ok',false,'statusCode',404,'error','Leave request not found');
+      ELSIF operation IN ('update','delete') AND payload->>'expectedRevision' IS DISTINCT FROM md5(to_jsonb(current_row)::text) THEN
+        result := jsonb_build_object('ok',false,'statusCode',409,'error','Request changed since you loaded it. Refresh and review before saving.');
+      ELSIF operation='update' AND payload->>'status' IS DISTINCT FROM current_row.status THEN
+        result := jsonb_build_object('ok',false,'statusCode',409,'error','Use Approve or Reject to decide a pending request.');
       ELSIF operation IN ('update','delete') AND current_row.status='Rejected' THEN
         result := jsonb_build_object('ok',false,'statusCode',409,'error','This request is cancelled. Use Undo cancellation.');
       END IF;

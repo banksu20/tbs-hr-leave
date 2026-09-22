@@ -41,6 +41,8 @@ export default function RejectForm() {
   const takenRow = searchParams.get("takenRow");
   const remainRow = searchParams.get("remainRow");
   const leaveReason = searchParams.get("leaveReason") || searchParams.get("reason");
+  const expectedRevision = searchParams.get("revision") || "";
+  const decisionToken = searchParams.get("token") || "";
   const dbId = searchParams.get("db_id") || "";
   const leaveDate = searchParams.get("leaveDate");
 
@@ -81,10 +83,12 @@ export default function RejectForm() {
           takenRow: takenRow,
           remainRow: remainRow,
           dbId: dbId,
+          expectedRevision, decisionToken,
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to submit");
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || result.success === false || result.ok === false) throw new Error(result.message || result.error || "Decision not saved. Refresh the request.");
 
       if (liff.isInClient()) {
         toast({ title: "Success" });
@@ -95,7 +99,7 @@ export default function RejectForm() {
 
     } catch (error) {
       console.error(error);
-      toast({ title: "รายการนี้ถูกดำเนินการ (อนุมัติหรือปฏิเสธ) ไปแล้ว ไม่สามารถทำรายการซ้ำได้", variant: "destructive" });
+      toast({ title: error instanceof Error ? error.message : "Cannot reach the server. Please retry.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }

@@ -1,3 +1,5 @@
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import MonthlyExportDialog from "./MonthlyExportDialog";
 import { useMemo, useState } from "react";
 import {
@@ -6,13 +8,12 @@ import {
   CartesianGrid,
   Cell,
   LabelList,
-  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { AlertTriangle, CalendarDays, Palmtree, TrendingUp, Users } from "lucide-react";
+import { AlertTriangle, CalendarDays, Palmtree, Users, Check, ChevronsUpDown, Download } from "lucide-react";
 import { Employee } from "@/data/mockEmployees";
 import { LEAVE_META, LEAVE_TYPES, LeaveType, sumLeavesByType } from "./leaveSheetUtils";
 import {
@@ -21,6 +22,7 @@ import {
   busiestMonth,
   departmentTotals,
   monthlyTotals,
+  dailyTotals,
   MONTH_LABELS,
   overQuotaList,
 } from "./overviewData";
@@ -47,8 +49,8 @@ export interface OverviewDashboardProps {
 
 function Card({ title, children, hint }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <section className="bg-white rounded-xl border border-slate-200 shadow-xs p-4">
-      <div className="mb-2.5">
+    <section className="bg-white rounded-xl border border-slate-200 shadow-xs p-3">
+      <div className="mb-1.5">
         <h3 className="text-sm font-extrabold text-slate-900">{title}</h3>
         {hint && <p className="text-[11px] font-semibold text-slate-400 mt-0.5">{hint}</p>}
       </div>
@@ -80,7 +82,7 @@ function StatTile({
   } as const;
 
   return (
-    <div className="bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-xs flex items-start justify-between gap-3">
+    <div className="bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-xs flex items-start justify-between gap-3">
       <div className="min-w-0">
         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
         <p className="text-2xl font-extrabold text-slate-900 mt-0.5">
@@ -89,16 +91,16 @@ function StatTile({
         </p>
         <div className="text-[11px] font-medium mt-1">{detail}</div>
       </div>
-      <div className={`p-3 rounded-xl shrink-0 ${tones[tone]}`}>{icon}</div>
+      <div className={`p-2 rounded-lg shrink-0 ${tones[tone]}`}>{icon}</div>
     </div>
   );
 }
 
-function ChartTooltip({ active, payload, label }: any) {
+function ChartTooltip({ active, payload, label, labelFormatter }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2">
-      <p className="text-[11px] font-extrabold text-slate-900 mb-1">{label}</p>
+      <p className="text-[11px] font-extrabold text-slate-900 mb-1">{labelFormatter ? labelFormatter(label) : label}</p>
       {payload
         .filter((entry: any) => entry.value > 0)
         .map((entry: any) => (
@@ -121,6 +123,7 @@ export default function OverviewDashboard({
   exportReady,
   exportScope,
 }: OverviewDashboardProps) {
+  const [employeeOpen, setEmployeeOpen] = useState(false);
   const [employeeId,setEmployeeId] = useState('');
   const [month,setMonth] = useState('all');
   const activeEmployeeId = availableEmployees.some(e=>e.id===employeeId) ? employeeId : '';
@@ -129,10 +132,10 @@ export default function OverviewDashboard({
   const [exportOpen, setExportOpen] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<LeaveType[]>([...LEAVE_TYPES]);
   const periodEmployees = useMemo(()=>employees.map(e=>({...e,leaves:e.leaves.filter(l=>(month==='all'||Number(l.date.slice(5,7))===Number(month))&&selectedTypes.includes(l.type))})),[employees,month,selectedTypes]);
-  const months = useMemo(() => monthlyTotals(periodEmployees, year, selectedTypes).filter((_,i)=>month==='all'||i===Number(month)-1), [periodEmployees, year, selectedTypes,month]);
+  const months = useMemo(() => month === 'all' ? monthlyTotals(periodEmployees, year, selectedTypes) : dailyTotals(periodEmployees, year, Number(month), selectedTypes), [periodEmployees, year, selectedTypes,month]);
   const todayEmployees = onLeaveToday.filter(e=>employees.some(p=>p.id===e.id));
   const departments = useMemo(() => departmentTotals(periodEmployees, year), [periodEmployees, year]);
-  const quotaUsage = useMemo(() => annualQuotaUsage(employees, year, 6), [employees, year]);
+  const quotaUsage = useMemo(() => annualQuotaUsage(employees, year, 4), [employees, year]);
   const overQuota = useMemo(() => overQuotaList(employees, year), [employees, year]);
   const peak = useMemo(() => busiestMonth(months), [months]);
   const newJoiners = useMemo(() => awaitingQuota(employees), [employees]);
@@ -151,14 +154,8 @@ export default function OverviewDashboard({
   const maxDepartment = departments[0]?.days ?? 0;
 
   return (
-    <div className="space-y-3">
-      <div className="bg-white border rounded-xl p-4 flex flex-wrap gap-4 items-end">
-        <label className="text-sm font-semibold">Employee<select aria-label="Overview employee" className="block border rounded-lg p-2 mt-1 max-w-[300px]" value={activeEmployeeId} onChange={e=>setEmployeeId(e.target.value)}><option value="">All employees</option>{availableEmployees.map(e=><option key={e.id} value={e.id}>{e.name} · {e.empCode}</option>)}</select></label>
-        <label className="text-sm font-semibold">Month<select aria-label="Overview month" className="block border rounded-lg p-2 mt-1" value={month} onChange={e=>setMonth(e.target.value)}><option value="all">All year</option>{MONTH_LABELS.map((m,i)=><option key={m} value={i+1}>{m} {year}</option>)}</select></label>
-        <label className="text-sm font-semibold">Leave type<select aria-label="Overview leave type" className="block border rounded-lg p-2 mt-1" value={selectedTypes.length===3?'all':selectedTypes[0]} onChange={e=>setSelectedTypes(e.target.value==='all'?[...LEAVE_TYPES]:[e.target.value as LeaveType])}><option value="all">All types</option>{LEAVE_TYPES.map(t=><option key={t} value={t}>{LEAVE_META[t].label}</option>)}</select></label>
-        <p className="text-xs text-slate-500 w-full">Month and leave type filter days taken and charts. Quota checks use the full year; “On leave today” always shows today.</p>
-      </div>
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatTile
           label="Total staff"
           value={employees.length}
@@ -218,30 +215,51 @@ export default function OverviewDashboard({
 
       <Card
         title={`Leave taken · ${period}`}
-        hint={selectedTypes.length === 0 ? "Select at least one leave type" : peak ? month==='all' ? `Busiest month is ${peak.month} with ${peak.total} days · approved leave` : `${peak.total} approved days in ${period}` : "No approved leave for the selected types"}
+        hint={selectedTypes.length === 0 ? "Select at least one leave type" : peak ? month==='all' ? `Busiest month is ${peak.month} with ${peak.total} days · approved leave` : `${totals.all} approved days · daily breakdown` : "No approved leave for the selected types"}
       >
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-          <p className="text-xs text-slate-500">Approved leave for the selected employee, month and leave type.</p>
-          <button type="button" className="border rounded-md px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50" onClick={() => setExportOpen(true)}>Monthly export</button>
-        </div>
-        <ResponsiveContainer width="100%" height={190}>
-          <BarChart data={months} margin={{ top: 8, right: 8, left: -18, bottom: 0 }} barSize={22}>
+      <div className="flex flex-wrap gap-x-3 gap-y-2 items-center mb-3">
+        <Popover open={employeeOpen} onOpenChange={setEmployeeOpen}>
+          <PopoverTrigger asChild>
+            <button type="button" role="combobox" aria-label="Overview employee" aria-expanded={employeeOpen} className="h-8 w-[210px] max-w-full px-2.5 border border-slate-200 rounded-md bg-white text-xs font-semibold flex items-center gap-2 hover:border-sky-400">
+              <Users className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+              <span className="truncate flex-1 text-left">{employees.find(e => e.id === activeEmployeeId)?.name || "All employees"}</span>
+              <ChevronsUpDown className="h-3 w-3 text-slate-400 shrink-0" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="p-0 w-[300px]">
+            <Command filter={(value, search) => search.toLowerCase().trim().split(/\s+/).every(part => value.toLowerCase().includes(part)) ? 1 : 0}>
+              <CommandInput aria-label="Search overview employees" placeholder="Search name or employee code…" />
+              <CommandList>
+                <CommandEmpty>No employees found.</CommandEmpty>
+                <CommandItem value="all employees" onSelect={() => { setEmployeeId(''); setEmployeeOpen(false); }}><Check className={`mr-2 h-4 w-4 ${activeEmployeeId ? 'opacity-0' : ''}`} />All employees</CommandItem>
+                {availableEmployees.map(e => <CommandItem key={e.id} value={`${e.id} ${e.name} ${e.nickname} ${e.empCode}`} onSelect={() => { setEmployeeId(e.id); setEmployeeOpen(false); }}><Check className={`mr-2 h-4 w-4 ${activeEmployeeId === e.id ? '' : 'opacity-0'}`} /><span className="flex-1">{e.name}</span><span className="text-xs text-slate-400">{e.empCode}</span></CommandItem>)}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        <label className="text-xs font-semibold text-slate-500 flex items-center gap-2">Month<select aria-label="Overview month" className="border rounded-md h-8 px-2 text-xs text-slate-900" value={month} onChange={e=>setMonth(e.target.value)}><option value="all">All year</option>{MONTH_LABELS.map((m,i)=><option key={m} value={i+1}>{m} {year}</option>)}</select></label>
+        <label className="text-xs font-semibold text-slate-500 flex items-center gap-2">Leave type<select aria-label="Overview leave type" className="border rounded-md h-8 px-2 text-xs text-slate-900" value={selectedTypes.length===3?'all':selectedTypes[0]} onChange={e=>setSelectedTypes(e.target.value==='all'?[...LEAVE_TYPES]:[e.target.value as LeaveType])}><option value="all">All types</option>{LEAVE_TYPES.map(t=><option key={t} value={t}>{LEAVE_META[t].label}</option>)}</select></label>
+        <button type="button" className="ml-auto h-8 flex items-center gap-1.5 rounded-md px-3 text-xs font-bold bg-slate-900 text-white hover:bg-slate-700" onClick={() => setExportOpen(true)}><Download className="h-3.5 w-3.5" />Export</button>
+      </div>
+        <div className="h-[170px] xl:h-[clamp(110px,16vh,200px)]"><ResponsiveContainer width="100%" height="100%">
+          <BarChart data={months} margin={{ top: 18, right: 8, left: -18, bottom: 0 }} maxBarSize={month === "all" ? 26 : 18}>
             <CartesianGrid stroke={GRID} strokeDasharray="2 4" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 11, fill: MUTED, fontWeight: 700 }} axisLine={false} tickLine={false} />
+            <XAxis interval="preserveStartEnd" minTickGap={6} dataKey="month" tick={{ fontSize: 11, fill: MUTED, fontWeight: 700 }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: MUTED, fontWeight: 700 }} axisLine={false} tickLine={false} width={44} />
-            <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(148,163,184,0.12)" }} />
+            <Tooltip content={<ChartTooltip />} labelFormatter={label => month === "all" ? `${label} ${year}` : `${label} ${period}`} cursor={{ fill: "rgba(148,163,184,0.12)" }} />
             {selectedTypes.map((type, index) => <Bar key={type} dataKey={type} stackId="a" name={LEAVE_META[type].short} fill={SERIES[type]} stroke="#fff" strokeWidth={2} radius={index === selectedTypes.length - 1 ? [4,4,0,0] : [0,0,0,0]} isAnimationActive={false}>
               {index === selectedTypes.length - 1 && <LabelList dataKey="total" position="top" formatter={(v: number) => v > 0 ? v : ""} style={{fontSize:10,fontWeight:800,fill:INK}} />}
             </Bar>)}
           </BarChart>
-        </ResponsiveContainer>
+        </ResponsiveContainer></div>
+        <div className="flex items-center justify-center gap-4 text-[10px] text-slate-500">{selectedTypes.map(type => <span key={type} className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{background: SERIES[type]}} />{LEAVE_META[type].short}</span>)}</div>
       </Card>
 
       {exportOpen && <MonthlyExportDialog employees={employees} year={year} initialMonth={month==='all'?undefined:Number(month)} initialTypes={selectedTypes} scope={exportScope} ready={exportReady} onClose={() => setExportOpen(false)} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <Card title="Days taken by department" hint={`Selected period and leave type · ${period}`}>
-          <ResponsiveContainer width="100%" height={Math.max(170, departments.length * 26)}>
+          <ResponsiveContainer width="100%" height={130}>
             <BarChart data={departments} layout="vertical" margin={{ top: 0, right: 44, left: 8, bottom: 0 }} barSize={11}>
               <CartesianGrid stroke={GRID} strokeDasharray="2 4" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 11, fill: MUTED, fontWeight: 700 }} axisLine={false} tickLine={false} />
@@ -288,7 +306,7 @@ export default function OverviewDashboard({
           </ResponsiveContainer>
         </Card>
 
-        <Card title="Annual leave used" hint="Full year, out of each person’s annual allowance">
+        <Card title="Annual leave used" hint="Full year · top 4 by allowance used">
           <div className="space-y-2">
             {quotaUsage.length === 0 && (
               <p className="text-xs text-slate-400 italic font-medium py-6 text-center">No annual leave recorded</p>
@@ -324,7 +342,7 @@ export default function OverviewDashboard({
           title={newJoiners.length > 0 ? "Needs attention" : "Over quota"}
           hint={newJoiners.length > 0 ? "New staff without a quota, and anyone over" : "Click to open the record"}
         >
-          <div className="divide-y divide-slate-100 max-h-[200px] overflow-y-auto">
+          <div className="divide-y divide-slate-100 max-h-[130px] overflow-y-auto">
             {newJoiners.length === 0 && overQuota.length === 0 && (
               <p className="text-xs text-slate-400 italic font-medium py-8 text-center">All within quota</p>
             )}

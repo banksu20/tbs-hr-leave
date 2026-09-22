@@ -171,6 +171,7 @@ export async function createLeave(draft: LeaveDraft) {
 export interface RequestTarget {
   scope: "request";
   expectedDates: string[];
+  expectedRevision: string;
 }
 export interface LeaveRequestUpdate extends RequestTarget {
   dates: string[];

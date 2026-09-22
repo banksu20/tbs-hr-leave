@@ -66,7 +66,7 @@ export function useLeaveMutations(year: string) {
   });
 
   const remove = useMutation({
-    mutationFn: ({ id, expectedDates }: { id: string; expectedDates: string[] }) => deleteLeave(id, { scope: "request", expectedDates }),
+    mutationFn: ({ id, expectedDates, expectedRevision }: { id: string; expectedDates: string[]; expectedRevision: string }) => deleteLeave(id, { scope: "request", expectedDates, expectedRevision }),
     onSuccess: async () => {
       toast.success("Removed");
       await invalidate();

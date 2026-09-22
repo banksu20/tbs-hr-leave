@@ -54,17 +54,17 @@ test('employee selection controls export preview and stale data disables downloa
 test('overview month, employee and type filters agree with totals while annual quota usage stays full-year',async()=>{
  const wrap=tag=>props=>React.createElement(tag,props,props.children);
  const charts=Object.fromEntries(['Bar','BarChart','CartesianGrid','Cell','LabelList','Legend','ResponsiveContainer','Tooltip','XAxis','YAxis'].map(n=>[n,wrap('chart-'+n)]));
- const Component=loadTS({'recharts':charts,'./MonthlyExportDialog':{default:wrap('export-dialog')}})('src/components/ceo/OverviewDashboard.tsx').default;
+ const Component=loadTS({'recharts':charts,'./MonthlyExportDialog':{default:wrap('export-dialog')},'@/components/ui/popover':Object.fromEntries(['Popover','PopoverContent','PopoverTrigger'].map(n=>[n,wrap(n)])),'@/components/ui/command':Object.fromEntries(['Command','CommandInput','CommandList','CommandEmpty','CommandItem'].map(n=>[n,wrap(n)]))})('src/components/ceo/OverviewDashboard.tsx').default;
  let tree;await act(async()=>{tree=renderer.create(React.createElement(Component,{employees,year:'2026',departmentCount:1,onLeaveToday:[],onSelectEmployee(){},exportReady:true,exportScope:'QA'}));});
  const select=name=>tree.root.findAllByType('select').find(x=>x.props['aria-label']===name);
- await act(async()=>select('Overview employee').props.onChange({target:{value:'1'}}));
+ await act(async()=>tree.root.findAllByType('CommandItem').find(n=>n.props.value.startsWith('1 ')).props.onSelect());
  await act(async()=>select('Overview month').props.onChange({target:{value:'10'}}));
  await act(async()=>select('Overview leave type').props.onChange({target:{value:'annual'}}));
- const chart=tree.root.findAllByType('chart-BarChart')[0];assert.equal(chart.props.data.length,1);assert.equal(chart.props.data[0].month,'Oct');assert.equal(chart.props.data[0].total,1);
- assert.ok(tree.root.findAllByType('p').some(p=>p.props.children==='Full year, out of each person’s annual allowance'));
+ const chart=tree.root.findAllByType('chart-BarChart')[0];assert.equal(chart.props.data.length,31);assert.equal(chart.props.data[0].month,'1');assert.equal(chart.props.data.reduce((sum,r)=>sum+r.total,0),1);
+ assert.ok(tree.root.findAllByType('p').some(p=>p.props.children==='Full year · top 4 by allowance used'));
  const quotaCard=tree.root.findAll(n=>n.props.title==='Annual leave used')[0];
  assert.ok(quotaCard.findAllByType('span').some(n=>n.children.includes('2')&&n.children.includes('12')));
- await act(async()=>select('Overview employee').props.onChange({target:{value:'2'}}));
+ await act(async()=>tree.root.findAllByType('CommandItem').find(n=>n.props.value.startsWith('2 ')).props.onSelect());
  assert.equal(tree.root.findAllByType('chart-BarChart')[0].props.data[0].total,0);
  await act(async()=>tree.unmount());
 });

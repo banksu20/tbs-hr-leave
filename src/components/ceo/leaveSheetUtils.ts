@@ -96,7 +96,7 @@ function quotaValue(emp: Employee, type: LeaveType): number | null | undefined {
 }
 
 export function needsQuotaReview(emp: Employee) {
-  return emp.quotas.annualTotal === 0;
+  return emp.quotasKnown === false;
 }
 
 export function isUnlimited(emp: Employee, type: LeaveType) {
