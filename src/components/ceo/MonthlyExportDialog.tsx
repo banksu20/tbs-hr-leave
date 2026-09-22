@@ -6,10 +6,10 @@ import { LEAVE_META, LEAVE_TYPES, type LeaveType } from './leaveSheetUtils';
 import { MONTH_LABELS } from './overviewData';
 import { buildMonthlyReport } from '@/lib/monthlyReport';
 
-export default function MonthlyExportDialog({employees,year,initialTypes,scope,ready,onClose}: {
-  employees: Employee[]; year: string; initialTypes: LeaveType[]; scope: string; ready: boolean; onClose:()=>void;
+export default function MonthlyExportDialog({employees,year,initialMonth,initialTypes,scope,ready,onClose}: {
+  employees: Employee[]; year: string; initialMonth?: number; initialTypes: LeaveType[]; scope: string; ready: boolean; onClose:()=>void;
 }) {
-  const [month,setMonth]=useState(new Date().getMonth()+1);
+  const [month,setMonth]=useState(initialMonth??new Date().getMonth()+1);
   const [types,setTypes]=useState<LeaveType[]>(initialTypes);
   const [selected,setSelected]=useState(()=>new Set(employees.map(e=>e.id)));
   const [search,setSearch]=useState('');

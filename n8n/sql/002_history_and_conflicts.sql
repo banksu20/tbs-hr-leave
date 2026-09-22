@@ -1,6 +1,7 @@
 -- Apply after 001_request_safety.sql through an n8n PostgreSQL node.
 -- Records future changes only; never fabricates historical events or identities.
 BEGIN;
+ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS rejection_reason text;
 CREATE TABLE IF NOT EXISTS tbs_change_history (
   id bigserial PRIMARY KEY,
   changed_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -28,8 +29,8 @@ BEGIN
     CASE WHEN TG_TABLE_NAME='leave_requests' THEN r->>'id'
       WHEN TG_TABLE_NAME='leave_quotas' THEN (r->>'user_id') || ':' || (r->>'year') ELSE r->>'user_id' END,
     r->>'user_id',
-    CASE WHEN TG_TABLE_NAME='leave_requests' AND context IN ('cancel','restore','approve') THEN context ELSE lower(TG_OP) END,
-    CASE WHEN COALESCE(context,'') <> '' THEN 'Dashboard — user not identified' ELSE 'Database change — user not identified' END,
+    CASE WHEN TG_TABLE_NAME='leave_requests' AND context IN ('cancel','restore','approve','reject') THEN context ELSE lower(TG_OP) END,
+    CASE WHEN current_setting('app.tbs_channel',true)='line' THEN 'LINE — user not identified' WHEN COALESCE(context,'') <> '' THEN 'Dashboard — user not identified' ELSE 'Database change — user not identified' END,
     b,a);
   RETURN COALESCE(NEW,OLD);
 END;
@@ -71,7 +72,7 @@ DECLARE result jsonb; current_row leave_requests%ROWTYPE; event tbs_change_histo
 BEGIN
   previous_context := COALESCE(current_setting('app.tbs_action',true),'');
   PERFORM set_config('app.tbs_action', CASE WHEN operation='delete' THEN 'cancel' ELSE operation END,true);
-  IF operation IN ('update','delete','restore','approve') THEN
+  IF operation IN ('update','delete','restore','approve','reject') THEN
     IF COALESCE(payload->>'id','') !~ '^[1-9][0-9]*$' THEN
       result := jsonb_build_object('ok',false,'statusCode',422,'error','Invalid request id');
     ELSE
@@ -84,15 +85,17 @@ BEGIN
       END IF;
     END IF;
   END IF;
-  IF result IS NULL AND operation='approve' THEN
+  IF result IS NULL AND operation IN ('approve','reject') THEN
     IF lower(current_row.status) NOT IN ('pending','awaiting','awaiting approval') OR current_row.status IS NULL THEN
       result := jsonb_build_object('ok',false,'statusCode',409,'error','This request is no longer awaiting approval. Refresh the dashboard.');
     ELSIF payload->>'expectedRevision' IS DISTINCT FROM md5(to_jsonb(current_row)::text) THEN
-      result := jsonb_build_object('ok',false,'statusCode',409,'error','Request changed since you loaded it. Refresh and review before approving.');
+      result := jsonb_build_object('ok',false,'statusCode',409,'error','Request changed since you loaded it. Refresh and review before deciding.');
     ELSIF NOT EXISTS(SELECT 1 FROM tbs_employees WHERE user_id=current_row.user_id AND status='active') THEN
-      result := jsonb_build_object('ok',false,'statusCode',409,'error','Employee is inactive. Restore the employee before approving.');
+      result := jsonb_build_object('ok',false,'statusCode',409,'error','Employee is inactive. Restore the employee before deciding.');
+    ELSIF operation='reject' AND ((payload ? 'rejectionReason' AND jsonb_typeof(payload->'rejectionReason') IS DISTINCT FROM 'string') OR length(payload->>'rejectionReason')>1000) THEN
+      result := jsonb_build_object('ok',false,'statusCode',422,'error','Rejection reason must be text, up to 1000 characters');
     ELSE
-      UPDATE leave_requests SET status='Approved' WHERE id=current_row.id;
+      UPDATE leave_requests SET rejection_reason=CASE WHEN operation='reject' THEN NULLIF(btrim(payload->>'rejectionReason'),'') ELSE rejection_reason END, status=CASE WHEN operation='approve' THEN 'Approved' ELSE 'Rejected' END WHERE id=current_row.id;
       result := jsonb_build_object('ok',true,'id',current_row.id);
     END IF;
   ELSIF result IS NULL AND operation='restore' THEN

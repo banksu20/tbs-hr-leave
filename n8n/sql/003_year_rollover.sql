@@ -24,7 +24,7 @@ RETURNS TABLE(annual numeric,sick numeric,personal numeric,effective_carried num
 $$;
 
 CREATE OR REPLACE FUNCTION tbs_rollover(payload jsonb) RETURNS jsonb LANGUAGE plpgsql AS $$
-DECLARE yr integer; cap numeric; expiry date; rows jsonb; token text; count_saved integer; old_context text;
+DECLARE yr integer; cap numeric; expiry date; rows jsonb; token text;
 BEGIN
   yr := (payload->>'sourceYear')::integer;
   cap := (payload->>'carryLimit')::numeric;
@@ -34,11 +34,7 @@ BEGIN
     RETURN jsonb_build_object('ok',false,'statusCode',422,'error','Choose a source year, carryover limit in quarter days, and expiry within the next year.');
   END IF;
   IF payload->>'action'='apply' THEN
-    IF (now() AT TIME ZONE 'Asia/Bangkok')::date < make_date(yr+1,1,1) THEN
-      RETURN jsonb_build_object('ok',false,'statusCode',409,'error','Preview is available now. Apply rollover after the source year ends.');
-    END IF;
-    -- Serialize the preview comparison and insert against other HR writes.
-    LOCK TABLE tbs_employees, leave_requests, leave_quotas IN SHARE ROW EXCLUSIVE MODE;
+    RETURN jsonb_build_object('ok',false,'statusCode',403,'error','Year rollover is preview-only until the policy is approved and applying is enabled.');
   END IF;
   SELECT COALESCE(jsonb_agg(to_jsonb(p) ORDER BY p."userId"),'[]'::jsonb) INTO rows FROM (
     SELECT e.user_id AS "userId",concat_ws(' ',e.first_name,e.last_name) AS name,
@@ -54,22 +50,7 @@ BEGIN
     WHERE e.status='active'
   ) p;
   token := md5(rows::text || yr::text || cap::text || expiry::text);
-  IF payload->>'action'='preview' THEN
-    RETURN jsonb_build_object('ok',true,'rows',rows,'token',token,'targetYear',yr+1);
-  END IF;
-  IF payload->>'token' IS DISTINCT FROM token THEN
-    RETURN jsonb_build_object('ok',false,'statusCode',409,'error','Balances or quotas changed. Preview again before applying.');
-  END IF;
-  old_context := COALESCE(current_setting('app.tbs_action',true),'');
-  PERFORM set_config('app.tbs_action','rollover',true);
-  INSERT INTO leave_quotas(user_id,year,annual_total,sick_total,personal_total,carried_over,carryover_expires_on,note,updated_at)
-    SELECT r->>'userId',yr+1,(r->>'annualTotal')::numeric,(r->>'sickTotal')::numeric,(r->>'personalTotal')::numeric,
-      (r->>'carriedOver')::numeric,expiry,'Year rollover from '||yr,now()
-    FROM jsonb_array_elements(rows) r WHERE r->>'status'='Ready'
-    ON CONFLICT(user_id,year) DO NOTHING;
-  GET DIAGNOSTICS count_saved=ROW_COUNT;
-  PERFORM set_config('app.tbs_action',old_context,true);
-  RETURN jsonb_build_object('ok',true,'saved',count_saved,'targetYear',yr+1);
+  RETURN jsonb_build_object('ok',true,'rows',rows,'token',token,'targetYear',yr+1);
 EXCEPTION WHEN invalid_text_representation OR invalid_datetime_format OR datetime_field_overflow OR numeric_value_out_of_range THEN
   RETURN jsonb_build_object('ok',false,'statusCode',422,'error','Invalid rollover settings');
 END;

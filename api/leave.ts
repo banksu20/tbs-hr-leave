@@ -64,11 +64,13 @@ async function create(req: VercelRequest, res: VercelResponse) {
 }
 
 async function update(req: VercelRequest, res: VercelResponse, id: string) {
-  if (req.body?.action === "approve") {
+  if (["approve","reject"].includes(req.body?.action)) {
     const revision = req.body.expectedRevision;
-    if (typeof revision !== "string" || !/^[a-f0-9]{32}$/.test(revision)) return json(res,422,{error:"Refresh the request before approving"});
+    const rejectionReason=req.body.rejectionReason;
+    if(req.body.action==='reject'&&rejectionReason!==undefined&&(typeof rejectionReason!=='string'||rejectionReason.length>1000))return json(res,422,{error:'Rejection reason must be 1,000 characters or fewer'});
+    if (typeof revision !== "string" || !/^[a-f0-9]{32}$/.test(revision)) return json(res,422,{error:"Refresh the request before deciding"});
     try {
-      const result = await n8nPost("dashboard-leave-update", {id,action:"approve",expectedRevision:revision});
+      const result = await n8nPost("dashboard-leave-update", {id,action:req.body.action,expectedRevision:revision,...(req.body.action==='reject'?{rejectionReason:rejectionReason?.trim()??''}:{})});
       return json(res,200,{ok:true,id,n8n:result});
     } catch (err) { return n8nFailure(res,err); }
   }

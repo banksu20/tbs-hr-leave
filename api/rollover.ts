@@ -10,6 +10,7 @@ const schema=z.object({action:z.enum(['preview','apply']),sourceYear:z.number().
 export default async function handler(req:VercelRequest,res:VercelResponse){
   if(!ceoAuthorised(req)||!writesAllowed(req))return json(res,401,{error:'Not signed in'});
   if(req.method!=='POST')return json(res,405,{error:'Method not allowed'});
+  if(req.body?.action==='apply')return json(res,403,{error:'Year rollover is preview-only until the policy is approved and applying is enabled.'});
   const parsed=schema.safeParse(req.body);
   if(!parsed.success)return json(res,422,{error:'Invalid rollover settings',issues:parsed.error.issues.map(i=>i.message)});
   try { const result=await n8nPost('dashboard-rollover',parsed.data);return json(res,200,Array.isArray(result)?result[0]:result); }

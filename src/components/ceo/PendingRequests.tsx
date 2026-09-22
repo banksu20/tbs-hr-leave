@@ -1,13 +1,15 @@
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { Employee } from '@/data/mockEmployees';
-import { approveLeave } from '@/lib/api';
+import { approveLeave, rejectLeave } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 
 export default function PendingRequests({employees,ready}: {employees: Employee[]; ready:boolean}) {
   const client=useQueryClient();
-  const approve=useMutation({mutationFn:({id,revision}:{id:string;revision:string})=>approveLeave(id,revision),
-    onSuccess:async()=>{toast.success('Request approved');await Promise.all([client.invalidateQueries({queryKey:['employees']}),client.invalidateQueries({queryKey:['history']})]);},
+  const [reasons,setReasons]=useState<Record<string,string>>({});
+  const approve=useMutation({mutationFn:({id,revision,action,reason}:{id:string;revision:string;action:'approve'|'reject';reason?:string})=>action==='approve'?approveLeave(id,revision):rejectLeave(id,revision,reason),
+    onSuccess:async(_data,variables)=>{toast.success(variables.action==='approve'?'Request approved':'Request rejected');await Promise.all([client.invalidateQueries({queryKey:['employees']}),client.invalidateQueries({queryKey:['history']})]);},
     onError:(error)=>toast.error(error.message)});
   const requests=employees.flatMap(employee=>{
     const seen=new Set<string>();
@@ -19,8 +21,8 @@ export default function PendingRequests({employees,ready}: {employees: Employee[
   }).sort((a,b)=>a.leave.date.localeCompare(b.leave.date));
   return <section className="bg-white border rounded-xl p-4 space-y-4">
     <h2 className="font-bold text-lg">Pending requests ({requests.length})</h2>
-    <p className="text-sm text-slate-500">Shows requests in the selected year, department and search. Approval covers the entire request, including dates in another year.</p>
-    {!ready&&<p role="alert" className="text-amber-800">Refresh live data before approving requests.</p>}
+    <p className="text-sm text-slate-500">Shows requests in the selected year, department and search. Approve or reject the entire request, including dates in another year.</p>
+    {!ready&&<p role="alert" className="text-amber-800">Refresh live data before deciding on requests.</p>}
     {!requests.length&&<p>No pending requests match these filters.</p>}
     {requests.map(({employee,leave})=><article key={`${employee.id}-${leave.requestId??leave.id}`} className="border rounded-lg p-3 space-y-2">
       <h3 className="font-semibold">{employee.name} · {employee.empCode}</h3>
@@ -28,10 +30,13 @@ export default function PendingRequests({employees,ready}: {employees: Employee[
       <p className="text-sm break-words">{(leave.requestDates??[leave.date]).join(', ')}</p>
       <p className="text-sm whitespace-pre-wrap break-words">{leave.note||'No reason provided'}</p>
       {!leave.requestRevision&&<p className="text-sm text-amber-800">Refresh after the approval workflow is deployed to approve this request.</p>}
-      <Button disabled={!ready||!leave.requestId||!leave.requestRevision||approve.isPending} onClick={()=>{
+      <label className="block text-sm text-slate-600">Rejection reason (optional)
+        <textarea maxLength={1000} disabled={approve.isPending} className="block w-full rounded-lg border p-2 mt-1" rows={2} placeholder="For example: please choose another date" value={reasons[leave.requestId??leave.id]??''} onChange={e=>setReasons(current=>({...current,[leave.requestId??leave.id]:e.target.value}))}/>
+      </label>
+      <div className="flex gap-2">{(['approve','reject'] as const).map(action=><Button key={action} variant={action==='approve'?'default':'destructive'} disabled={!ready||!leave.requestId||!leave.requestRevision||approve.isPending} onClick={()=>{
         if(!leave.requestId||!leave.requestRevision)return;
-        if(window.confirm(`Approve ${employee.name}'s entire ${leave.type} request for ${(leave.requestDates??[leave.date]).join(', ')}?`))approve.mutate({id:leave.requestId,revision:leave.requestRevision});
-      }}>{approve.isPending&&approve.variables?.id===leave.requestId?'Approving…':'Approve request'}</Button>
+        if(window.confirm(`${action==='approve'?'Approve':'Reject'} ${employee.name}'s entire ${leave.type} request for ${(leave.requestDates??[leave.date]).join(', ')}?${action==='reject'?' Rejected leave will not use their allowance.':''}`))approve.mutate({id:leave.requestId,revision:leave.requestRevision,action,reason:reasons[leave.requestId??leave.id]});
+      }}>{approve.isPending&&approve.variables?.id===leave.requestId&&approve.variables.action===action?'Saving…':action==='approve'?'Approve request':'Reject request'}</Button>)}</div>
     </article>)}
   </section>;
 }

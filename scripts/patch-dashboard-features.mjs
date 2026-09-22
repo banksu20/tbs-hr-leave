@@ -8,7 +8,7 @@ export function patchDashboardFeatures(original) {
   const node=name=>{const n=w.nodes.find(n=>n.name===name);if(!n)throw Error(`Missing node: ${name}`);return n;};
   for(const operation of ['create','update','delete']) {
     const n=node(`dashboard-leave-${operation}`);
-    n.parameters.query=`SELECT result.* FROM jsonb_to_record(tbs_dashboard_request_v2(${operation==='update'?"CASE WHEN $1::jsonb->>'action' IN ('restore','approve') THEN $1::jsonb->>'action' ELSE 'update' END":`'${operation}'`}, $1::jsonb)) AS result(ok boolean, id integer, "statusCode" integer, error text);`;
+    n.parameters.query=`SELECT result.* FROM jsonb_to_record(tbs_dashboard_request_v2(${operation==='update'?"CASE WHEN $1::jsonb->>'action' IN ('restore','approve','reject') THEN $1::jsonb->>'action' ELSE 'update' END":`'${operation}'`}, $1::jsonb)) AS result(ok boolean, id integer, "statusCode" integer, error text);`;
     n.parameters.options={...n.parameters.options,queryReplacement:'={{ [JSON.stringify($json.body)] }}'};
   }
   const baseY=Math.max(0,...w.nodes.map(n=>n.position?.[1]??0))+400;

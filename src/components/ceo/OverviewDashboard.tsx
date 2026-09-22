@@ -21,6 +21,7 @@ import {
   busiestMonth,
   departmentTotals,
   monthlyTotals,
+  MONTH_LABELS,
   overQuotaList,
 } from "./overviewData";
 
@@ -112,7 +113,7 @@ function ChartTooltip({ active, payload, label }: any) {
 }
 
 export default function OverviewDashboard({
-  employees,
+  employees: availableEmployees,
   year,
   departmentCount,
   onLeaveToday,
@@ -120,10 +121,17 @@ export default function OverviewDashboard({
   exportReady,
   exportScope,
 }: OverviewDashboardProps) {
+  const [employeeId,setEmployeeId] = useState('');
+  const [month,setMonth] = useState('all');
+  const activeEmployeeId = availableEmployees.some(e=>e.id===employeeId) ? employeeId : '';
+  const employees = useMemo(()=>availableEmployees.filter(e=>!activeEmployeeId||e.id===activeEmployeeId),[availableEmployees,activeEmployeeId]);
+  const period = month==='all' ? year : `${MONTH_LABELS[Number(month)-1]} ${year}`;
   const [exportOpen, setExportOpen] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<LeaveType[]>([...LEAVE_TYPES]);
-  const months = useMemo(() => monthlyTotals(employees, year, selectedTypes), [employees, year, selectedTypes]);
-  const departments = useMemo(() => departmentTotals(employees, year), [employees, year]);
+  const periodEmployees = useMemo(()=>employees.map(e=>({...e,leaves:e.leaves.filter(l=>(month==='all'||Number(l.date.slice(5,7))===Number(month))&&selectedTypes.includes(l.type))})),[employees,month,selectedTypes]);
+  const months = useMemo(() => monthlyTotals(periodEmployees, year, selectedTypes).filter((_,i)=>month==='all'||i===Number(month)-1), [periodEmployees, year, selectedTypes,month]);
+  const todayEmployees = onLeaveToday.filter(e=>employees.some(p=>p.id===e.id));
+  const departments = useMemo(() => departmentTotals(periodEmployees, year), [periodEmployees, year]);
   const quotaUsage = useMemo(() => annualQuotaUsage(employees, year, 6), [employees, year]);
   const overQuota = useMemo(() => overQuotaList(employees, year), [employees, year]);
   const peak = useMemo(() => busiestMonth(months), [months]);
@@ -132,18 +140,24 @@ export default function OverviewDashboard({
   const totals = useMemo(() => {
     const byType = LEAVE_TYPES.map((type) => ({
       type,
-      days: employees.reduce((sum, emp) => sum + sumLeavesByType(emp.leaves, type, year), 0),
+      days: periodEmployees.reduce((sum, emp) => sum + sumLeavesByType(emp.leaves, type, year), 0),
     }));
     return {
       byType,
       all: Math.round(byType.reduce((sum, t) => sum + t.days, 0) * 100) / 100,
     };
-  }, [employees, year]);
+  }, [periodEmployees, year]);
 
   const maxDepartment = departments[0]?.days ?? 0;
 
   return (
     <div className="space-y-3">
+      <div className="bg-white border rounded-xl p-4 flex flex-wrap gap-4 items-end">
+        <label className="text-sm font-semibold">Employee<select aria-label="Overview employee" className="block border rounded-lg p-2 mt-1 max-w-[300px]" value={activeEmployeeId} onChange={e=>setEmployeeId(e.target.value)}><option value="">All employees</option>{availableEmployees.map(e=><option key={e.id} value={e.id}>{e.name} · {e.empCode}</option>)}</select></label>
+        <label className="text-sm font-semibold">Month<select aria-label="Overview month" className="block border rounded-lg p-2 mt-1" value={month} onChange={e=>setMonth(e.target.value)}><option value="all">All year</option>{MONTH_LABELS.map((m,i)=><option key={m} value={i+1}>{m} {year}</option>)}</select></label>
+        <label className="text-sm font-semibold">Leave type<select aria-label="Overview leave type" className="block border rounded-lg p-2 mt-1" value={selectedTypes.length===3?'all':selectedTypes[0]} onChange={e=>setSelectedTypes(e.target.value==='all'?[...LEAVE_TYPES]:[e.target.value as LeaveType])}><option value="all">All types</option>{LEAVE_TYPES.map(t=><option key={t} value={t}>{LEAVE_META[t].label}</option>)}</select></label>
+        <p className="text-xs text-slate-500 w-full">Month and leave type filter days taken and charts. Quota checks use the full year; “On leave today” always shows today.</p>
+      </div>
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         <StatTile
           label="Total staff"
@@ -151,17 +165,17 @@ export default function OverviewDashboard({
           unit="employees"
           tone="sky"
           icon={<Users className="w-5 h-5" />}
-          detail={<span className="text-[#68BD24] font-bold">Across {departmentCount} departments</span>}
+          detail={<span className="text-[#68BD24] font-bold">Across {new Set(employees.map(e=>e.department)).size} departments</span>}
         />
         <StatTile
           label="On leave today"
-          value={onLeaveToday.length}
+          value={todayEmployees.length}
           unit="staff"
           tone="amber"
           icon={<Palmtree className="w-5 h-5" />}
           detail={
             <span className="text-slate-500 truncate block max-w-[190px]">
-              {onLeaveToday.length > 0 ? onLeaveToday.map((e) => e.nickname).join(", ") : "Nobody is off today"}
+              {todayEmployees.length > 0 ? todayEmployees.map((e) => e.nickname).join(", ") : "Nobody is off today"}
             </span>
           }
         />
@@ -184,7 +198,7 @@ export default function OverviewDashboard({
           }
         />
         <StatTile
-          label={`Total days taken (${year})`}
+          label={`Days taken (${period})`}
           value={totals.all}
           unit="days"
           tone="emerald"
@@ -203,21 +217,11 @@ export default function OverviewDashboard({
       </div>
 
       <Card
-        title={`Leave taken each month in ${year}`}
-        hint={selectedTypes.length === 0 ? "Select at least one leave type" : peak ? `Busiest month is ${peak.month} with ${peak.total} days · selected types, approved leave` : "No approved leave for the selected types"}
+        title={`Leave taken · ${period}`}
+        hint={selectedTypes.length === 0 ? "Select at least one leave type" : peak ? month==='all' ? `Busiest month is ${peak.month} with ${peak.total} days · approved leave` : `${peak.total} approved days in ${period}` : "No approved leave for the selected types"}
       >
-        <div className="flex flex-wrap items-center gap-2 mb-3" role="group" aria-label="Monthly chart leave types">
-          <button type="button" aria-pressed={selectedTypes.length === LEAVE_TYPES.length} onClick={() => setSelectedTypes([...LEAVE_TYPES])} className="rounded-md border px-3 py-1.5 text-xs font-bold">All types</button>
-          {LEAVE_TYPES.map((type) => (
-            <button type="button" key={type} aria-pressed={selectedTypes.includes(type)} onClick={() => setSelectedTypes(current => current.includes(type) ? current.filter(t => t !== type) : LEAVE_TYPES.filter(t => current.includes(t) || t === type))}
-              className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-bold ${selectedTypes.includes(type) ? "bg-slate-100 border-slate-400 text-slate-900" : "text-slate-400 border-slate-200"}`}>
-              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: SERIES[type], opacity: selectedTypes.includes(type) ? 1 : 0.3 }} />
-              {LEAVE_META[type].label}{selectedTypes.includes(type) ? " ✓" : ""}
-            </button>
-          ))}
-        </div>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-          <p className="text-xs text-slate-500">Toggle leave types to filter this chart. Department and search filters also apply.</p>
+          <p className="text-xs text-slate-500">Approved leave for the selected employee, month and leave type.</p>
           <button type="button" className="border rounded-md px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50" onClick={() => setExportOpen(true)}>Monthly export</button>
         </div>
         <ResponsiveContainer width="100%" height={190}>
@@ -233,10 +237,10 @@ export default function OverviewDashboard({
         </ResponsiveContainer>
       </Card>
 
-      {exportOpen && <MonthlyExportDialog employees={employees} year={year} initialTypes={selectedTypes} scope={exportScope} ready={exportReady} onClose={() => setExportOpen(false)} />}
+      {exportOpen && <MonthlyExportDialog employees={employees} year={year} initialMonth={month==='all'?undefined:Number(month)} initialTypes={selectedTypes} scope={exportScope} ready={exportReady} onClose={() => setExportOpen(false)} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <Card title="Days taken by department" hint="Total across all leave types">
+        <Card title="Days taken by department" hint={`Selected period and leave type · ${period}`}>
           <ResponsiveContainer width="100%" height={Math.max(170, departments.length * 26)}>
             <BarChart data={departments} layout="vertical" margin={{ top: 0, right: 44, left: 8, bottom: 0 }} barSize={11}>
               <CartesianGrid stroke={GRID} strokeDasharray="2 4" horizontal={false} />
@@ -284,7 +288,7 @@ export default function OverviewDashboard({
           </ResponsiveContainer>
         </Card>
 
-        <Card title="Annual leave used" hint="Highest usage first, out of each person's own allowance">
+        <Card title="Annual leave used" hint="Full year, out of each person’s annual allowance">
           <div className="space-y-2">
             {quotaUsage.length === 0 && (
               <p className="text-xs text-slate-400 italic font-medium py-6 text-center">No annual leave recorded</p>

@@ -353,7 +353,7 @@ export default function CeoDashboard() {
                 : "text-amber-300 bg-amber-950/80 border-amber-800"
             }`}>
               <span className={`w-2 h-2 rounded-full ${dataSource === "live" ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`}></span>
-              {dataSource === "live" ? "Live Sync Connected" : "Offline - local data"}
+              {dataSource === "live" ? "Live records connected" : "Offline - local data"}
             </div>
 
             <button
@@ -362,7 +362,7 @@ export default function CeoDashboard() {
               className="h-9 px-3 bg-[#68BD24] hover:bg-[#5ca81f] text-slate-950 font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-xs"
             >
               <RotateCw className={`w-3.5 h-3.5 ${isFetchingEmployees ? "animate-spin" : ""}`} />
-              {isFetchingEmployees ? "Syncing..." : "Sync Live Data"}
+              {isFetchingEmployees ? "Refreshing..." : "Refresh records"}
             </button>
 
             <button
@@ -391,6 +391,11 @@ export default function CeoDashboard() {
         />
 
         {/* 3. Main Master Executive Datatable Container */}
+        <aside className="mb-4 rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-slate-700">
+          <p className="font-semibold text-slate-900">Manage leave here</p>
+          <p className="mt-1">Use this dashboard for approvals, employee details and leave allowances. Overview, Roster and Sheet share the same saved records. Download CSV or PDF copies when you need a report.</p>
+          <p className="mt-1 text-xs text-slate-600">Approve requests here or through LINE. Refresh records to see the latest decisions. Existing Google Sheets connections remain in place during the transition.</p>
+        </aside>
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
           
           {/* Department Filters & Search Toolbar */}
@@ -402,7 +407,7 @@ export default function CeoDashboard() {
               </select>
             </label>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 min-w-0 max-w-full">
               <div className="flex flex-wrap bg-slate-800 p-0.5 rounded-lg border border-slate-700">
                 <button
                   onClick={() => setViewMode("overview")}
@@ -428,20 +433,10 @@ export default function CeoDashboard() {
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" /> Sheet
                 </button>
-                {(["calendar", "history", "rollover", "pending"] as const).map(mode => <button key={mode} onClick={() => setViewMode(mode)} className={`px-3 py-2 rounded-lg text-sm font-semibold ${viewMode === mode ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"}`}>{mode === "calendar" ? "Team calendar" : mode === "history" ? "Change history" : mode === "rollover" ? "Year rollover" : "Pending requests"}</button>)}
-                <button
-                  onClick={() => setViewMode("removed")}
-                  className={`px-2.5 py-1 text-xs font-extrabold rounded-md transition-colors flex items-center gap-1.5 ${
-                    viewMode === "removed" ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> Removed
-                  {removedEmployees.length > 0 && (
-                    <span className="text-[10px] px-1.5 rounded-full font-extrabold bg-rose-500 text-white">
-                      {removedEmployees.length}
-                    </span>
-                  )}
-                </button>
+                <select aria-label="More tools" value={["overview","roster","sheet"].includes(viewMode)?"":viewMode} onChange={e=>{if(e.target.value)setViewMode(e.target.value as typeof viewMode);}} className="rounded-md border border-slate-600 bg-slate-800 text-white px-2 py-1.5 text-xs font-bold max-w-[170px]">
+                  <option value="" disabled>More tools</option>
+                  <option value="pending">Pending requests</option><option value="calendar">Team calendar</option><option value="history">Change history</option><option value="rollover">Year rollover</option><option value="removed">Removed employees ({removedEmployees.length})</option>
+                </select>
               </div>
 
               {viewMode === "sheet" && (

@@ -11,7 +11,7 @@ async function fixture(){
   CREATE TABLE leave_quotas(user_id text,year int,annual_total numeric,sick_total numeric,personal_total numeric,carried_over numeric,note text,updated_at timestamptz,UNIQUE(user_id,year));
   CREATE TABLE leave_requests(id serial PRIMARY KEY,user_id text,user_name text,department text,leave_type text,leave_days numeric,start_date date,end_date date,selected_dates text,reason text,status text,source text);
   INSERT INTO tbs_employees VALUES('test',1,'Test','Person','','QA','active','2020-01-01');`);
-  for(const file of ['001_request_safety.sql','002_history_and_conflicts.sql','003_year_rollover.sql'])await db.exec(sql(file));
+  for(const file of ['001_request_safety.sql','002_history_and_conflicts.sql','003_year_rollover.sql','004_line_decisions.sql'])await db.exec(sql(file));
   return db;
 }
 const mutate=async(db,op,body)=>(await db.query('SELECT tbs_dashboard_request_v2($1,$2::jsonb) result',[op,JSON.stringify(body)])).rows[0].result;
@@ -34,6 +34,40 @@ test('approval rejects stale, inactive and already handled requests and audits t
   assert.equal((await mutate(db,'approve',{id:created.id,expectedRevision:current.revision})).statusCode,409);
   const events=(await db.query("SELECT * FROM tbs_change_history WHERE action='approve'")).rows;
   assert.equal(events.length,1);assert.equal(events[0].before_value.status,'Pending');assert.equal(events[0].after_value.status,'Approved');
+ }finally{await db.close();}
+});
+
+test('rejection only decides a current pending request and records a rejection, not cancellation',async()=>{
+ const db=await fixture();try{
+  const created=await mutate(db,'create',{...draft,status:'Pending'});
+  const revision=(await db.query('SELECT md5(to_jsonb(r)::text) revision FROM leave_requests r WHERE id=$1',[created.id])).rows[0].revision;
+  assert.equal((await mutate(db,'reject',{id:created.id,expectedRevision:'0'.repeat(32)})).statusCode,409);
+  assert.equal((await mutate(db,'reject',{id:created.id,expectedRevision:revision,rejectionReason:'  Please choose another date  '})).ok,true);
+  assert.equal((await mutate(db,'approve',{id:created.id,expectedRevision:revision})).statusCode,409);
+  const events=(await db.query(sql('change-history.sql'),['test',null])).rows[0].events;
+  assert.equal(events[0].after.rejection_reason,'Please choose another date');assert.equal(events[0].after.reason,draft.reason);assert.equal(events[0].action,'reject');assert.equal(events[0].after.status,'Rejected');assert.equal(events[0].canRestore,false);
+  const usage=(await db.query("SELECT annual FROM tbs_quota_usage('test',2026)")).rows[0];assert.equal(Number(usage.annual),0);
+ }finally{await db.close();}
+});
+
+test('LINE and dashboard share the first decision and preserve employee reason',async()=>{
+ const db=await fixture();try{
+  const line=async(action,body)=>(await db.query('SELECT tbs_line_decision($1,$2::jsonb) r',[action,JSON.stringify(body)])).rows[0].r;
+  const created=await mutate(db,'create',{...draft,status:'Pending'});
+  const revision=(await db.query('SELECT md5(to_jsonb(r)::text) revision FROM leave_requests r WHERE id=$1',[created.id])).rows[0].revision;
+  assert.equal((await line('approve',{id:created.id,userId:'wrong'})).statusCode,409);
+  assert.equal((await line('approve',{id:created.id,userId:'test'})).ok,true);
+  assert.equal((await mutate(db,'reject',{id:created.id,expectedRevision:revision})).statusCode,409);
+  assert.equal((await line('reject',{id:created.id,userId:'test',rejectionReason:'old button'})).statusCode,409);
+  const audit=(await db.query("SELECT * FROM tbs_change_history WHERE action='approve'")).rows;
+  assert.equal(audit.length,1);assert.equal(audit[0].actor,'LINE — user not identified');
+  const second=await mutate(db,'create',{...draft,leaveDate:'2026-01-06',status:'Pending'});
+  const rev=(await db.query('SELECT md5(to_jsonb(r)::text) revision FROM leave_requests r WHERE id=$1',[second.id])).rows[0].revision;
+  assert.equal((await mutate(db,'reject',{id:second.id,expectedRevision:rev,rejectionReason:'Dashboard decision'})).ok,true);
+  assert.equal((await line('approve',{id:second.id,userId:'test'})).statusCode,409);
+  const third=await mutate(db,'create',{...draft,leaveDate:'2026-01-07',status:'Pending'});
+  assert.equal((await line('reject',{id:third.id,userId:'test',rejectionReason:'LINE decision'})).ok,true);
+  const row=(await db.query('SELECT * FROM leave_requests WHERE id=$1',[third.id])).rows[0];assert.equal(row.reason,draft.reason);assert.equal(row.rejection_reason,'LINE decision');
  }finally{await db.close();}
 });
 
@@ -84,24 +118,18 @@ test('carryover expires after its inclusive expiry date, without double charging
  }finally{await db.close();}
 });
 
-test('rollover previews, detects stale data, skips existing quotas and is safe to repeat',async()=>{
+test('rollover previews carryover but blocks every apply without changing any quotas',async()=>{
  const db=await fixture();try{
-  const year=Number((await db.query("SELECT extract(year FROM now())::int y")).rows[0].y)-1;
+  const year=2025;
   await db.query("INSERT INTO leave_quotas VALUES('test',$1,12,30,3,2,'',now(),null)",[year]);
   const policy={sourceYear:year,carryLimit:5,expiresOn:`${year+1}-03-31`};
   const run=async p=>(await db.query('SELECT tbs_rollover($1::jsonb) r',[JSON.stringify(p)])).rows[0].r;
-  let preview=await run({...policy,action:'preview'});assert.equal(preview.ok,true);assert.equal(preview.rows[0].carriedOver,5);
-  assert.equal((await db.query('SELECT count(*)::int n FROM leave_quotas')).rows[0].n,1);
-  await db.exec("UPDATE leave_quotas SET annual_total=4 WHERE user_id='test'");
-  assert.equal((await run({...policy,action:'apply',token:preview.token})).statusCode,409);
-  preview=await run({...policy,action:'preview'});
-  assert.equal((await run({...policy,action:'apply',token:preview.token})).saved,1);
-  const after=await run({...policy,action:'preview'});assert.match(after.rows[0].status,/skipped/);
-  assert.equal((await run({...policy,action:'apply',token:after.token})).saved,0);
-  const quota=(await db.query('SELECT * FROM leave_quotas WHERE year=$1',[year+1])).rows[0];
-  assert.equal(Number(quota.carried_over),4);assert.equal(Number(quota.annual_total),4);
+  const before=(await db.query('SELECT * FROM leave_quotas')).rows;
+  const preview=await run({...policy,action:'preview'});assert.equal(preview.ok,true);assert.equal(preview.rows[0].carriedOver,5);
+  assert.equal((await run({...policy,action:'apply',token:preview.token})).statusCode,403);
+  assert.equal((await run({...policy,action:'apply',token:'stale'})).statusCode,403);
+  assert.deepEqual((await db.query('SELECT * FROM leave_quotas')).rows,before);
   assert.equal((await run({...policy,action:'preview',expiresOn:`${year}-03-31`})).statusCode,422);
-  assert.equal((await run({...policy,sourceYear:year+2,expiresOn:`${year+3}-03-31`,action:'apply',token:'x'})).statusCode,409);
  }finally{await db.close();}
 });
 

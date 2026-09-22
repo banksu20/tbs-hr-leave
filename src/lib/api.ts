@@ -266,3 +266,7 @@ export function approveLeave(id: string, expectedRevision: string) {
     method: 'PATCH', body: JSON.stringify({action:'approve',expectedRevision}),
   });
 }
+
+export function rejectLeave(id: string, expectedRevision: string, rejectionReason?: string) {
+  return request<{ok: boolean}>(`/api/leave?id=${encodeURIComponent(id)}`, {method:'PATCH',body:JSON.stringify({action:'reject',expectedRevision,rejectionReason})});
+}
