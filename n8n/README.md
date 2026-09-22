@@ -17,7 +17,7 @@ The original export and generated inactive patch are in the user's Downloads fol
 
 1. Back up the database and export the current workflow. Confirm that `leave_requests`, `leave_quotas`, and `tbs_employees` are the existing production tables. Run **only** `sql/001_request_safety.sql` against that database. Do **not** run the legacy root `postgres_schema.sql`, which contains table truncation statements.
 2. In n8n, create/select an **HTTP Header Auth** credential named `TBS dashboard server`, with header name `x-ceo-webhook-secret`. The account owner must enter the secret in the credential UI. Put the same value in the app server's **`CEO_WEBHOOK_SECRET`** environment variable. Never expose it through a `VITE_` variable or browser bundle.
-3. Configure server `CEO_PASSWORD` and optionally `CEO_SESSION_SECRET`. Production now rejects access when `CEO_PASSWORD` is absent. A logged-in CEO session can save without a browser `CEO_API_TOKEN` header.
+3. Dashboard password authentication is temporarily disabled at the owner's request. `/ceo` and its app API allow public access, including writes; `CEO_PASSWORD`, `CEO_SESSION_SECRET`, and `CEO_API_TOKEN` do not restrict access in this mode. The server-to-n8n `CEO_WEBHOOK_SECRET` is still required. Restore `authRequired()` and the authentication tests before re-enabling password protection.
 4. Generate the private workflow patch using the real credential ID:
    ```sh
    node scripts/patch-n8n-workflow.mjs /path/to/export.json /path/to/fixed.local.json HEADER_CREDENTIAL_ID

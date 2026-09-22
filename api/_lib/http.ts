@@ -27,6 +27,7 @@ export function ceoAuthorised(req: VercelRequest): boolean {
 }
 
 export function writesAllowed(req: VercelRequest): boolean {
+  if (!authRequired()) return true;
   if (authRequired() && signedIn(req.headers.cookie)) return true;
   const required = process.env.CEO_API_TOKEN;
   if (!required) return true;

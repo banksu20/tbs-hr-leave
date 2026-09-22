@@ -4,7 +4,8 @@ export const SESSION_COOKIE = "tbs_ceo";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 export function authRequired(): boolean {
-  return process.env.NODE_ENV === "production" || Boolean(process.env.CEO_PASSWORD);
+  // Dashboard authentication is temporarily disabled at the owner's request.
+  return false;
 }
 
 function secret(): string {
@@ -23,6 +24,7 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 export function verifyPassword(password: unknown): boolean {
+  if (!authRequired()) return true;
   const expected = process.env.CEO_PASSWORD;
   if (!expected) return !authRequired();
   if (typeof password !== "string" || password.length === 0) return false;

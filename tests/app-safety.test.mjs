@@ -10,17 +10,18 @@ const load = loadTS();
 const auth = load('api/_lib/auth.ts');
 const http = load('api/_lib/http.ts');
 
-test('password session can write with CEO_API_TOKEN configured, without exposing the token', () => {
+test('temporary public dashboard permits access without a password or cookie', () => {
   const before = {...process.env};
   try {
     process.env.CEO_PASSWORD='local-test-password'; process.env.CEO_API_TOKEN='local-test-token';
     const cookie=auth.sessionCookie(false).split(';')[0];
     assert.equal(http.writesAllowed({headers:{cookie}}),true);
-    assert.equal(http.writesAllowed({headers:{}}),false);
-    assert.equal(http.ceoAuthorised({headers:{}}),false);
+    assert.equal(auth.authRequired(),false);
+    assert.equal(http.writesAllowed({headers:{}}),true);
+    assert.equal(http.ceoAuthorised({headers:{}}),true);
     delete process.env.CEO_PASSWORD; process.env.NODE_ENV='production';
-    assert.equal(auth.signedIn(cookie),false);
-    assert.equal(auth.verifyPassword(''),false);
+    assert.equal(auth.signedIn(undefined),true);
+    assert.equal(auth.verifyPassword(''),true);
   } finally {
     for(const key of ['CEO_PASSWORD','CEO_API_TOKEN','NODE_ENV']) {
       if(before[key]===undefined) delete process.env[key]; else process.env[key]=before[key];
