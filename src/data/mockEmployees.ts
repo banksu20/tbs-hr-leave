@@ -1,6 +1,7 @@
 export interface LeaveRecord {
   id: string;
   requestId?: string;
+  requestRevision?: string;
   requestDates?: string[];
   halfDayPeriod?: "morning" | "afternoon" | null;
   date: string; // "YYYY-MM-DD"

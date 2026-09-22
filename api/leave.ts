@@ -64,6 +64,22 @@ async function create(req: VercelRequest, res: VercelResponse) {
 }
 
 async function update(req: VercelRequest, res: VercelResponse, id: string) {
+  if (req.body?.action === "approve") {
+    const revision = req.body.expectedRevision;
+    if (typeof revision !== "string" || !/^[a-f0-9]{32}$/.test(revision)) return json(res,422,{error:"Refresh the request before approving"});
+    try {
+      const result = await n8nPost("dashboard-leave-update", {id,action:"approve",expectedRevision:revision});
+      return json(res,200,{ok:true,id,n8n:result});
+    } catch (err) { return n8nFailure(res,err); }
+  }
+  if (req.body?.action === "restore") {
+    const cancellationId = req.body.cancellationId;
+    if (typeof cancellationId !== "string" || !/^[1-9]\d*$/.test(cancellationId)) return json(res,422,{error:"Invalid cancellation id"});
+    try {
+      const result = await n8nPost("dashboard-leave-update", {id, action:"restore", cancellationId});
+      return json(res,200,{ok:true,id,n8n:result});
+    } catch (err) { return n8nFailure(res,err); }
+  }
   const parsed = requestUpdateSchema.safeParse(req.body);
   if (!parsed.success) return json(res, 422, {
     error: "Invalid leave request", issues: parsed.error.issues.map((issue) => issue.message),

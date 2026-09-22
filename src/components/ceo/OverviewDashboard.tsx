@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import MonthlyExportDialog from "./MonthlyExportDialog";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -13,7 +14,7 @@ import {
 } from "recharts";
 import { AlertTriangle, CalendarDays, Palmtree, TrendingUp, Users } from "lucide-react";
 import { Employee } from "@/data/mockEmployees";
-import { LEAVE_META, LEAVE_TYPES, sumLeavesByType } from "./leaveSheetUtils";
+import { LEAVE_META, LEAVE_TYPES, LeaveType, sumLeavesByType } from "./leaveSheetUtils";
 import {
   annualQuotaUsage,
   awaitingQuota,
@@ -39,6 +40,8 @@ export interface OverviewDashboardProps {
   departmentCount: number;
   onLeaveToday: Employee[];
   onSelectEmployee: (emp: Employee) => void;
+  exportReady: boolean;
+  exportScope: string;
 }
 
 function Card({ title, children, hint }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -114,8 +117,12 @@ export default function OverviewDashboard({
   departmentCount,
   onLeaveToday,
   onSelectEmployee,
+  exportReady,
+  exportScope,
 }: OverviewDashboardProps) {
-  const months = useMemo(() => monthlyTotals(employees, year), [employees, year]);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [selectedTypes, setSelectedTypes] = useState<LeaveType[]>([...LEAVE_TYPES]);
+  const months = useMemo(() => monthlyTotals(employees, year, selectedTypes), [employees, year, selectedTypes]);
   const departments = useMemo(() => departmentTotals(employees, year), [employees, year]);
   const quotaUsage = useMemo(() => annualQuotaUsage(employees, year, 6), [employees, year]);
   const overQuota = useMemo(() => overQuotaList(employees, year), [employees, year]);
@@ -197,15 +204,21 @@ export default function OverviewDashboard({
 
       <Card
         title={`Leave taken each month in ${year}`}
-        hint={peak ? `Busiest month is ${peak.month} with ${peak.total} days` : "No leave recorded yet"}
+        hint={selectedTypes.length === 0 ? "Select at least one leave type" : peak ? `Busiest month is ${peak.month} with ${peak.total} days · selected types, approved leave` : "No approved leave for the selected types"}
       >
-        <div className="flex items-center gap-4 mb-1.5">
+        <div className="flex flex-wrap items-center gap-2 mb-3" role="group" aria-label="Monthly chart leave types">
+          <button type="button" aria-pressed={selectedTypes.length === LEAVE_TYPES.length} onClick={() => setSelectedTypes([...LEAVE_TYPES])} className="rounded-md border px-3 py-1.5 text-xs font-bold">All types</button>
           {LEAVE_TYPES.map((type) => (
-            <span key={type} className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
-              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: SERIES[type] }} />
-              {LEAVE_META[type].label}
-            </span>
+            <button type="button" key={type} aria-pressed={selectedTypes.includes(type)} onClick={() => setSelectedTypes(current => current.includes(type) ? current.filter(t => t !== type) : LEAVE_TYPES.filter(t => current.includes(t) || t === type))}
+              className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-bold ${selectedTypes.includes(type) ? "bg-slate-100 border-slate-400 text-slate-900" : "text-slate-400 border-slate-200"}`}>
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: SERIES[type], opacity: selectedTypes.includes(type) ? 1 : 0.3 }} />
+              {LEAVE_META[type].label}{selectedTypes.includes(type) ? " ✓" : ""}
+            </button>
           ))}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <p className="text-xs text-slate-500">Toggle leave types to filter this chart. Department and search filters also apply.</p>
+          <button type="button" className="border rounded-md px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50" onClick={() => setExportOpen(true)}>Monthly export</button>
         </div>
         <ResponsiveContainer width="100%" height={190}>
           <BarChart data={months} margin={{ top: 8, right: 8, left: -18, bottom: 0 }} barSize={22}>
@@ -213,19 +226,14 @@ export default function OverviewDashboard({
             <XAxis dataKey="month" tick={{ fontSize: 11, fill: MUTED, fontWeight: 700 }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: MUTED, fontWeight: 700 }} axisLine={false} tickLine={false} width={44} />
             <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(148,163,184,0.12)" }} />
-            <Bar dataKey="sick" stackId="a" name="Sick" fill={SERIES.sick} stroke="#fff" strokeWidth={2} isAnimationActive={false} />
-            <Bar dataKey="annual" stackId="a" name="Annual" fill={SERIES.annual} stroke="#fff" strokeWidth={2} isAnimationActive={false} />
-            <Bar dataKey="personal" stackId="a" name="Personal" fill={SERIES.personal} stroke="#fff" strokeWidth={2} radius={[4, 4, 0, 0]} isAnimationActive={false}>
-              <LabelList
-                dataKey="total"
-                position="top"
-                formatter={(v: number) => (v > 0 ? v : "")}
-                style={{ fontSize: 10, fontWeight: 800, fill: INK }}
-              />
-            </Bar>
+            {selectedTypes.map((type, index) => <Bar key={type} dataKey={type} stackId="a" name={LEAVE_META[type].short} fill={SERIES[type]} stroke="#fff" strokeWidth={2} radius={index === selectedTypes.length - 1 ? [4,4,0,0] : [0,0,0,0]} isAnimationActive={false}>
+              {index === selectedTypes.length - 1 && <LabelList dataKey="total" position="top" formatter={(v: number) => v > 0 ? v : ""} style={{fontSize:10,fontWeight:800,fill:INK}} />}
+            </Bar>)}
           </BarChart>
         </ResponsiveContainer>
       </Card>
+
+      {exportOpen && <MonthlyExportDialog employees={employees} year={year} initialTypes={selectedTypes} scope={exportScope} ready={exportReady} onClose={() => setExportOpen(false)} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <Card title="Days taken by department" hint="Total across all leave types">

@@ -5,7 +5,7 @@ SELECT e.user_id, e.tbs_id, e.first_name, e.last_name, e.nickname, e.department,
   COALESCE(q.personal_total, 3) AS "personalTotal", COALESCE(q.carried_over, 0) AS "carriedOver",
   (q.user_id IS NOT NULL) AS "quotasKnown", COALESCE(q.note, '') AS "quotaNote",
   COALESCE(json_agg(json_build_object(
-    'id', r.id::text, 'leave_type', r.leave_type, 'leave_days', r.leave_days,
+    'id', r.id::text, 'revision', md5(to_jsonb(r)::text), 'leave_type', r.leave_type, 'leave_days', r.leave_days,
     'start_date', to_char(r.start_date, 'YYYY-MM-DD'), 'end_date', to_char(r.end_date, 'YYYY-MM-DD'),
     'selected_dates', tbs_request_dates(r.selected_dates::text, r.start_date::date, r.end_date::date),
     'reason', r.reason, 'status', r.status, 'half_day_period', r.half_day_period

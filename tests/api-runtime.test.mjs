@@ -25,7 +25,7 @@ test('compiled API modules load in Node ESM and return JSON without an auth cook
       }
     }
     await compile('api', join(output, 'api'));
-    for (const route of ['auth', 'employees', 'leave', 'quota']) {
+    for (const route of ['auth', 'employees', 'leave', 'quota', 'history', 'rollover']) {
       const { default: handler } = await import(pathToFileURL(join(output, 'api', route + '.js')));
       const response = {
         statusCode: 0, headers: {}, body: null,

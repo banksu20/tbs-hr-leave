@@ -1,8 +1,12 @@
-﻿import LeaveRecordDialog from "@/components/ceo/LeaveRecordDialog";
+import PendingRequests from "@/components/ceo/PendingRequests";
+import YearRollover from "@/components/ceo/YearRollover";
+import TeamCalendar from "@/components/ceo/TeamCalendar";
+import ChangeHistory from "@/components/ceo/ChangeHistory";
+import LeaveRecordDialog from "@/components/ceo/LeaveRecordDialog";
 import { LeaveRequestUpdate } from "@/lib/api";
 import { useState, useEffect, useMemo } from "react";
 import { 
-  Users, Calendar, Clock, Plus, Trash2, Edit, FileText,
+  Users, Calendar, Clock, Plus, Trash2, Edit, FileText, X,
   Search, AlertCircle, CheckCircle2, LayoutGrid, BarChart3,
   AlertTriangle, TrendingUp, Palmtree, Thermometer, CalendarDays,
   Building, RotateCw, ShieldCheck, FileSpreadsheet, Upload, Download, Sparkles, Check, ArrowRight, ChevronRight, Filter, UserPlus
@@ -37,8 +41,8 @@ export default function CeoDashboard() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
   const [selectedDept, setSelectedDept] = useState<string>("All");
-  const [viewMode, setViewMode] = useState<"overview" | "roster" | "sheet" | "removed">(
-    () => (localStorage.getItem("tbs_ceo_view_mode") as "overview" | "roster" | "sheet" | "removed") || "overview"
+  const [viewMode, setViewMode] = useState<"overview" | "roster" | "sheet" | "removed" | "calendar" | "history" | "rollover" | "pending">(
+    () => (localStorage.getItem("tbs_ceo_view_mode") as "overview" | "roster" | "sheet" | "removed" | "calendar" | "history" | "rollover" | "pending") || "overview"
   );
   const [compactRows, setCompactRows] = useState<boolean>(
     () => localStorage.getItem("tbs_ceo_density") === "compact"
@@ -390,36 +394,16 @@ export default function CeoDashboard() {
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
           
           {/* Department Filters & Search Toolbar */}
-          <div className="p-4 bg-slate-900 border-b border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            {/* Department Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto no-scrollbar py-0.5">
-              {departments.map((dept) => {
-                const count = dept === "All" ? employees.length : employees.filter(e => e.department === dept).length;
-                const isActive = selectedDept === dept;
-
-                return (
-                  <button
-                    key={dept}
-                    onClick={() => setSelectedDept(dept)}
-                    className={`px-3 py-1.5 text-xs font-extrabold rounded-lg whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                      isActive
-                        ? "bg-[#00B5E2] text-white shadow-xs"
-                        : "bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
-                    }`}
-                  >
-                    {dept}
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
-                      isActive ? "bg-white/25 text-white" : "bg-slate-700 text-slate-300"
-                    }`}>
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="p-4 bg-slate-900 border-b border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 flex-wrap">
+            <label className="flex items-center gap-2 text-xs font-bold text-slate-300 shrink-0">
+              Department
+              <select aria-label="Department filter" value={selectedDept} onChange={e => setSelectedDept(e.target.value)} className="rounded-lg border border-slate-700 bg-slate-800 text-white px-3 py-2 max-w-[220px]">
+                {departments.map(dept => <option key={dept} value={dept}>{dept === "All" ? "All departments" : dept} ({dept === "All" ? activeEmployees.length : activeEmployees.filter(e => e.department === dept).length})</option>)}
+              </select>
+            </label>
 
             <div className="flex items-center gap-2 shrink-0">
-              <div className="flex bg-slate-800 p-0.5 rounded-lg border border-slate-700">
+              <div className="flex flex-wrap bg-slate-800 p-0.5 rounded-lg border border-slate-700">
                 <button
                   onClick={() => setViewMode("overview")}
                   className={`px-2.5 py-1 text-xs font-extrabold rounded-md transition-colors flex items-center gap-1.5 ${
@@ -444,6 +428,7 @@ export default function CeoDashboard() {
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" /> Sheet
                 </button>
+                {(["calendar", "history", "rollover", "pending"] as const).map(mode => <button key={mode} onClick={() => setViewMode(mode)} className={`px-3 py-2 rounded-lg text-sm font-semibold ${viewMode === mode ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"}`}>{mode === "calendar" ? "Team calendar" : mode === "history" ? "Change history" : mode === "rollover" ? "Year rollover" : "Pending requests"}</button>)}
                 <button
                   onClick={() => setViewMode("removed")}
                   className={`px-2.5 py-1 text-xs font-extrabold rounded-md transition-colors flex items-center gap-1.5 ${
@@ -478,15 +463,16 @@ export default function CeoDashboard() {
                 placeholder="Search name, nickname, code..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9 text-xs bg-slate-800 border-slate-700 text-white placeholder:text-slate-400 rounded-lg focus-visible:ring-[#00B5E2]"
+                aria-label="Search employees"
+                className="pl-9 pr-9 h-9 text-xs bg-slate-800 border-slate-700 text-white placeholder:text-slate-400 rounded-lg focus-visible:ring-[#00B5E2]"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-white">âœ•</button>
+                <button type="button" aria-label="Clear search" onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-white"><X className="w-4 h-4" aria-hidden="true" /></button>
               )}
             </div>
           </div>
 
-          {viewMode === "overview" ? (
+          {viewMode === "pending" ? <PendingRequests employees={filteredEmployees} ready={dataSource === "live" && !employeesError && !employeesPartial && !isFetchingEmployees} /> : viewMode === "rollover" ? <YearRollover key={selectedYear} year={selectedYear} /> : viewMode === "calendar" ? <TeamCalendar employees={filteredEmployees} year={selectedYear} /> : viewMode === "history" ? <ChangeHistory employees={employees} /> : viewMode === "overview" ? (
             <div className="p-4 bg-slate-100/70">
               <OverviewDashboard
                 employees={filteredEmployees}
@@ -494,6 +480,8 @@ export default function CeoDashboard() {
                 departmentCount={Math.max(departments.length - 1, 0)}
                 onLeaveToday={onLeaveToday}
                 onSelectEmployee={setSelectedEmployee}
+                exportReady={dataSource === "live" && !employeesError && !employeesPartial && !isFetchingEmployees}
+                exportScope={`Department: ${selectedDept}${searchQuery.trim() ? `; search: ${searchQuery.trim()}` : ""}`}
               />
             </div>
           ) : viewMode === "roster" ? (
@@ -590,7 +578,7 @@ export default function CeoDashboard() {
                             <td className="py-2 px-3 text-center font-extrabold text-sky-800 border-r border-slate-200">{l.type === "personal" ? l.days : ""}</td>
                             <td className="py-2 px-3 text-rose-600 font-semibold border-r border-slate-200">{l.note || "-"}</td>
                             <td className="py-2 px-2 text-center">
-                              <button onClick={() => handleDeleteLeave(selectedEmployee.id, l.id)} className="text-slate-400 hover:text-rose-600 font-bold">âœ•</button>
+                              <button type="button" aria-label="Cancel leave request" onClick={() => handleDeleteLeave(selectedEmployee.id, l.id)} className="text-slate-400 hover:text-rose-600 font-bold"><X className="w-4 h-4" aria-hidden="true" /></button>
                             </td>
                           </tr>
                         ))

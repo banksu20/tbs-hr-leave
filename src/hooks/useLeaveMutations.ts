@@ -1,3 +1,4 @@
+import { conflictingLeave } from "@/lib/leaveConflicts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Employee, LeaveRecord } from "@/data/mockEmployees";
@@ -25,18 +26,27 @@ function describe(error: unknown): string {
 
 export function useLeaveMutations(year: string) {
   const queryClient = useQueryClient();
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["employees"] });
+  const invalidate = () => Promise.all([queryClient.invalidateQueries({ queryKey: ["employees"] }), queryClient.invalidateQueries({ queryKey: ["history"] })]);
+
+  const checkConflicts = (empId: string | undefined, dates: string[], days: number, period?: string | null, requestId?: string) => {
+    const cached = queryClient.getQueriesData<{employees: Employee[]}>({queryKey:["employees"]});
+    const leaves = cached.flatMap(([,data]) => data?.employees.filter(e => empId ? e.id === empId : e.leaves.some(l => l.requestId === requestId)).flatMap(e => e.leaves) ?? []);
+    const conflicts = conflictingLeave(leaves, dates, days, period, requestId);
+    if (conflicts.length) throw new ApiError(409, `Overlapping leave exists on ${[...new Set(conflicts.map(l => l.date))].join(", ")}. Review the existing request before saving.`);
+  };
 
   const create = useMutation({
-    mutationFn: (draft: LeaveDraftInput) =>
-      createLeave({
+    mutationFn: (draft: LeaveDraftInput) => {
+      checkConflicts(draft.empId, [draft.date], draft.days, draft.halfDayPeriod);
+      return createLeave({
         userId: draft.empId,
         date: draft.date,
         type: draft.type,
         days: draft.days,
         note: draft.note,
         halfDayPeriod: draft.halfDayPeriod,
-      }),
+      });
+    },
     onSuccess: async () => {
       toast.success("Saved to the server");
       await invalidate();
@@ -46,7 +56,8 @@ export function useLeaveMutations(year: string) {
 
   const update = useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Parameters<typeof updateLeave>[1] }) =>
-      updateLeave(id, patch),
+      { if (patch.status !== "Rejected") checkConflicts(undefined, patch.dates, patch.daysPerDate, patch.halfDayPeriod, id);
+        return updateLeave(id, patch); },
     onSuccess: async () => {
       toast.success("Saved");
       await invalidate();

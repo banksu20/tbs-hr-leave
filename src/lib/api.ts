@@ -53,6 +53,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export interface ApiLeaveRecord {
   id: string;
   requestId?: string;
+  requestRevision?: string;
   requestDates?: string[];
   date: string;
   type: LeaveRecord["type"];
@@ -116,6 +117,7 @@ export function toEmployee(api: ApiEmployee): Employee {
     leaves: api.leaves.map((l) => ({
       id: l.id,
       requestId: l.requestId,
+      requestRevision: l.requestRevision,
       requestDates: l.requestDates,
       halfDayPeriod: l.halfDayPeriod,
       date: l.date,
@@ -229,5 +231,38 @@ export async function deleteLeave(id: string, target: RequestTarget) {
   return request<{ id: string; deleted: boolean }>(`/api/leave?id=${encodeURIComponent(id)}`, {
     method: "DELETE",
     body: JSON.stringify(target),
+  });
+}
+
+export interface ChangeEvent {
+  id: string; changedAt: string; entity: string; recordId: string; userId: string;
+  employeeName: string; department: string; action: string; actor: string;
+  before: Record<string, unknown> | null; after: Record<string, unknown> | null;
+  canRestore: boolean;
+}
+export function fetchHistory(userId?: string, cursor?: string) {
+  const query = new URLSearchParams();
+  if (userId) query.set("userId", userId);
+  if (cursor) query.set("cursor", cursor);
+  return request<{events: ChangeEvent[]; nextCursor: string | null}>(`/api/history?${query}`);
+}
+export function restoreLeave(id: string, cancellationId: string) {
+  return request<{ok: boolean}>(`/api/leave?id=${encodeURIComponent(id)}`, {
+    method: "PATCH", body: JSON.stringify({action:"restore", cancellationId}),
+  });
+}
+
+export interface RolloverSettings { sourceYear: number; carryLimit: number; expiresOn: string }
+export interface RolloverRow { userId: string; name: string; annualTotal: number|null; sickTotal: number|null; personalTotal: number|null; carriedOver: number; expiresOn: string; status: string }
+export function previewRollover(settings: RolloverSettings) {
+  return request<{ok: boolean; rows: RolloverRow[]; token: string; targetYear: number}>('/api/rollover',{method:'POST',body:JSON.stringify({...settings,action:'preview'})});
+}
+export function applyRollover(settings: RolloverSettings, token: string) {
+  return request<{ok: boolean; saved: number}>('/api/rollover',{method:'POST',body:JSON.stringify({...settings,token,action:'apply'})});
+}
+
+export function approveLeave(id: string, expectedRevision: string) {
+  return request<{ok: boolean}>(`/api/leave?id=${encodeURIComponent(id)}`, {
+    method: 'PATCH', body: JSON.stringify({action:'approve',expectedRevision}),
   });
 }

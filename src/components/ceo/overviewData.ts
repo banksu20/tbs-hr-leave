@@ -11,11 +11,12 @@ export interface MonthRow {
   total: number;
 }
 
-export function monthlyTotals(employees: Employee[], year: string): MonthRow[] {
+export function monthlyTotals(employees: Employee[], year: string, types: LeaveType[] = LEAVE_TYPES): MonthRow[] {
   const rows: MonthRow[] = MONTH_LABELS.map((month) => ({ month, sick: 0, annual: 0, personal: 0, total: 0 }));
 
   for (const emp of employees) {
     for (const leave of leavesForYear(emp.leaves, year)) {
+      if (!types.includes(leave.type)) continue;
       const index = Number(leave.date.slice(5, 7)) - 1;
       if (index < 0 || index > 11) continue;
       const days = Number(leave.days) || 0;

@@ -94,6 +94,7 @@ export async function n8nPost(endpoint: string, body: unknown) {
 export interface NormalizedLeave {
   id: string;
   requestId?: string;
+  requestRevision?: string;
   requestDates?: string[];
   halfDayPeriod?: "morning" | "afternoon" | null;
   date: string;

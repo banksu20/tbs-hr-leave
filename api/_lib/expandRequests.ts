@@ -96,6 +96,7 @@ export function expandRequest(raw: unknown, index: number): NormalizedLeave[] {
     id: `${requestId || `legacy_${index}`}@${date}`,
     requestId: /^\d+$/.test(requestId) ? requestId : undefined,
     requestDates: dates,
+    requestRevision: typeof row.revision === "string" ? row.revision : undefined,
     halfDayPeriod: period === "morning" || period === "afternoon" ? period : null,
     date,
     type,
