@@ -52,7 +52,8 @@ export default function YearRollover({year,onApplied,initialReconcile=false}: {y
     finally{setBusy(false);}
   };
   const query=search.trim().toLowerCase();
-  const rows=preview?.rows.filter(r=>`${r.name} ${r.nickname||''} ${r.empNo??''} TBS-${String(r.empNo??'').padStart(3,'0')} TBS${String(r.empNo??'').padStart(3,'0')}`.toLowerCase().includes(query))||[];
+  const rows=(preview?.rows.filter(r=>`${r.name} ${r.nickname||''} ${r.empNo??''} TBS-${String(r.empNo??'').padStart(3,'0')} TBS${String(r.empNo??'').padStart(3,'0')}`.toLowerCase().includes(query))||[])
+    .sort((a,b)=>(a.empNo??Number.MAX_SAFE_INTEGER)-(b.empNo??Number.MAX_SAFE_INTEGER)||a.name.localeCompare(b.name));
   return <section className="bg-white border rounded-xl p-4 space-y-4">
     <div><h2 className="font-bold text-lg">Prepare next year’s leave</h2><p className="text-sm text-slate-600">Load a year’s quotas, then edit each employee’s next-year annual, sick and personal allowances, carryover and note.</p></div>
     <details className="rounded-xl bg-sky-50 border border-sky-100 p-3 text-sm"><summary className="font-semibold cursor-pointer">How does rollover work?</summary><p className="mt-2">Example: 12 new annual days + 5 carried days = 17 days available. Unused carried days expire after the selected expiry date. New annual days keep their normal allowance. Unused sick/personal leave and old carryover are not carried forward.</p></details>
