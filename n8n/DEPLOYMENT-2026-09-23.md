@@ -50,3 +50,11 @@ No further Vercel deployment was required for these n8n updates. This operationa
 - This turn only prepares local code and SQL; no production changes, real rollover, or employee notifications were performed.
 - The new editor separates original carried days from the expiry-adjusted balance and allows changing/clearing expiry. The selected year persists in the browser. Default rollover expiry changes preserve employee edits and individually different expiry dates.
 - Carryover corrections are reviewed, not silently applied: proposed carry = current carry + change in source unused annual, clamped between zero and current source unused annual. Applying a correction changes carryover, expiry, note and the review baseline only; target-year base annual/sick/personal allowances remain intact. Quotas without recorded rollover provenance are skipped rather than guessed.
+
+## Quota safety backend publication completed
+
+- Applied the revised 003 and new 008 SQL through the maintenance PostgreSQL node (execution 590846); both functions were confirmed installed.
+- TBS033 rollback-only integration test passed (590852): stale saves and negative amounts rejected, unlimited sick leave and expiry edits saved correctly, rollover corrections preserved target-year base allowances, and all original employee quotas remained unchanged. Temporary 2098/2099 quota rows and their queued/audit writes were rolled back. An earlier test assertion compared numeric JSON as text; it was corrected to compare numeric values before the successful rerun.
+- Updated only **Get all leaves** and **dashboard-quota-update**, retaining the existing connections and credentials. Published main workflow version `00d90dfe-de72-4208-b876-c66c20f0f38f` successfully. Validation reported only existing disconnected legacy nodes.
+- Restored the maintenance workflow to its original read-only readiness query. No real rollover or allowance change was performed.
+- The matching app is already live (`index-C8WbxQRA.js`). Production `/api/employees?year=2026` returned all 34 employee revisions, `/api/rollover` preview returned 34 rows successfully, and a deliberately stale TBS033 quota save was rejected with HTTP 409 through the live app. No actual quota mutation was made by this HTTP verification.
