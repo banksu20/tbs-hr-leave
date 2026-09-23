@@ -72,6 +72,10 @@ export interface ApiEmployee {
   department: string;
   startDate: string;
   quotas: Employee["quotas"];
+  rolloverNeedsReview?: boolean;
+  quotaRevision?: string;
+  storedCarriedOver?: number;
+  carryoverExpiresOn?: string|null;
   quotasKnown?: boolean;
   quotaNote?: string;
   status?: "active" | "inactive";
@@ -80,15 +84,15 @@ export interface ApiEmployee {
 
 export interface QuotaResponse {
   year: number;
-  annualTotal: number;
-  sickTotal: number;
+  annualTotal: number|null;
+  sickTotal: number|null;
   personalTotal: number;
   carriedOver: number;
   annualTaken: number;
   sickTaken: number;
   personalTaken: number;
-  remainingDays: number;
-  sickRemaining: number;
+  remainingDays: number|null;
+  sickRemaining: number|null;
   personalRemaining: number;
 }
 
@@ -111,6 +115,10 @@ export function toEmployee(api: ApiEmployee): Employee {
     department: api.department,
     startDate: api.startDate,
     quotas: api.quotas,
+    rolloverNeedsReview: api.rolloverNeedsReview,
+    quotaRevision: api.quotaRevision,
+    storedCarriedOver: api.storedCarriedOver,
+    carryoverExpiresOn: api.carryoverExpiresOn,
     quotasKnown: api.quotasKnown !== false,
     quotaNote: api.quotaNote ?? "",
     status: api.status ?? "active",
@@ -212,12 +220,14 @@ export async function updateEmployeeProfile(patch: ProfilePatch) {
 }
 
 export interface QuotaPatch {
+  expectedRevision: string;
+  carryoverExpiresOn?: string|null;
   userId: string;
   year: string | number;
   annualTotal?: number | null;
   sickTotal?: number | null;
-  personalTotal?: number | null;
-  carriedOver?: number | null;
+  personalTotal?: number;
+  carriedOver?: number;
   note?: string;
 }
 
@@ -253,9 +263,9 @@ export function restoreLeave(id: string, cancellationId: string) {
   });
 }
 
-export interface RolloverOverride { userId: string; carriedOver: number; expiresOn: string; note: string; annualTotal?: number; sickTotal?: number|null; personalTotal?: number }
-export interface RolloverSettings { sourceYear: number; expiresOn: string; overrides?: RolloverOverride[] }
-export interface RolloverRow { userId: string; name: string; annualTotal: number|null; sickTotal: number|null; personalTotal: number|null; carriedOver: number; expiresOn: string; status: string; sourceAnnual?: number; sourceCarried?: number; unusedAnnual?: number; suggestedCarryover?: number; note?: string; nickname?: string; empNo?: number }
+export interface RolloverOverride { userId: string; carriedOver: number; expiresOn: string|null; note: string; annualTotal?: number; sickTotal?: number|null; personalTotal?: number }
+export interface RolloverSettings { sourceYear: number; reconcile?: boolean; expiresOn: string; overrides?: RolloverOverride[] }
+export interface RolloverRow { userId: string; name: string; annualTotal: number|null; sickTotal: number|null; personalTotal: number|null; carriedOver: number; expiresOn: string|null; status: string; previousCarryover?: number; sourceAnnual?: number; sourceCarried?: number; unusedAnnual?: number; suggestedCarryover?: number; note?: string; nickname?: string; empNo?: number }
 export function previewRollover(settings: RolloverSettings) {
   return request<{ok: boolean; rows: RolloverRow[]; token: string; targetYear: number}>('/api/rollover',{method:'POST',body:JSON.stringify({...settings,action:'preview'})});
 }

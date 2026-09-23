@@ -40,3 +40,13 @@ No further Vercel deployment was required for these n8n updates. This operationa
 
 - Live database verification passed in execution 590538 using only TBS033 and temporary source/target years 2098/2099. Checked edited quota values, separate carryover, source preservation, stale-token rejection and repeated-apply protection. All test writes, history and queued updates were rolled back; temporary quotas are absent. This verifies the live database function, not the deployed browser-to-API flow.
 - The maintenance node was restored to its original read-only readiness query after verification.
+
+## Quota safety and carryover review follow-up (prepared locally, not live)
+
+- Reapply revised `003_year_rollover.sql`, then apply `008_quota_safety.sql` through the n8n PostgreSQL maintenance node. Both are additive and do not run a rollover or change employee quota values. New rollovers record the source year and unused annual balance so subsequent changes can be reviewed.
+- Update **Get all leaves** to the current `get-all-leaves.sql`, keeping the existing replacement of raw `carriedOver` with `tbs_quota_usage(...).effective_carried`. Keep its existing year parameter expression. The response now also includes a quota revision, original stored carryover, expiry and a carryover-review flag.
+- Update **dashboard-quota-update** to `quota-update-safe.sql`, with query replacement `={{ [JSON.stringify($json.body)] }}`. Preserve its credential and connections, validate, and publish. Do not leave the old SQL active after the app deployment: it does not check revisions or support clearing unlimited/expiry fields.
+- Coordinate this publication with the app release. Publishing the protected endpoint first intentionally rejects old app quota saves until the new app is deployed and reloaded; it never accepts an unversioned overwrite. Do not describe the live site as fixed before both sides are updated.
+- This turn only prepares local code and SQL; no production changes, real rollover, or employee notifications were performed.
+- The new editor separates original carried days from the expiry-adjusted balance and allows changing/clearing expiry. The selected year persists in the browser. Default rollover expiry changes preserve employee edits and individually different expiry dates.
+- Carryover corrections are reviewed, not silently applied: proposed carry = current carry + change in source unused annual, clamped between zero and current source unused annual. Applying a correction changes carryover, expiry, note and the review baseline only; target-year base annual/sick/personal allowances remain intact. Quotas without recorded rollover provenance are skipped rather than guessed.

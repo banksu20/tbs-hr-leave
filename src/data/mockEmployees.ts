@@ -24,6 +24,10 @@ export interface Employee {
     personalTotal: number;
     carriedOver: number;
   };
+  rolloverNeedsReview?: boolean;
+  quotaRevision?: string;
+  storedCarriedOver?: number;
+  carryoverExpiresOn?: string|null;
   quotasKnown?: boolean;
   quotaNote?: string;
   status?: "active" | "inactive";

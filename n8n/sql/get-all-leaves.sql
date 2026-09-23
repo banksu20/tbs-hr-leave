@@ -1,6 +1,9 @@
 SELECT e.user_id, e.tbs_id, e.first_name, e.last_name, e.nickname, e.department,
   COALESCE(e.status, 'active') AS status,
   to_char(e.start_date, 'YYYY-MM-DD') AS start_date,
+  (q.rollover_source_year IS NOT NULL AND q.rollover_source_unused IS DISTINCT FROM tbs_rollover_unused(e.user_id,q.rollover_source_year)) AS "rolloverNeedsReview",
+  CASE WHEN q.user_id IS NULL THEN 'missing' ELSE md5(to_jsonb(q)::text) END AS "quotaRevision",
+  COALESCE(q.carried_over,0) AS "storedCarriedOver", q.carryover_expires_on AS "carryoverExpiresOn",
   q.annual_total AS "annualTotal", q.sick_total AS "sickTotal",
   COALESCE(q.personal_total, 3) AS "personalTotal", COALESCE(q.carried_over, 0) AS "carriedOver",
   (q.user_id IS NOT NULL) AS "quotasKnown", COALESCE(q.note, '') AS "quotaNote",
@@ -16,5 +19,5 @@ LEFT JOIN leave_requests r ON r.user_id = e.user_id AND r.status != 'Rejected'
   AND EXISTS (SELECT 1 FROM unnest(tbs_request_dates(r.selected_dates::text, r.start_date::date, r.end_date::date)) day
     WHERE day >= make_date($1::int, 1, 1) AND day < make_date($1::int + 1, 1, 1))
 GROUP BY e.user_id, e.tbs_id, e.first_name, e.last_name, e.nickname, e.department, e.status, e.start_date,
-  q.user_id, q.annual_total, q.sick_total, q.personal_total, q.carried_over, q.note
+  q, q.rollover_source_year, q.rollover_source_unused, q.carryover_expires_on, q.user_id, q.annual_total, q.sick_total, q.personal_total, q.carried_over, q.note
 ORDER BY e.tbs_id;

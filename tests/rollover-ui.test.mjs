@@ -14,6 +14,12 @@ test('individual rollover edits survive filtering and failed validation; draft s
   await act(async()=>{view=renderer.create(React.createElement(Component,{year:'2026'}));});
   await act(async()=>{view.root.findAllByType('form')[0].props.onSubmit({preventDefault(){}});});
   await act(async()=>{view.root.findByProps({'aria-label':'Carryover for Alice'}).props.onChange({target:{value:'7.5'}});view.root.findByProps({'aria-label':'Rollover note for Alice'}).props.onChange({target:{value:'Exception agreed'}});});
+  await act(async()=>view.root.findByProps({'aria-label':'Expiry for Alice'}).props.onChange({target:{value:'2027-06-30'}}));
+  await act(async()=>view.root.findByProps({'aria-label':'Default carryover expiry'}).props.onChange({target:{value:'2027-04-30'}}));
+  assert.equal(view.root.findByProps({'aria-label':'Rollover note for Alice'}).props.value,'Exception agreed');
+  assert.equal(view.root.findByProps({'aria-label':'Carryover for Alice'}).props.value,7.5);
+  assert.equal(view.root.findByProps({'aria-label':'Expiry for Alice'}).props.value,'2027-06-30');
+  assert.equal(view.root.findByProps({'aria-label':'Expiry for Bob'}).props.value,'2027-04-30');
   await act(async()=>{view.root.findByProps({'aria-label':'Search rollover employees'}).props.onChange({target:{value:'Bob'}});});
   assert.equal(view.root.findAllByProps({'aria-label':'Carryover for Alice'}).length,0);
   await act(async()=>{view.root.findAllByType('form')[1].props.onSubmit({preventDefault(){}});});

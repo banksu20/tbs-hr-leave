@@ -95,8 +95,11 @@ export function useLeaveMutations(year: string) {
       patch,
     }: {
       employee: Employee;
-      patch: { annualTotal?: number; sickTotal?: number; personalTotal?: number; carriedOver?: number; note?: string };
-    }) => updateQuota({ userId: employee.id, year, ...patch }),
+      patch: { annualTotal?: number|null; sickTotal?: number|null; personalTotal?: number; carriedOver?: number; carryoverExpiresOn?: string|null; note?: string };
+    }) => {
+      if(!employee.quotaRevision)throw new Error("Refresh employee data before editing allowances.");
+      return updateQuota({ userId: employee.id, year, expectedRevision:employee.quotaRevision, ...patch });
+    },
     onSuccess: async () => {
       toast.success("Quota saved");
       await invalidate();

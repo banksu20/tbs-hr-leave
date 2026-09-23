@@ -16,6 +16,7 @@ INSERT INTO tbs_employees VALUES ('test-employee',7,'Test','Person','Tester','QA
 INSERT INTO leave_quotas VALUES ('test-employee',2026,12,30,3,0,'',now()),('test-employee',2027,12,30,3,0,'',now());
 `);
 await db.exec(sql('001_request_safety.sql'));
+await db.exec(sql('003_year_rollover.sql'));
 const mutate = async (operation, body) => (await db.query('SELECT tbs_dashboard_request($1, $2::jsonb) AS result', [operation, JSON.stringify(body)])).rows[0].result;
 const draft = { userId:'test-employee', leaveDate:'2026-12-31', leaveType:'annual', leaveDays:0.5, halfDayPeriod:'afternoon', reason:'Doctor, appointment', status:'Approved' };
 let id;

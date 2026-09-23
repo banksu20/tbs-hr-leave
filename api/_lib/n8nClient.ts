@@ -113,6 +113,10 @@ export interface NormalizedEmployee {
   department: string;
   startDate: string;
   quotas: { annualTotal: number | null; sickTotal: number | null; personalTotal: number; carriedOver: number };
+  rolloverNeedsReview?: boolean;
+  quotaRevision?: string;
+  storedCarriedOver?: number;
+  carryoverExpiresOn?: string|null;
   quotasKnown: boolean;
   quotaNote: string;
   status: "active" | "inactive";
@@ -222,6 +226,10 @@ export function normalizeEmployee(raw: unknown, index: number): NormalizedEmploy
     department: cleanString(pick(row, ["department", "Department"])) || "General",
     startDate: cleanString(pick(row, ["startDate", "start_date"])).split("T")[0],
     quotas,
+    rolloverNeedsReview: row.rolloverNeedsReview===true,
+    quotaRevision: cleanString(row.quotaRevision)||undefined,
+    storedCarriedOver: normalizeDays(row.storedCarriedOver)??quotas.carriedOver,
+    carryoverExpiresOn: cleanString(row.carryoverExpiresOn).split("T")[0]||null,
     quotasKnown: typeof row.quotasKnown === "boolean" ? row.quotasKnown : sawQuota,
     quotaNote: cleanString(pick(row, ["quotaNote", "quota_note", "note"])),
     status: cleanString(pick(row, ["status", "employeeStatus"])).toLowerCase() === "inactive" ? "inactive" : "active",

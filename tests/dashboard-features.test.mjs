@@ -11,7 +11,7 @@ async function fixture(){
   CREATE TABLE leave_quotas(user_id text,year int,annual_total numeric,sick_total numeric,personal_total numeric,carried_over numeric,note text,updated_at timestamptz,UNIQUE(user_id,year));
   CREATE TABLE leave_requests(id serial PRIMARY KEY,user_id text,user_name text,department text,leave_type text,leave_days numeric,start_date date,end_date date,selected_dates text,reason text,status text,source text);
   INSERT INTO tbs_employees VALUES('test',1,'Test','Person','','QA','active','2020-01-01');`);
-  for(const file of ['001_request_safety.sql','002_history_and_conflicts.sql','003_year_rollover.sql','004_line_decisions.sql','005_sync_outbox.sql','006_employee_submission.sql','007_sheet_employee_links.sql'])await db.exec(sql(file));
+  for(const file of ['001_request_safety.sql','002_history_and_conflicts.sql','003_year_rollover.sql','004_line_decisions.sql','005_sync_outbox.sql','006_employee_submission.sql','007_sheet_employee_links.sql','008_quota_safety.sql'])await db.exec(sql(file));
   return db;
 }
 const requestRevision=async(db,id)=>(await db.query('SELECT md5(to_jsonb(r)::text) revision FROM leave_requests r WHERE id=$1',[id])).rows[0]?.revision;
@@ -96,7 +96,7 @@ test('audit, overlap prevention, cancellation and guarded restoration persist to
   assert.equal((await mutate(db,'create',draft)).ok,true);
   assert.equal((await mutate(db,'restore',{id:first.id,cancellationId:String(event.id)})).statusCode,409);
   assert.equal((await db.query('SELECT status FROM leave_requests WHERE id=$1',[first.id])).rows[0].status,'Rejected');
-  await db.exec("UPDATE tbs_employees SET nickname='Updated' WHERE user_id='test'; INSERT INTO leave_quotas VALUES('test',2026,12,30,3,0,'',now(),null); UPDATE leave_quotas SET annual_total=15 WHERE user_id='test';");
+  await db.exec("UPDATE tbs_employees SET nickname='Updated' WHERE user_id='test'; INSERT INTO leave_quotas(user_id,year,annual_total,sick_total,personal_total,carried_over,note,updated_at,carryover_expires_on) VALUES('test',2026,12,30,3,0,'',now(),null); UPDATE leave_quotas SET annual_total=15 WHERE user_id='test';");
   const events=(await db.query(sql('change-history.sql'),['test',null])).rows[0].events;
   assert.ok(events.some(e=>e.entity==='leave_quotas'&&e.before?.annual_total===12&&e.after?.annual_total===15));
   assert.ok(events.some(e=>e.entity==='tbs_employees'&&e.after.nickname==='Updated'));
@@ -109,7 +109,7 @@ test('audit, overlap prevention, cancellation and guarded restoration persist to
 
 test('carryover expires after its inclusive expiry date, without double charging used days',async()=>{
  const db=await fixture();try{
-  await db.exec("INSERT INTO leave_quotas VALUES('test',2026,12,30,3,5,'',now(),'2026-03-31');");
+  await db.exec("INSERT INTO leave_quotas(user_id,year,annual_total,sick_total,personal_total,carried_over,note,updated_at,carryover_expires_on) VALUES('test',2026,12,30,3,5,'',now(),'2026-03-31');");
   assert.equal((await mutate(db,'create',{...draft,leaveDate:'2026-03-31',leaveDays:1,halfDayPeriod:null})).ok,true);
   assert.equal((await mutate(db,'create',{...draft,leaveDate:'2026-04-01',leaveDays:1,halfDayPeriod:null})).ok,true);
   const before=(await db.query("SELECT * FROM tbs_quota_usage('test',2026,'2026-03-31')")).rows[0];
@@ -128,7 +128,7 @@ test('carryover expires after its inclusive expiry date, without double charging
 test('rollover applies reviewed quotas once and preserves source allowances',async()=>{
  const db=await fixture();try{
   const year=2025;
-  await db.query("INSERT INTO leave_quotas VALUES('test',$1,12,30,3,2,'',now(),null)",[year]);
+  await db.query("INSERT INTO leave_quotas(user_id,year,annual_total,sick_total,personal_total,carried_over,note,updated_at,carryover_expires_on) VALUES('test',$1,12,30,3,2,'',now(),null)",[year]);
   const policy={sourceYear:year,carryLimit:5,expiresOn:`${year+1}-03-31`};
   const run=async p=>(await db.query('SELECT tbs_rollover($1::jsonb) r',[JSON.stringify(p)])).rows[0].r;
   const before=(await db.query('SELECT * FROM leave_quotas')).rows;
@@ -300,5 +300,39 @@ test('rollover pending leave reduces carryover and subsequent leave changes inva
   assert.equal((await run({action:'apply',token:original.token})).statusCode,409);
   const preview=await run({});assert.equal(preview.rows[0].carriedOver,11.5);
   assert.equal((await run({action:'apply',token:preview.token})).saved,1);
+ }finally{await db.close();}
+});
+
+test('quota updates reject stale versions and invalid amounts, preserve unlimited and edit expiry',async()=>{
+ const db=await fixture();try{
+  const run=async patch=>(await db.query('SELECT tbs_update_quota($1::jsonb) r',[JSON.stringify({userId:'test',year:2026,...patch})])).rows[0].r;
+  assert.equal((await run({expectedRevision:'missing',annualTotal:12,sickTotal:null,personalTotal:3,carriedOver:5,carryoverExpiresOn:'2026-03-31'})).ok,true);
+  const before=(await db.query(sql('get-all-leaves.sql'),[2026])).rows[0];
+  assert.equal(before.sickTotal,null);assert.match(before.quotaRevision,/^[a-f0-9]{32}$/);
+  for(const patch of [{annualTotal:-1},{sickTotal:-1},{personalTotal:null},{carriedOver:.3},{carryoverExpiresOn:'2027-01-01'}])assert.equal((await run({expectedRevision:before.quotaRevision,...patch})).statusCode,422);
+  assert.equal((await run({expectedRevision:before.quotaRevision,sickTotal:20,carryoverExpiresOn:'2026-06-30'})).ok,true);
+  assert.equal((await run({expectedRevision:before.quotaRevision,annualTotal:1})).statusCode,409);
+  const current=(await db.query(sql('get-all-leaves.sql'),[2026])).rows[0];
+  assert.equal((await run({expectedRevision:current.quotaRevision,sickTotal:null,note:'Note only preserves carry',carryoverExpiresOn:null})).ok,true);
+  const q=(await db.query('SELECT * FROM leave_quotas')).rows[0];assert.equal(q.sick_total,null);assert.equal(q.carryover_expires_on,null);assert.equal(Number(q.carried_over),5);assert.equal(Number(q.annual_total),12);
+ }finally{await db.close();}
+});
+
+test('changed source leave flags rollover for review; correction preserves manual differences and target base quotas',async()=>{
+ const db=await fixture();try{
+  await db.exec("INSERT INTO leave_quotas(user_id,year,annual_total,sick_total,personal_total,carried_over) VALUES('test',2026,12,NULL,3,0)");
+  const run=async p=>(await db.query('SELECT tbs_rollover($1::jsonb) r',[JSON.stringify({sourceYear:2026,expiresOn:'2027-03-31',action:'preview',...p})])).rows[0].r;
+  const overrides=[{userId:'test',carriedOver:5,expiresOn:'2027-03-31',note:'Keep seven days out of carryover'}];
+  const preview=await run({overrides});assert.equal((await run({action:'apply',token:preview.token,overrides})).saved,1);
+  await db.exec("UPDATE leave_quotas SET annual_total=20,personal_total=4,carryover_expires_on=NULL WHERE year=2027");
+  const leave=await mutate(db,'create',{...draft,leaveDays:1,halfDayPeriod:null,status:'Pending'});assert.equal(leave.ok,true);
+  assert.equal((await db.query(sql('get-all-leaves.sql'),[2027])).rows[0].rolloverNeedsReview,true);
+  const review=await run({reconcile:true});assert.equal(review.rows[0].carriedOver,4);assert.equal(review.rows[0].previousCarryover,5);assert.equal(review.rows[0].annualTotal,20);assert.equal(review.rows[0].expiresOn,null);
+  assert.equal((await run({action:'apply',reconcile:true,token:review.token})).saved,1);
+  assert.equal((await db.query(sql('get-all-leaves.sql'),[2027])).rows[0].rolloverNeedsReview,false);
+  const q=(await db.query('SELECT * FROM leave_quotas WHERE year=2027')).rows[0];assert.equal(Number(q.annual_total),20);assert.equal(Number(q.personal_total),4);assert.equal(q.sick_total,null);assert.equal(q.carryover_expires_on,null);
+  assert.equal((await mutate(db,'delete',{id:leave.id,scope:'request',expectedDates:['2026-01-05']})).ok,true);
+  const second=await run({reconcile:true});assert.equal(second.rows[0].carriedOver,5);
+  assert.equal((await run({action:'apply',reconcile:true,token:review.token})).statusCode,409);
  }finally{await db.close();}
 });

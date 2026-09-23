@@ -1,3 +1,4 @@
+import { readDashboardYear, saveDashboardYear } from "@/lib/dashboardYear";
 import PendingRequests from "@/components/ceo/PendingRequests";
 import YearRollover from "@/components/ceo/YearRollover";
 import TeamCalendar from "@/components/ceo/TeamCalendar";
@@ -41,11 +42,13 @@ export default function CeoDashboard() {
   // Selected Year & Department Filters
   const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
-  const [selectedYear, setSelectedYear] = useState(String(currentYear));
+  const [selectedYear, setSelectedYear] = useState(readDashboardYear);
+  const [reviewRollover,setReviewRollover]=useState(false);
   const [selectedDept, setSelectedDept] = useState<string>("All");
   const [viewMode, setViewMode] = useState<"overview" | "roster" | "sheet" | "removed" | "calendar" | "history" | "rollover" | "pending">(
     () => (localStorage.getItem("tbs_ceo_view_mode") as "overview" | "roster" | "sheet" | "removed" | "calendar" | "history" | "rollover" | "pending") || "overview"
   );
+  useEffect(()=>{if(viewMode!=="rollover")setReviewRollover(false);},[viewMode]);
   const [compactRows, setCompactRows] = useState<boolean>(
     () => localStorage.getItem("tbs_ceo_density") === "compact"
   );
@@ -72,8 +75,9 @@ export default function CeoDashboard() {
   const [editEmpNickname, setEditEmpNickname] = useState("");
   const [editEmpDept, setEditEmpDept] = useState("SEO");
   const [editEmpStartDate, setEditEmpStartDate] = useState("");
-  const [quotaAnnual, setQuotaAnnual] = useState(12);
-  const [quotaSick, setQuotaSick] = useState(30);
+  const [quotaAnnual, setQuotaAnnual] = useState<number|null>(12);
+  const [quotaSick, setQuotaSick] = useState<number|null>(30);
+  const [quotaExpiry,setQuotaExpiry]=useState("");
   const [quotaPersonal, setQuotaPersonal] = useState(3);
   const [quotaCarried, setQuotaCarried] = useState(0);
 
@@ -99,6 +103,8 @@ export default function CeoDashboard() {
   useEffect(() => {
     localStorage.setItem("tbs_ceo_density", compactRows ? "compact" : "comfortable");
   }, [compactRows]);
+
+  useEffect(()=>saveDashboardYear(selectedYear),[selectedYear]);
 
   const leaveMutations = useLeaveMutations(selectedYear);
 
@@ -296,7 +302,8 @@ export default function CeoDashboard() {
     setQuotaAnnual(emp.quotas.annualTotal);
     setQuotaSick(emp.quotas.sickTotal);
     setQuotaPersonal(emp.quotas.personalTotal);
-    setQuotaCarried(emp.quotas.carriedOver);
+    setQuotaCarried(emp.storedCarriedOver??emp.quotas.carriedOver);
+    setQuotaExpiry(emp.carryoverExpiresOn??"");
   };
 
   const handleUpdateQuota = async (e: React.FormEvent) => {
@@ -329,6 +336,7 @@ export default function CeoDashboard() {
           sickTotal: quotaSick,
           personalTotal: quotaPersonal,
           carriedOver: quotaCarried,
+          carryoverExpiresOn:quotaExpiry||null,
         },
       });
 
@@ -484,7 +492,8 @@ export default function CeoDashboard() {
             </div>
           </div>
 
-          {viewMode === "pending" ? <PendingRequests employees={filteredEmployees} ready={dataSource === "live" && !employeesError && !employeesPartial && !isFetchingEmployees} /> : viewMode === "rollover" ? <YearRollover key={selectedYear} year={selectedYear} onApplied={handleRolloverApplied} /> : viewMode === "calendar" ? <TeamCalendar employees={filteredEmployees} year={selectedYear} /> : viewMode === "history" ? <ChangeHistory employees={employees} /> : viewMode === "overview" ? (
+          {employees.some(e=>e.rolloverNeedsReview)&&<div role="alert" className="m-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">Previous-year leave or allowances changed for {employees.filter(e=>e.rolloverNeedsReview).length} employees. Review their carryover before relying on the balances. <Button variant="outline" size="sm" onClick={()=>{setReviewRollover(true);setViewMode("rollover");}}>Review carryover changes</Button></div>}
+          {viewMode === "pending" ? <PendingRequests employees={filteredEmployees} ready={dataSource === "live" && !employeesError && !employeesPartial && !isFetchingEmployees} /> : viewMode === "rollover" ? <YearRollover key={`${selectedYear}-${reviewRollover}`} initialReconcile={reviewRollover} year={reviewRollover?String(Number(selectedYear)-1):selectedYear} onApplied={handleRolloverApplied} /> : viewMode === "calendar" ? <TeamCalendar employees={filteredEmployees} year={selectedYear} /> : viewMode === "history" ? <ChangeHistory employees={employees} /> : viewMode === "overview" ? (
             <div className="p-2 bg-slate-100/70">
               <OverviewDashboard
                 employees={filteredEmployees}
@@ -625,8 +634,8 @@ export default function CeoDashboard() {
                   <tfoot>
                     <tr className="bg-slate-100 font-extrabold border-t border-slate-300">
                       <td className="py-2.5 px-3 border-r border-slate-300">All leave getting per year</td>
-                      <td className="py-2.5 px-3 text-center text-rose-700 border-r border-slate-300">{selectedEmployee.quotas.sickTotal}</td>
-                      <td className="py-2.5 px-3 text-center text-amber-900 border-r border-slate-300">{selectedEmployee.quotas.annualTotal + selectedEmployee.quotas.carriedOver}</td>
+                      <td className="py-2.5 px-3 text-center text-rose-700 border-r border-slate-300">{selectedEmployee.quotas.sickTotal??"∞"}</td>
+                      <td className="py-2.5 px-3 text-center text-amber-900 border-r border-slate-300">{selectedEmployee.quotas.annualTotal===null?"∞":selectedEmployee.quotas.annualTotal + selectedEmployee.quotas.carriedOver}</td>
                       <td className="py-2.5 px-3 text-center text-sky-800 border-r border-slate-300">{selectedEmployee.quotas.personalTotal}</td>
                       <td colSpan={2} className="py-2.5 px-3 text-red-600 font-bold text-xs">
                         {selectedEmployee.quotas.carriedOver > 0 && `${selectedEmployee.quotas.carriedOver} extra days awarded`}
@@ -641,8 +650,8 @@ export default function CeoDashboard() {
                     </tr>
                     <tr className="bg-slate-200 font-extrabold text-slate-900 border-t border-slate-300">
                       <td className="py-2.5 px-3 border-r border-slate-300">Total remain</td>
-                      <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.quotas.sickTotal - sumLeaves(selectedEmployee.leaves, "sick", selectedYear)}</td>
-                      <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.quotas.annualTotal + selectedEmployee.quotas.carriedOver - sumLeaves(selectedEmployee.leaves, "annual", selectedYear)}</td>
+                      <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.quotas.sickTotal===null?"∞":selectedEmployee.quotas.sickTotal - sumLeaves(selectedEmployee.leaves, "sick", selectedYear)}</td>
+                      <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.quotas.annualTotal===null?"∞":selectedEmployee.quotas.annualTotal + selectedEmployee.quotas.carriedOver - sumLeaves(selectedEmployee.leaves, "annual", selectedYear)}</td>
                       <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.quotas.personalTotal - sumLeaves(selectedEmployee.leaves, "personal", selectedYear)}</td>
                       <td colSpan={2}></td>
                     </tr>
@@ -688,16 +697,22 @@ export default function CeoDashboard() {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-600">Annual Quota</label>
-                  <Input type="number" value={quotaAnnual} onChange={(e) => setQuotaAnnual(Number(e.target.value))} className="h-9 text-xs mt-1" />
+                  <Input type="number" min="0" max="365" step="0.25" disabled={quotaAnnual===null} value={quotaAnnual??""} onChange={(e) => setQuotaAnnual(Number(e.target.value))} className="h-9 text-xs mt-1" />
+                  <label className="text-xs"><input type="checkbox" checked={quotaAnnual===null} onChange={e=>setQuotaAnnual(e.target.checked?null:0)}/> Unlimited</label>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-600">Sick Quota</label>
-                  <Input type="number" value={quotaSick} onChange={(e) => setQuotaSick(Number(e.target.value))} className="h-9 text-xs mt-1" />
+                  <Input type="number" min="0" max="365" step="0.25" disabled={quotaSick===null} value={quotaSick??""} onChange={(e) => setQuotaSick(Number(e.target.value))} className="h-9 text-xs mt-1" />
+                  <label className="text-xs"><input type="checkbox" checked={quotaSick===null} onChange={e=>setQuotaSick(e.target.checked?null:0)}/> Unlimited</label>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-600">Carried Over</label>
-                  <Input type="number" value={quotaCarried} onChange={(e) => setQuotaCarried(Number(e.target.value))} className="h-9 text-xs mt-1" />
+                  <Input type="number" min="0" max="365" step="0.25" required value={quotaCarried} onChange={(e) => setQuotaCarried(Number(e.target.value))} className="h-9 text-xs mt-1" />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-xs font-bold text-slate-600">Personal quota<Input type="number" min="0" max="365" step="0.25" required value={quotaPersonal} onChange={e=>setQuotaPersonal(Number(e.target.value))}/></label>
+                <label className="text-xs font-bold text-slate-600">Carryover expiry<Input type="date" min={`${selectedYear}-01-01`} max={`${selectedYear}-12-31`} value={quotaExpiry} onChange={e=>setQuotaExpiry(e.target.value)}/><span className="font-normal">Leave blank for no expiry.</span></label>
               </div>
               <div className="flex justify-end gap-2 pt-3">
                 <Button type="button" variant="ghost" onClick={() => setEditingEmp(null)} className="h-9 text-xs">Cancel</Button>

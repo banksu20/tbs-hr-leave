@@ -25,8 +25,7 @@ export function patchWorkflow(original, credentialId) {
   query('Get quota', sql('get-quota.sql'), '={{ [$json.query.userId, Number($json.query.year || $now.year)] }}');
   query('dashboard-employee-profile', sql('employee-profile.sql'), '={{ [JSON.stringify($json.body)] }}');
   // Array bindings retain commas, empty strings and SQL null instead of stringifying them.
-  node('dashboard-quota-update').parameters.options.queryReplacement =
-    '={{ [$json.body.userId, $json.body.year, $json.body.annualTotal ?? null, $json.body.sickTotal ?? null, $json.body.personalTotal ?? null, $json.body.carriedOver ?? null, $json.body.note ?? null, "pad"] }}';
+  query('dashboard-quota-update', sql('quota-update-safe.sql'), '={{ [JSON.stringify($json.body)] }}');
   node('dashboard-employee-status').parameters.options.queryReplacement =
     '={{ [$json.body.userId, $json.body.status] }}';
   const history = node('Merge Sheet & DB History');

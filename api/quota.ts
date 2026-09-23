@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { isPlainDate } from "./_lib/date.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { ceoAuthorised, currentYear, json, queryParam, writesAllowed } from "./_lib/http.js";
 import { N8nMutationError, N8nNotRegisteredError, N8nUnavailableError, n8nGet, n8nPost } from "./_lib/n8nClient.js";
@@ -30,18 +32,15 @@ async function updateQuota(req: VercelRequest, res: VercelResponse) {
     return json(res, 422, { error: "year must be a four digit year" });
   }
 
-  const numberOrNull = (value: unknown) => (value === undefined || value === null || value === "" ? null : normalizeDays(value));
-
+  const days=z.number().min(0).max(365).multipleOf(0.25);
+  const schema=z.object({userId:z.string().min(1),year:z.number().int().min(2000).max(2100),expectedRevision:z.string().regex(/^(missing|[a-f0-9]{32})$/),
+    annualTotal:days.nullable().optional(),sickTotal:days.nullable().optional(),personalTotal:days.optional(),carriedOver:days.optional(),
+    carryoverExpiresOn:z.string().refine(isPlainDate).nullable().optional(),note:z.string().max(1000).optional()})
+    .refine(v=>!v.carryoverExpiresOn||v.carryoverExpiresOn.startsWith(String(v.year)),{message:'Expiry must be in the quota year'});
+  const parsed=schema.safeParse({...body,userId,year});
+  if(!parsed.success)return json(res,422,{error:'Invalid quota values. Refresh first; use nonnegative quarter days.',issues:parsed.error.issues.map(i=>i.message)});
   try {
-    const result = await n8nPost("dashboard-quota-update", {
-      userId,
-      year,
-      annualTotal: numberOrNull(body.annualTotal),
-      sickTotal: numberOrNull(body.sickTotal),
-      personalTotal: numberOrNull(body.personalTotal),
-      carriedOver: numberOrNull(body.carriedOver),
-      note: body.note === undefined ? null : cleanString(body.note),
-    });
+    const result = await n8nPost("dashboard-quota-update", parsed.data);
     return json(res, 200, { ok: true, userId, year, n8n: result });
   } catch (err) {
     if (err instanceof N8nMutationError) return json(res, err.status, { error: err.message });
@@ -83,10 +82,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return json(res, 404, { error: `n8n returned no quota for ${userId}` });
     }
 
-    const row = payload as Record<string, unknown>;
+    const row = (Array.isArray(payload)?payload[0]:payload) as Record<string, unknown>;
+    if(!row)return json(res,404,{error:"Quota not found"});
 
-    const annualTotal = num(row, ["annualTotal", "annual_total"], 12) ?? 12;
-    const sickTotal = num(row, ["sickTotal", "sick_total"], 30) ?? 30;
+    const annualTotal = num(row, ["annualTotal", "annual_total"], null);
+    const sickTotal = num(row, ["sickTotal", "sick_total"], null);
     const personalTotal = num(row, ["personalTotal", "personal_total"], 3) ?? 3;
     const carriedOver = num(row, ["carriedOver", "carried_over"], 0) ?? 0;
 
@@ -105,11 +105,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       sickTotal,
       personalTotal,
       carriedOver,
-      annualTaken: annualTaken ?? (remainingDays === null ? 0 : annualTotal + carriedOver - remainingDays),
-      sickTaken: sickTaken ?? (sickRemaining === null ? 0 : sickTotal - sickRemaining),
+      annualTaken: annualTaken ?? (remainingDays === null ? 0 : (annualTotal ?? 0) + carriedOver - remainingDays),
+      sickTaken: sickTaken ?? (sickRemaining === null ? 0 : (sickTotal ?? 0) - sickRemaining),
       personalTaken: personalTaken ?? (personalRemaining === null ? 0 : personalTotal - personalRemaining),
-      remainingDays: remainingDays ?? annualTotal + carriedOver - (annualTaken ?? 0),
-      sickRemaining: sickRemaining ?? sickTotal - (sickTaken ?? 0),
+      remainingDays: annualTotal===null?null:remainingDays ?? (annualTotal ?? 0) + carriedOver - (annualTaken ?? 0),
+      sickRemaining: sickTotal===null?null:sickRemaining ?? sickTotal - (sickTaken ?? 0),
       personalRemaining: personalRemaining ?? personalTotal - (personalTaken ?? 0),
     });
   } catch (err) {
