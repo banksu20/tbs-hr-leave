@@ -9,7 +9,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { 
   Users, Calendar, Clock, Plus, Trash2, Edit, FileText, X,
-  Search, AlertCircle, CheckCircle2, LayoutGrid, BarChart3,
+  AlertCircle, CheckCircle2, LayoutGrid, BarChart3,
   AlertTriangle, TrendingUp, Palmtree, Thermometer, CalendarDays,
   Building, RotateCw, ShieldCheck, FileSpreadsheet, Upload, Download, Sparkles, Check, ArrowRight, ChevronRight, Filter, UserPlus
 } from "lucide-react";
@@ -52,7 +52,6 @@ export default function CeoDashboard() {
   const [compactRows, setCompactRows] = useState<boolean>(
     () => localStorage.getItem("tbs_ceo_density") === "compact"
   );
-  const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Modals & Forms
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
@@ -187,18 +186,9 @@ export default function CeoDashboard() {
 
 
   // Filtered employees
-  const filteredEmployees = activeEmployees.filter((emp) => {
-    const matchesDept = selectedDept === "All" || emp.department === selectedDept;
-    const q = searchQuery.toLowerCase().trim();
-    const matchesSearch = 
-      !q ||
-      emp.name.toLowerCase().includes(q) ||
-      emp.nickname.toLowerCase().includes(q) ||
-      emp.empCode.toLowerCase().includes(q) ||
-      emp.department.toLowerCase().includes(q);
-
-    return matchesDept && matchesSearch;
-  });
+  const filteredEmployees = activeEmployees.filter(
+    (emp) => selectedDept === "All" || emp.department === selectedDept
+  );
 
   // Sync Data
 
@@ -423,7 +413,7 @@ export default function CeoDashboard() {
         </details>
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
           
-          {/* Department Filters & Search Toolbar */}
+          {/* Department filter and navigation toolbar */}
           <div className="px-3 py-2 bg-slate-900 border-b border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-2 flex-wrap">
             <label className="flex items-center gap-2 text-xs font-bold text-slate-300 shrink-0">
               Department
@@ -475,21 +465,7 @@ export default function CeoDashboard() {
               )}
             </div>
 
-            {/* Search Input Box */}
-            <div className="relative w-full md:w-64 shrink-0">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <Input
-                type="text"
-                placeholder="Search employees"
-                aria-label="Search by name, nickname or employee code"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-9 h-9 text-xs bg-slate-800 border-slate-700 text-white placeholder:text-slate-400 rounded-lg focus-visible:ring-[#00B5E2]"
-              />
-              {searchQuery && (
-                <button type="button" aria-label="Clear search" onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-white"><X className="w-4 h-4" aria-hidden="true" /></button>
-              )}
-            </div>
+
           </div>
 
           {employees.some(e=>e.rolloverNeedsReview)&&<div role="alert" className="m-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">Previous-year leave or allowances changed for {employees.filter(e=>e.rolloverNeedsReview).length} employees. Review their carryover before relying on the balances. <Button variant="outline" size="sm" onClick={()=>{setReviewRollover(true);setViewMode("rollover");}}>Review carryover changes</Button></div>}
@@ -502,7 +478,7 @@ export default function CeoDashboard() {
                 onLeaveToday={onLeaveToday}
                 onSelectEmployee={setSelectedEmployee}
                 exportReady={dataSource === "live" && !employeesError && !employeesPartial && !isFetchingEmployees}
-                exportScope={`Department: ${selectedDept}${searchQuery.trim() ? `; search: ${searchQuery.trim()}` : ""}`}
+                exportScope={`Department: ${selectedDept}`}
               />
             </div>
           ) : viewMode === "roster" ? (
