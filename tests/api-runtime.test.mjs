@@ -38,8 +38,8 @@ test('compiled API modules load in Node ESM and return JSON without an auth cook
       assert.equal(response.statusCode, route === 'auth' ? 200 : 405);
       if (route === 'auth') assert.deepEqual(response.body, { required: false, signedIn: true });
       if (route === 'rollover') {
-        await handler({method:'POST',headers:{},query:{},body:{action:'apply',sourceYear:2025,carryLimit:5,expiresOn:'2026-03-31',token:'valid-looking-token'}},response);
-        assert.equal(response.statusCode,403);assert.match(response.body.error,/preview-only/);
+        await handler({method:'POST',headers:{},query:{},body:{action:'apply',sourceYear:2025,carryLimit:5,expiresOn:'2026-03-31'}},response);
+        assert.equal(response.statusCode,422);assert.ok(response.body.issues.includes('Preview is required before applying'));
       }
     }
   } finally {

@@ -455,10 +455,10 @@ export default function CeoDashboard() {
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
                 type="text"
-                placeholder="Search name, nickname, code..."
+                placeholder="Search employees"
+                aria-label="Search by name, nickname or employee code"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Search employees"
                 className="pl-9 pr-9 h-9 text-xs bg-slate-800 border-slate-700 text-white placeholder:text-slate-400 rounded-lg focus-visible:ring-[#00B5E2]"
               />
               {searchQuery && (

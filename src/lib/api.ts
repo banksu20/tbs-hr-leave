@@ -253,8 +253,9 @@ export function restoreLeave(id: string, cancellationId: string) {
   });
 }
 
-export interface RolloverSettings { sourceYear: number; carryLimit: number; expiresOn: string }
-export interface RolloverRow { userId: string; name: string; annualTotal: number|null; sickTotal: number|null; personalTotal: number|null; carriedOver: number; expiresOn: string; status: string }
+export interface RolloverOverride { userId: string; carriedOver: number; expiresOn: string; note: string; annualTotal?: number; sickTotal?: number|null; personalTotal?: number }
+export interface RolloverSettings { sourceYear: number; expiresOn: string; overrides?: RolloverOverride[] }
+export interface RolloverRow { userId: string; name: string; annualTotal: number|null; sickTotal: number|null; personalTotal: number|null; carriedOver: number; expiresOn: string; status: string; sourceAnnual?: number; sourceCarried?: number; unusedAnnual?: number; suggestedCarryover?: number; note?: string; nickname?: string; empNo?: number }
 export function previewRollover(settings: RolloverSettings) {
   return request<{ok: boolean; rows: RolloverRow[]; token: string; targetYear: number}>('/api/rollover',{method:'POST',body:JSON.stringify({...settings,action:'preview'})});
 }

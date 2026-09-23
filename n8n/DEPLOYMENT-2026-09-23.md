@@ -19,10 +19,21 @@
 - Isolated Sheets writes and LINE notification requests returned HTTP 200 and were acknowledged in the delivery queue. Notification API acceptance does not prove human receipt.
 - Completed tests 1059 and 1061 are Rejected and no longer consume quota. Audit history is intentionally retained.
 
-## Still pending
+## Final follow-up after commit a720f25
 
-1. n8n refused the final `Claim sheet sync` and `Project current sheet` updates because a user is editing the main workflow. Those two updates add the `databaseAuthoritative` reconciliation policy. Close the editor, re-read the draft for concurrent changes, apply the local versions, then publish. Do not assume the current active version already honors that policy.
-2. After publishing, enqueue the verified real employee sections for reconciliation (exclude TBS030), run the worker, inspect acknowledgements and verify Sheet results. All 32 real-account projections passed the read-only preflight with the approved policy. No real legacy section has yet been overwritten by this reconciliation.
-3. Request 1060 is Pending for the actual LINE button test. A card labelled `TEST TBS033 — APPROVE THIS` was sent only to TBS033 and accepted by LINE. User was asked to click it. Verify the callback, dashboard, Sheet, notification and second-click refusal, then cancel the test request and verify cleanup. Normal configured manager FYIs may run on the successful click.
+- Final reconciliation nodes were validated and published as `a0df23cd-08d2-4016-9cc5-b3ec6382f130` after the editor was closed. Concurrent editor changes were only JSON property ordering in HTTP response options.
+- All 32 verified real employee sections reconciled. Together with the isolated test tab, the queue reports 33 completed Sheet jobs, zero pending jobs and zero problem jobs (execution 590275).
+- Read-back verification succeeded (590276): Bill's 4 August row is 0.5 day as recorded in the database; the real Alice section is identical to its pre-change snapshot; the TBS033 test tab has no leave rows, zero days taken and its full 3 personal days remaining.
+- The user cannot access the CEO LINE account to click request 1060. It was cancelled through the live dashboard API with its current revision (HTTP 200). All test requests are now Rejected; history is retained.
+- A real human LINE approval remains unverified. Do not describe the replay/database tests as a human click. The issued test buttons now refer to cancelled requests and should be refused.
+- The maintenance workflow has been restored to two nodes with a read-only readiness query. No migration, queue insertion or notification query remains armed there.
 
-The maintenance workflow `Ln3BwcSN2e2GHZWa` was returned to two nodes with a read-only readiness query. No migration or message-send query remains armed there. Additional code changes in this work are uncommitted.
+No further Vercel deployment was required for these n8n updates. This operational note was updated after commit a720f25.
+
+## Editable rollover follow-up (local, not deployed)
+
+- Rollover now loads source-year allowances into an editable employee table: base annual, sick (including unlimited), personal, unused annual/carryover, expiry and note. There is no shared carryover cap.
+- The displayed source annual total includes old carryover. The next-year base is source total minus old carryover (`annual_total` is already that base in storage). New carryover is stored separately and the UI displays the combined annual allowance.
+- Apply recomputes the reviewed snapshot under database locks and rejects stale previews. Existing target-year quota rows are skipped, source-year rows remain unchanged, and quota history / Sheets outbox triggers remain active.
+- Before deploying the updated app, apply the revised `sql/003_year_rollover.sql` through the n8n maintenance PostgreSQL node. The existing `dashboard-rollover` webhook query supports the response shape; no new endpoint is needed. This follow-up migration has **not** been applied to production. No real employee rollover has been run.
+- New-year Sheets exports still require verified employee links and the corresponding new-year Sheet destination. Do not claim successful Sheets synchronization until those exist and delivery is verified.

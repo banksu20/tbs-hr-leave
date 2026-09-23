@@ -24,32 +24,81 @@ RETURNS TABLE(annual numeric,sick numeric,personal numeric,effective_carried num
 $$;
 
 CREATE OR REPLACE FUNCTION tbs_rollover(payload jsonb) RETURNS jsonb LANGUAGE plpgsql AS $$
-DECLARE yr integer; cap numeric; expiry date; rows jsonb; token text;
+DECLARE yr integer; fingerprint text; saved_count integer; field text; quota_value numeric; expiry date; rows jsonb; token text; override_row jsonb; employee_row jsonb; amount numeric; employee_expiry date;
 BEGIN
   yr := (payload->>'sourceYear')::integer;
-  cap := (payload->>'carryLimit')::numeric;
   expiry := (payload->>'expiresOn')::date;
-  IF yr IS NULL OR yr NOT BETWEEN 2000 AND 2099 OR cap IS NULL OR cap<0 OR cap>365 OR cap*4<>trunc(cap*4)
+  IF yr IS NULL OR yr NOT BETWEEN 2000 AND 2099
     OR expiry IS NULL OR extract(year FROM expiry)<>yr+1 OR payload->>'action' IS NULL OR payload->>'action' NOT IN ('preview','apply') THEN
-    RETURN jsonb_build_object('ok',false,'statusCode',422,'error','Choose a source year, carryover limit in quarter days, and expiry within the next year.');
+    RETURN jsonb_build_object('ok',false,'statusCode',422,'error','Choose a source year and expiry within the next year.');
   END IF;
   IF payload->>'action'='apply' THEN
-    RETURN jsonb_build_object('ok',false,'statusCode',403,'error','Year rollover is preview-only until the policy is approved and applying is enabled.');
+    -- Serialize quota/request changes while recomputing the reviewed snapshot.
+    LOCK TABLE tbs_employees, leave_requests, leave_quotas IN SHARE ROW EXCLUSIVE MODE;
   END IF;
   SELECT COALESCE(jsonb_agg(to_jsonb(p) ORDER BY p."userId"),'[]'::jsonb) INTO rows FROM (
     SELECT e.user_id AS "userId",concat_ws(' ',e.first_name,e.last_name) AS name,
-      q.annual_total AS "annualTotal",q.sick_total AS "sickTotal",q.personal_total AS "personalTotal",
-      LEAST(cap,GREATEST(q.annual_total-GREATEST(u.annual-u.effective_carried,0),0)) AS "carriedOver",
+      e.nickname,e.tbs_id AS "empNo",
+      GREATEST(q.annual_total-GREATEST(u.annual-u.effective_carried,0),0) AS "unusedAnnual",
+      GREATEST(q.annual_total-GREATEST(u.annual-u.effective_carried,0),0) AS "suggestedCarryover",
+      COALESCE(q.annual_total,0)+COALESCE(q.carried_over,0) AS "sourceAnnual", COALESCE(q.carried_over,0) AS "sourceCarried",
+      ''::text AS note, q.annual_total AS "annualTotal",q.sick_total AS "sickTotal",q.personal_total AS "personalTotal",
+      GREATEST(q.annual_total-GREATEST(u.annual-u.effective_carried,0),0) AS "carriedOver",
       expiry AS "expiresOn",
       CASE WHEN next_q.user_id IS NOT NULL THEN 'Existing next-year quota — skipped'
-        WHEN q.user_id IS NULL OR q.annual_total IS NULL OR q.sick_total IS NULL OR q.personal_total IS NULL THEN 'Missing source quota — skipped'
+        WHEN q.user_id IS NULL OR q.annual_total IS NULL OR q.personal_total IS NULL THEN 'Missing source quota — skipped'
         ELSE 'Ready' END AS status
     FROM tbs_employees e LEFT JOIN leave_quotas q ON q.user_id=e.user_id AND q.year=yr
     LEFT JOIN leave_quotas next_q ON next_q.user_id=e.user_id AND next_q.year=yr+1
     CROSS JOIN LATERAL tbs_quota_usage(e.user_id,yr,make_date(yr,12,31)) u
     WHERE e.status='active'
   ) p;
-  token := md5(rows::text || yr::text || cap::text || expiry::text);
+  IF payload ? 'overrides' AND (jsonb_typeof(payload->'overrides') IS DISTINCT FROM 'array') THEN
+    RETURN jsonb_build_object('ok',false,'statusCode',422,'error','Employee adjustments must be an array');
+  END IF;
+  IF jsonb_array_length(COALESCE(payload->'overrides','[]'::jsonb))>500 OR
+    (SELECT count(*)<>count(DISTINCT value->>'userId') FROM jsonb_array_elements(COALESCE(payload->'overrides','[]'::jsonb))) THEN
+    RETURN jsonb_build_object('ok',false,'statusCode',422,'error','Invalid or duplicate employee adjustments');
+  END IF;
+  FOR override_row IN SELECT value FROM jsonb_array_elements(COALESCE(payload->'overrides','[]'::jsonb)) LOOP
+    SELECT value INTO employee_row FROM jsonb_array_elements(rows) WHERE value->>'userId'=override_row->>'userId';
+    amount:=(override_row->>'carriedOver')::numeric;
+    employee_expiry:=(override_row->>'expiresOn')::date;
+    IF employee_row IS NULL OR employee_row->>'status'<>'Ready' OR amount IS NULL OR amount<0 OR amount>365
+      OR amount*4<>trunc(amount*4) OR amount>(employee_row->>'unusedAnnual')::numeric
+      OR employee_expiry IS NULL OR extract(year FROM employee_expiry)<>yr+1
+      OR jsonb_typeof(override_row->'note') IS DISTINCT FROM 'string' OR length(override_row->>'note')>1000
+ THEN
+      RETURN jsonb_build_object('ok',false,'statusCode',422,'error','Adjust ready employees only. Carryover cannot exceed unused annual leave; expiry must be in the next year.');
+    END IF;
+    FOREACH field IN ARRAY ARRAY['annualTotal','sickTotal','personalTotal'] LOOP
+      IF override_row ? field THEN
+        quota_value := (override_row->>field)::numeric;
+        IF (quota_value IS NULL AND field<>'sickTotal') OR quota_value<0 OR quota_value>365 OR quota_value*4<>trunc(quota_value*4) THEN
+          RETURN jsonb_build_object('ok',false,'statusCode',422,'error','Allowances must be 0–365 in quarter days; only sick leave can be unlimited.');
+        END IF;
+        employee_row := employee_row || jsonb_build_object(field,quota_value);
+      END IF;
+    END LOOP;
+    SELECT jsonb_agg(CASE WHEN value->>'userId'=override_row->>'userId' THEN employee_row||jsonb_build_object('carriedOver',amount,'expiresOn',employee_expiry,'note',trim(override_row->>'note')) ELSE value END ORDER BY value->>'userId') INTO rows FROM jsonb_array_elements(rows);
+  END LOOP;
+  -- Include original records, even when edits hide a changed source value.
+  SELECT md5(COALESCE((SELECT jsonb_agg(to_jsonb(q) ORDER BY q.user_id,q.year)::text FROM leave_quotas q WHERE year IN (yr,yr+1)),'[]') ||
+    COALESCE((SELECT jsonb_agg(to_jsonb(r) ORDER BY r.id)::text FROM leave_requests r),'[]')) INTO fingerprint;
+  token := md5(rows::text || yr::text || expiry::text || fingerprint);
+  IF payload->>'action'='apply' THEN
+    IF payload->>'token' IS DISTINCT FROM token THEN
+      RETURN jsonb_build_object('ok',false,'statusCode',409,'error','Allowances or leave changed since review. Refresh and review again before applying.');
+    END IF;
+    PERFORM set_config('app.tbs_action','rollover',true);
+    PERFORM set_config('app.tbs_channel','dashboard',true);
+    INSERT INTO leave_quotas(user_id,year,annual_total,sick_total,personal_total,carried_over,carryover_expires_on,note,updated_at)
+      SELECT value->>'userId',yr+1,(value->>'annualTotal')::numeric,(value->>'sickTotal')::numeric,
+        (value->>'personalTotal')::numeric,(value->>'carriedOver')::numeric,(value->>'expiresOn')::date,value->>'note',now()
+      FROM jsonb_array_elements(rows) WHERE value->>'status'='Ready';
+    GET DIAGNOSTICS saved_count = ROW_COUNT;
+    RETURN jsonb_build_object('ok',true,'saved',saved_count,'targetYear',yr+1);
+  END IF;
   RETURN jsonb_build_object('ok',true,'rows',rows,'token',token,'targetYear',yr+1);
 EXCEPTION WHEN invalid_text_representation OR invalid_datetime_format OR datetime_field_overflow OR numeric_value_out_of_range THEN
   RETURN jsonb_build_object('ok',false,'statusCode',422,'error','Invalid rollover settings');
