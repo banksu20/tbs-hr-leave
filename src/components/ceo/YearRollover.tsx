@@ -3,7 +3,7 @@ import { previewRollover, applyRollover, type RolloverSettings, type RolloverOve
 import { Button } from '@/components/ui/button';
 
 const draftKey=(year:number)=>`tbs_rollover_preview_v1_${year}`;
-export default function YearRollover({year}: {year:string}) {
+export default function YearRollover({year,onApplied}: {year:string; onApplied?:(targetYear:number,saved:number)=>void}) {
   const [settings,setSettings]=useState<RolloverSettings>({sourceYear:Number(year),expiresOn:`${Number(year)+1}-03-31`});
   const [preview,setPreview]=useState<Awaited<ReturnType<typeof previewRollover>>|null>(null);
   const [overrides,setOverrides]=useState<Record<string,RolloverOverride>>({});
@@ -47,6 +47,7 @@ export default function YearRollover({year}: {year:string}) {
       setPreview(null);setOverrides({});setConfirm(false);
       try{localStorage.removeItem(draftKey(settings.sourceYear));}catch{/* Saving succeeded even if local storage is unavailable. */}
       setMessage(`Rollover complete: ${result.saved} employees saved for ${preview.targetYear}. Source-year allowances were not changed.`);
+      onApplied?.(preview.targetYear,result.saved);
     }catch(error){setMessage(error instanceof Error?error.message:'Rollover failed');setDirty(true);setConfirm(false);}
     finally{setBusy(false);}
   };

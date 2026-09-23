@@ -30,10 +30,13 @@
 
 No further Vercel deployment was required for these n8n updates. This operational note was updated after commit a720f25.
 
-## Editable rollover follow-up (local, not deployed)
+## Editable rollover follow-up (database applied; app deployment still needs verification)
 
 - Rollover now loads source-year allowances into an editable employee table: base annual, sick (including unlimited), personal, unused annual/carryover, expiry and note. There is no shared carryover cap.
 - The displayed source annual total includes old carryover. The next-year base is source total minus old carryover (`annual_total` is already that base in storage). New carryover is stored separately and the UI displays the combined annual allowance.
 - Apply recomputes the reviewed snapshot under database locks and rejects stale previews. Existing target-year quota rows are skipped, source-year rows remain unchanged, and quota history / Sheets outbox triggers remain active.
-- Before deploying the updated app, apply the revised `sql/003_year_rollover.sql` through the n8n maintenance PostgreSQL node. The existing `dashboard-rollover` webhook query supports the response shape; no new endpoint is needed. This follow-up migration has **not** been applied to production. No real employee rollover has been run.
+- Before deploying the updated app, apply the revised `sql/003_year_rollover.sql` through the n8n maintenance PostgreSQL node. The existing `dashboard-rollover` webhook query supports the response shape; no new endpoint is needed. The follow-up migration was applied through the maintenance PostgreSQL node in execution 590532. No real employee rollover has been run.
 - New-year Sheets exports still require verified employee links and the corresponding new-year Sheet destination. Do not claim successful Sheets synchronization until those exist and delivery is verified.
+
+- Live database verification passed in execution 590538 using only TBS033 and temporary source/target years 2098/2099. Checked edited quota values, separate carryover, source preservation, stale-token rejection and repeated-apply protection. All test writes, history and queued updates were rolled back; temporary quotas are absent. This verifies the live database function, not the deployed browser-to-API flow.
+- The maintenance node was restored to its original read-only readiness query after verification.

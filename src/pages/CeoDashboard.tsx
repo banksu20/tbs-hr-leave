@@ -5,6 +5,7 @@ import ChangeHistory from "@/components/ceo/ChangeHistory";
 import LeaveRecordDialog from "@/components/ceo/LeaveRecordDialog";
 import { LeaveRequestUpdate } from "@/lib/api";
 import { useState, useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { 
   Users, Calendar, Clock, Plus, Trash2, Edit, FileText, X,
   Search, AlertCircle, CheckCircle2, LayoutGrid, BarChart3,
@@ -38,6 +39,7 @@ const KNOWN_DEPARTMENTS = ["SEO", "Web Developer", "UX/UI Designer", "Graphic", 
 
 export default function CeoDashboard() {
   // Selected Year & Department Filters
+  const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
   const [selectedDept, setSelectedDept] = useState<string>("All");
@@ -99,6 +101,21 @@ export default function CeoDashboard() {
   }, [compactRows]);
 
   const leaveMutations = useLeaveMutations(selectedYear);
+
+  const handleRolloverApplied = (targetYear: number, saved: number) => {
+    const year = String(targetYear);
+    // Discard a previously viewed target year's allowances before switching.
+    try {
+      localStorage.removeItem(`tbs_employees_v2_${year}`);
+      localStorage.removeItem(`tbs_employees_v2_${year}_at`);
+    } catch { /* Network refresh remains available without local storage. */ }
+    void queryClient.resetQueries({ queryKey: ["employees", year], exact: true });
+    setSelectedEmployee(null);
+    setEditingEmp(null);
+    setSelectedYear(year);
+    setViewMode("overview");
+    toast.success(`Rollover saved for ${saved} employees. Now viewing ${year}.`);
+  };
 
   const activeEmployees = employees.filter((emp) => emp.status !== "inactive");
   const removedEmployees = employees.filter((emp) => emp.status === "inactive");
@@ -338,7 +355,7 @@ export default function CeoDashboard() {
               <div className="flex items-center gap-2">
                 <h1 className="text-base font-extrabold text-white tracking-tight">TBS HR - Leave Request System</h1>
                 <select aria-label="Leave year" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="bg-slate-800 text-white border border-slate-700 rounded px-2 py-1 text-xs font-bold">
-                  {Array.from({ length: 5 }, (_, index) => currentYear + 1 - index).map((year) => <option key={year} value={year}>{year}</option>)}
+                  {[...new Set([...Array.from({ length: 5 }, (_, index) => currentYear + 1 - index), Number(selectedYear)])].sort((a,b)=>b-a).map((year) => <option key={year} value={year}>{year}</option>)}
                 </select>
               </div>
               <p className="text-[10px] text-slate-400 font-medium">TBS Marketing &bull; Staff leave and quotas</p>
@@ -467,7 +484,7 @@ export default function CeoDashboard() {
             </div>
           </div>
 
-          {viewMode === "pending" ? <PendingRequests employees={filteredEmployees} ready={dataSource === "live" && !employeesError && !employeesPartial && !isFetchingEmployees} /> : viewMode === "rollover" ? <YearRollover key={selectedYear} year={selectedYear} /> : viewMode === "calendar" ? <TeamCalendar employees={filteredEmployees} year={selectedYear} /> : viewMode === "history" ? <ChangeHistory employees={employees} /> : viewMode === "overview" ? (
+          {viewMode === "pending" ? <PendingRequests employees={filteredEmployees} ready={dataSource === "live" && !employeesError && !employeesPartial && !isFetchingEmployees} /> : viewMode === "rollover" ? <YearRollover key={selectedYear} year={selectedYear} onApplied={handleRolloverApplied} /> : viewMode === "calendar" ? <TeamCalendar employees={filteredEmployees} year={selectedYear} /> : viewMode === "history" ? <ChangeHistory employees={employees} /> : viewMode === "overview" ? (
             <div className="p-2 bg-slate-100/70">
               <OverviewDashboard
                 employees={filteredEmployees}
