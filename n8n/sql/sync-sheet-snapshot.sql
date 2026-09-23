@@ -18,6 +18,10 @@ entries AS (
  FROM records r CROSS JOIN LATERAL unnest(tbs_request_dates(r.selected_dates,r.start_date::date,r.end_date::date)) d JOIN job j ON extract(year FROM d)=j.year
 )
 SELECT j.*,jsonb_build_object('year',j.year,
+ 'requireVerifiedLink',true,
+ 'sheetHeader',(SELECT header FROM tbs_sheet_employee_links m WHERE m.user_id=j.user_id AND m.year=j.year),
+ 'sheetName',COALESCE((SELECT sheet_name FROM tbs_sheet_employee_links m WHERE m.user_id=j.user_id AND m.year=j.year),'Leave report '||j.year),
+ 'databaseAuthoritative',COALESCE((SELECT database_authoritative FROM tbs_sheet_employee_links m WHERE m.user_id=j.user_id AND m.year=j.year),false),
  'names',(SELECT jsonb_agg(DISTINCT name) FROM (SELECT concat_ws(' ',e.first_name,e.last_name) AS name UNION SELECT r.user_name FROM records r) names),
  'known',COALESCE((SELECT jsonb_agg(to_jsonb(k)) FROM known k),'[]'),
  'entries',COALESCE((SELECT jsonb_agg(to_jsonb(r)) FROM entries r),'[]'),

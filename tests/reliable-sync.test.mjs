@@ -25,3 +25,18 @@ test('zero quota warns for taken leave while a known zero allowance is not missi
  const employee={quotasKnown:true,quotas:{annualTotal:0,sickTotal:0,personalTotal:0,carriedOver:0},leaves:[{date:'2026-01-05',type:'sick',days:1,status:'Approved'}]};
  assert.equal(overQuotaList([employee],'2026')[0].over,1);assert.equal(awaitingQuota([employee]).length,0);assert.equal(awaitingQuota([{...employee,quotasKnown:false}]).length,1);
 });
+test('verified sheet links resolve nicknames and fail closed if the header changes',()=>{
+ const linked={...snapshot,names:['Different Fullname'],sheetHeader:'Name: Alice',requireVerifiedLink:true};
+ const named=structuredClone(sheet);named[0]=['Name: Alice'];
+ assert.equal(projectSheet(linked,named).data.length,4);
+ assert.throws(()=>projectSheet({...linked,sheetHeader:null},named),/No verified/);
+ assert.throws(()=>projectSheet(linked,sheet),/uniquely match/);
+ assert.throws(()=>projectSheet(linked,[...named,['Name: Alice']]),/uniquely match/);
+});
+test('explicit database authority permits reconciliation but cannot bypass employee identity',()=>{
+ const unknown=structuredClone(sheet);unknown[4]=['7-Jan-27',1,'','','Legacy difference'];
+ const approved={...snapshot,sheetHeader:'Name: Test Person',requireVerifiedLink:true,databaseAuthoritative:true,sheetName:'TEST TBS033 - Leave 2027'};
+ assert.match(projectSheet(approved,unknown).data[0].range,/TEST TBS033/);
+ assert.throws(()=>projectSheet({...approved,sheetHeader:'Name: Other Person'},unknown),/uniquely match/);
+ assert.throws(()=>projectSheet({...approved,databaseAuthoritative:false},unknown),/Unreconciled/);
+});

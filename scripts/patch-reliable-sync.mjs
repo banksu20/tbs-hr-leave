@@ -7,7 +7,7 @@ import {patchLineDecisions} from './patch-line-decisions.mjs';
 import {projectSheet} from '../n8n/js/sheet-projection.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 export function patchReliableSync(original){
- const w=patchLineDecisions(patchDashboardFeatures(original));
+ const w=original.nodes.some(n=>n.name==='Deliver saved HR changes') ? patchDashboardFeatures(original) : patchLineDecisions(patchDashboardFeatures(original));
  const node=name=>{const n=w.nodes.find(n=>n.name===name);if(!n)throw Error(`Missing node ${name}`);return n;};
  const route=(name,...targets)=>{targets.forEach(node);w.connections[name]={main:targets.map(target=>[{node:target,type:'main',index:0}])};};
  const add=(template,name,parameters)=>{let n=w.nodes.find(n=>n.name===name);if(!n){n={...structuredClone(node(template)),id:randomUUID(),name,position:[0,7000+w.nodes.length*30]};delete n.webhookId;delete n.disabled;w.nodes.push(n);}n.parameters=parameters;return n;};
@@ -23,10 +23,12 @@ export function patchReliableSync(original){
  // Existing sheet connections remain configured, but decisions use an authoritative database queue.
  node('Prepare Check Data').parameters.jsCode=`const event=$input.first().json.body?.events?.[0];
 const data=event?.postback?.data || '';const p=Object.fromEntries(data.split('&').filter(Boolean).map(part=>{const i=part.indexOf('=');return [part.slice(0,i),decodeURIComponent(part.slice(i+1))];}));
+if(event?.type!=='postback' || p.action!=='approve')return [];
 return {db_id:p.db_id,employeeUserId:p.userId,expectedRevision:p.revision,decisionToken:p.token,cmUserId:event?.source?.userId,action:p.action};`;
  node('Update DB (Approve)').parameters.options.queryReplacement="={{ [JSON.stringify({id:$('Prepare Check Data').first().json.db_id,userId:$('Prepare Check Data').first().json.employeeUserId,expectedRevision:$('Prepare Check Data').first().json.expectedRevision,decisionToken:$('Prepare Check Data').first().json.decisionToken})] }}";
  node('Update DB (Reject)').parameters.options.queryReplacement="={{ [JSON.stringify({id:$('Webhook Reject Form').first().json.body.dbId,userId:$('Webhook Reject Form').first().json.body.userId,expectedRevision:$('Webhook Reject Form').first().json.body.expectedRevision,decisionToken:$('Webhook Reject Form').first().json.body.decisionToken,rejectionReason:$('Webhook Reject Form').first().json.body.reason || ''})] }}";
  route('Webhook Reject Form','Update DB (Reject)');route('LINE Reject saved?','Respond Success1','Respond Error (Already Processed)');
+ node('Respond Success1').parameters={respondWith:'json',responseBody:JSON.stringify({success:true,message:'Rejection saved. Employee notification is queued.'}),options:{}};
  route('LINE Approve saved?','Prepare Approve Payload','Notify CM (Already Processed)');
  node('Prepare Approve Payload').parameters.jsCode="return {reply_message_cm:'บันทึกการอนุมัติแล้ว / Approval saved. Spreadsheet sync and employee notification are queued.'};";
  route('Get Dept for CM','Notify CM (Success)');route('Notify CM (Success)','Find CM to Notify');
@@ -46,7 +48,7 @@ return {db_id:p.db_id,employeeUserId:p.userId,expectedRevision:p.revision,decisi
  const sheetUrl=node('Read CEO Sheet').parameters.url;
  if(!sheetUrl.includes('/values/'))throw Error('Unexpected spreadsheet URL');
  const base=sheetUrl.split('/values/')[0];
- const read=add('Read CEO Sheet','Read sync sheet',{...node('Read CEO Sheet').parameters,url:`={{ '${base}/values/' + encodeURIComponent('Leave report '+$json.year) }}`,options:{timeout:30000}});read.onError='continueRegularOutput';
+ const read=add('Read CEO Sheet','Read sync sheet',{...node('Read CEO Sheet').parameters,url:`={{ '${base}/values/' + encodeURIComponent($json.snapshot.sheetName || ('Leave report '+$json.year)) }}`,options:{timeout:30000}});read.onError='continueRegularOutput';
  add('Clean Dates','Project current sheet',{jsCode:`${projectSheet.toString()}\nconst job=$('Claim sheet sync').first().json;try {if($json.error)throw Error('Cannot read target year sheet; check the tab and credentials.');return {ok:true,body:projectSheet(job.snapshot,$json.values||[])};}catch(error){return {ok:false,error:error.message};}`});
  condition('Sheet projection ready?');
  const write=add('Batch Update CEO Sheet','Write current sheet',{...node('Batch Update CEO Sheet').parameters,jsonBody:'={{ JSON.stringify($json.body) }}',options:{timeout:30000,response:{response:{fullResponse:true,neverError:true}}}});write.onError='continueRegularOutput';

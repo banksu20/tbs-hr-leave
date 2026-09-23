@@ -1,12 +1,13 @@
 // Pure projection: fail before writing if a legacy row cannot be reconciled.
 export function projectSheet(snapshot, values) {
+  if(snapshot.requireVerifiedLink && !snapshot.sheetHeader)throw Error('No verified employee-to-sheet link; reconcile this employee before syncing.');
   const normalize = value => String(value ?? '').toLowerCase().replace(/name\s*:?/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim().split(/\s+/).filter(Boolean);
   const names = snapshot.names.map(normalize).filter(parts=>parts.length>=2);
   const matches=[];
   values.forEach((row,r)=>row.forEach((cell,c)=>{
     if(!/name\s*:/i.test(String(cell)))return;
     const words=normalize(cell);
-    if(names.some(parts=>parts.every(word=>words.includes(word))))matches.push({r,c});
+    if(snapshot.sheetHeader ? String(cell).trim()===snapshot.sheetHeader.trim() : names.some(parts=>parts.every(word=>words.includes(word))))matches.push({r,c});
   }));
   if(matches.length!==1)throw Error('Cannot uniquely match employee to the legacy sheet; review the employee name before syncing.');
   const {r,c}=matches[0];
@@ -30,7 +31,7 @@ export function projectSheet(snapshot, values) {
   const types=['sick','annual','personal'];
   const signature=e=>`${e.date}|${e.type}|${Number(e.days)}`;
   const known=new Set(snapshot.known.map(signature));
-  for(let i=start;i<base;i++){
+  for(let i=start;!snapshot.databaseAuthoritative && i<base;i++){
     const cells=Array.from({length:5},(_,j)=>values[i]?.[c+j]??'');
     if(cells.every(x=>String(x).trim()===''))continue;
     const date=iso(cells[0]);
@@ -50,7 +51,8 @@ export function projectSheet(snapshot, values) {
       `${e.reason||''}${e.period?' - '+e.period:''} (${e.status==='Approved'?'Approved':'Awaiting approval'})`.trim()];
   });
   const col=n=>{let result='';for(n++;n>0;n=Math.floor((n-1)/26))result=String.fromCharCode(65+(n-1)%26)+result;return result;};
-  const range=(row,endRow,offset=0,width=5)=>`'Leave report ${snapshot.year}'!${col(c+offset)}${row+1}:${col(c+offset+width-1)}${endRow+1}`;
+  const sheetName=String(snapshot.sheetName || `Leave report ${snapshot.year}`).replace(/'/g,"''");
+  const range=(row,endRow,offset=0,width=5)=>`'${sheetName}'!${col(c+offset)}${row+1}:${col(c+offset+width-1)}${endRow+1}`;
   const totals=types.map(type=>entries.filter(e=>e.type===type).reduce((sum,e)=>sum+Number(e.days),0));
   if(!snapshot.quota)throw Error('Database quota is missing; reconcile allowances before syncing.');
   const quota=[snapshot.quota.sick_total,snapshot.quota.annual_total==null?null:Number(snapshot.quota.annual_total)+Number(snapshot.carried||0),snapshot.quota.personal_total];

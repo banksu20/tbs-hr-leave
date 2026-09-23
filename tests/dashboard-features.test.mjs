@@ -11,7 +11,7 @@ async function fixture(){
   CREATE TABLE leave_quotas(user_id text,year int,annual_total numeric,sick_total numeric,personal_total numeric,carried_over numeric,note text,updated_at timestamptz,UNIQUE(user_id,year));
   CREATE TABLE leave_requests(id serial PRIMARY KEY,user_id text,user_name text,department text,leave_type text,leave_days numeric,start_date date,end_date date,selected_dates text,reason text,status text,source text);
   INSERT INTO tbs_employees VALUES('test',1,'Test','Person','','QA','active','2020-01-01');`);
-  for(const file of ['001_request_safety.sql','002_history_and_conflicts.sql','003_year_rollover.sql','004_line_decisions.sql','005_sync_outbox.sql','006_employee_submission.sql'])await db.exec(sql(file));
+  for(const file of ['001_request_safety.sql','002_history_and_conflicts.sql','003_year_rollover.sql','004_line_decisions.sql','005_sync_outbox.sql','006_employee_submission.sql','007_sheet_employee_links.sql'])await db.exec(sql(file));
   return db;
 }
 const requestRevision=async(db,id)=>(await db.query('SELECT md5(to_jsonb(r)::text) revision FROM leave_requests r WHERE id=$1',[id])).rows[0]?.revision;
@@ -217,5 +217,29 @@ test('employee half-day submission retains period and rolls back both queues on 
  const action=jobs[0].payload.messages[0].contents.footer.contents[0].action.data;
  assert.match(action,/revision=[a-f0-9]{32}/);assert.match(action,/token=/);assert.ok(action.length<300);
  assert.equal((await db.query("SELECT year FROM tbs_sync_jobs WHERE kind='sheet'")).rows[0].year,2027);
+ }finally{await db.close();}
+});
+
+test('failed sheet jobs do not block other employees and older acknowledgments preserve newer changes',async()=>{
+ const db=await fixture();try{
+  await db.exec("SELECT tbs_queue_sheet('test',2026); SELECT tbs_queue_sheet('other',2026);");
+  const job=(await db.query("SELECT * FROM tbs_claim_sync('sheet')")).rows[0];
+  await db.query('SELECT tbs_finish_sync($1,$2,$3,$4)',[job.id,job.lease_token,job.generation,'Unmapped employee']);
+  const other=(await db.query("SELECT * FROM tbs_claim_sync('sheet')")).rows[0];
+  assert.ok(other);assert.notEqual(other.user_id,job.user_id);
+  await db.query('SELECT tbs_queue_sheet($1,2026)',[other.user_id]);
+  assert.equal((await db.query('SELECT tbs_finish_sync($1,gen_random_uuid(),$2,NULL) ok',[other.id,other.generation])).rows[0].ok,false);
+  await db.query('SELECT tbs_finish_sync($1,$2,$3,NULL)',[other.id,other.lease_token,other.generation]);
+  const newest=(await db.query("SELECT * FROM tbs_claim_sync('sheet')")).rows[0];
+  assert.equal(newest.id,other.id);assert.equal(Number(newest.generation),Number(other.generation)+1);
+ }finally{await db.close();}
+});
+
+test('sheet snapshot carries verified destination and explicit reconciliation policy',async()=>{
+ const db=await fixture();try{
+  await db.exec("INSERT INTO tbs_sheet_employee_links(user_id,year,header,sheet_name,evidence,database_authoritative) VALUES('test',2026,'Name: TEST','TEST TAB','Fixture',true); SELECT tbs_queue_sheet('test',2026);");
+  const {snapshot}=(await db.query(sql('sync-sheet-snapshot.sql'))).rows[0];
+  assert.equal(snapshot.requireVerifiedLink,true);assert.equal(snapshot.sheetName,'TEST TAB');assert.equal(snapshot.sheetHeader,'Name: TEST');assert.equal(snapshot.databaseAuthoritative,true);
+  assert.deepEqual(snapshot.entries,[]);
  }finally{await db.close();}
 });

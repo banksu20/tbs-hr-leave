@@ -58,7 +58,7 @@ DECLARE job tbs_sync_jobs%ROWTYPE;
 BEGIN
  -- One worker per channel. Prevent an expired old sheet snapshot overtaking a newer snapshot.
  PERFORM pg_advisory_xact_lock(hashtext('tbs_sync_'||channel));
- IF EXISTS(SELECT 1 FROM tbs_sync_jobs WHERE kind=channel AND lease_until>now()) THEN RETURN; END IF;
+ IF EXISTS(SELECT 1 FROM tbs_sync_jobs WHERE kind=channel AND lease_token IS NOT NULL AND lease_until>now()) THEN RETURN; END IF;
  UPDATE tbs_sync_jobs SET blocked=true,last_error='Delivery outcome needs review: retry window expired'
  WHERE kind='line' AND completed_generation<generation AND first_attempt_at<now()-interval '23 hours';
  SELECT * INTO job FROM tbs_sync_jobs WHERE kind=channel AND completed_generation<generation AND NOT blocked
