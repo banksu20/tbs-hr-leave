@@ -1,3 +1,4 @@
+import CancellationRequests from "./CancellationRequests";
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -19,7 +20,7 @@ export default function PendingRequests({employees,ready}: {employees: Employee[
       if(seen.has(key))return false;seen.add(key);return true;
     }).map(leave=>({employee,leave}));
   }).sort((a,b)=>a.leave.date.localeCompare(b.leave.date));
-  return <section className="bg-white border rounded-xl p-4 space-y-4">
+  return <><CancellationRequests /><section className="bg-white border rounded-xl p-4 space-y-4">
     <h2 className="font-bold text-lg">Pending requests ({requests.length})</h2>
     <p className="text-sm text-slate-500">Shows requests in the selected year, department and search. Approve or reject the entire request, including dates in another year.</p>
     {!ready&&<p role="alert" className="text-amber-800">Refresh live data before deciding on requests.</p>}
@@ -38,5 +39,5 @@ export default function PendingRequests({employees,ready}: {employees: Employee[
         if(window.confirm(`${action==='approve'?'Approve':'Reject'} ${employee.name}'s entire ${leave.type} request for ${(leave.requestDates??[leave.date]).join(', ')}?${action==='reject'?' Rejected leave will not use their allowance.':''}`))approve.mutate({id:leave.requestId,revision:leave.requestRevision,action,reason:reasons[leave.requestId??leave.id]});
       }}>{approve.isPending&&approve.variables?.id===leave.requestId&&approve.variables.action===action?'Saving…':action==='approve'?'Approve request':'Reject request'}</Button>)}</div>
     </article>)}
-  </section>;
+  </section></>;
 }

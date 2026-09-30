@@ -1,3 +1,4 @@
+import EmployeeCancellations from "./EmployeeCancellations";
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import liff from "@line/liff";
@@ -24,11 +25,12 @@ const Dashboard = () => {
   
   const [userDept, setUserDept] = useState<string>(""); 
   
+  const [historyVersion,setHistoryVersion]=useState(0);
   const [countItems, setCountItems] = useState(5);
 
   const { t } = useLanguage();
 
-  const { remainingDays, sickRemaining, annualTotal, sickTaken, sickTotal, personalRemaining, personalTotal, personalTaken, isLoading: isQuotaLoading } = useLeaveQuota(userId);
+  const { remainingDays, sickRemaining, annualTotal, sickTaken, sickTotal, personalRemaining, personalTotal, personalTaken, isLoading: isQuotaLoading, refetch: refreshQuota } = useLeaveQuota(userId);
 
   const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefugeeroute.org";
 
@@ -75,7 +77,7 @@ const Dashboard = () => {
         })
         .catch(() => setIsHistoryLoading(false));
     }
-  }, [userId]);
+  }, [userId,historyVersion]);
 
   const fetchRegisteredName = async (id: string) => {
   try {
@@ -294,6 +296,7 @@ const Dashboard = () => {
         </Dialog>
       </div>
 
+      <EmployeeCancellations userId={userId} onChanged={()=>{refreshQuota();setHistoryVersion(v=>v+1);}} />
       {/* History Section */}
       <div className="px-4 mt-8 pb-10 flex-1">
         <div className="flex items-center justify-between mb-4 px-1">
