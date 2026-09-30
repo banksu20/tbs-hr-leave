@@ -1,12 +1,18 @@
 import {useEffect,useState} from 'react';
 import liff from '@line/liff';
+import {RefreshCw, CalendarDays, CalendarX2, Clock3} from 'lucide-react';
+import {useLanguage} from '@/hooks/useLanguage';
 import {Button} from '@/components/ui/button';
 interface Leave {id:number;status:string;type:string;days:number;period:string|null;dates:string[];revision:string;cancellation:null|{status:string;dates:string[];decision_reason:string|null};}
 export default function EmployeeCancellations({userId,onChanged}:{userId:string|null;onChanged:()=>void}) {
  const [rows,setRows]=useState<Leave[]>([]),[error,setError]=useState(''),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false);
  const [visible,setVisible]=useState(5);
  const [selected,setSelected]=useState<Leave|null>(null),[dates,setDates]=useState<string[]>([]),[reason,setReason]=useState('');
- const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const {language}=useLanguage();
+ const th=language==='th';
+ const text=(en:string,thai:string)=>th?thai:en;
+ const formatDate=(date:string)=>new Date(date+'T12:00:00+07:00').toLocaleDateString(th?'th-TH':'en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Bangkok'});
+ const leaveName=(type:string)=>({annual:text('Annual leave','พักร้อน'),sick:text('Sick leave','ลาป่วย'),personal:text('Personal leave','ลากิจ')}[type]??type);
  async function call(body?:unknown) {
   const token=liff.getAccessToken(); if(!token)throw new Error('Please reopen this app in LINE and sign in.');
   const response=await fetch('/api/cancellations',{method:body?'POST':'GET',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
@@ -14,26 +20,26 @@ export default function EmployeeCancellations({userId,onChanged}:{userId:string|
  }
  async function refresh(){setLoading(true);setError('');try{const data=await call();setRows(data.requests);}catch(e){setError((e as Error).message);}finally{setLoading(false);}}
  useEffect(()=>{if(userId)void refresh();},[userId]);
- const relevant=rows.filter(row=>row.status==='Pending'||row.dates.some(d=>d>today)||row.cancellation?.status==='Pending');
- return <section className="mx-4 mt-6 rounded-2xl bg-white border p-4 space-y-3">
-  <div className="flex items-center justify-between"><h2 className="font-bold">Cancel leave / ยกเลิกวันลา</h2><Button variant="outline" size="sm" disabled={!userId||busy||loading} onClick={refresh}>Refresh</Button></div>
-  <p className="text-sm text-slate-600">Pending leave cancels immediately. Approved leave needs your boss’s approval; your leave and balance stay unchanged while waiting.</p>
-  <p className="text-xs text-slate-500">ลาที่ยังไม่อนุมัติยกเลิกได้ทันที • ลาที่อนุมัติแล้วต้องรอหัวหน้าอนุมัติการยกเลิก • วันลาวันนี้หรือย้อนหลังให้ติดต่อหัวหน้า</p>
-  {error&&<p role="alert" className="text-red-700">{error}</p>}
-  {loading?<p>Loading…</p>:!relevant.length&&!error?<p className="text-sm">No active leave requests.</p>:relevant.slice(0,visible).map(row=><article key={row.id} className="border rounded-xl p-3 space-y-2">
-   <div className="font-semibold">#{row.id} · {row.type} · {row.days} day(s) {row.period??''}</div><p className="text-sm">{row.dates.join(', ')} · {row.status}</p>
-   {row.cancellation&&<p className="text-sm text-amber-800">Cancellation: {row.cancellation.status}{row.cancellation.decision_reason?` — ${row.cancellation.decision_reason}`:''}</p>}
-   {row.cancellation?.status==='Pending'?<p className="text-sm">Waiting for your boss. Your leave is still approved.</p>:<Button size="sm" variant="outline" disabled={busy||row.status==='Approved'&&!row.dates.some(d=>d>today)} onClick={()=>{setSelected(row);setDates(row.dates.filter(d=>row.status==='Pending'||d>today));setReason('');}}>{row.status==='Pending'?'Cancel pending leave':'Request cancellation'}</Button>}
+ const relevant=rows;
+ return <section className="mx-4 mt-6 rounded-3xl bg-white border border-amber-200 p-4 space-y-3 shadow-sm">
+  <div className="flex items-center justify-between gap-2"><div className="flex items-center gap-3"><span className="rounded-2xl bg-amber-100 p-3 text-amber-600"><CalendarX2 className="h-6 w-6"/></span><h2 className="font-bold text-amber-900">{text('Cancel leave','ยกเลิกวันลา')}</h2></div><Button variant="ghost" size="icon" aria-label={text('Refresh requests','รีเฟรชรายการ')} disabled={!userId||busy||loading} onClick={refresh}><RefreshCw className={`h-4 w-4 text-slate-500 ${loading?'animate-spin':''}`}/></Button></div>
+  {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
+  {loading?<p className="text-sm text-slate-500">{text('Loading…','กำลังโหลด…')}</p>:!relevant.length&&!error?<p className="text-sm text-slate-500 py-2">{text('No leave to cancel','ไม่มีรายการลาที่สามารถยกเลิกได้')}</p>:relevant.slice(0,visible).map(row=><article key={row.id} className="rounded-2xl bg-amber-50/60 border border-amber-100 p-3 space-y-3">
+   <div className="flex items-start justify-between gap-2"><div className="font-semibold text-sm">{leaveName(row.type)}<span className="block text-xs font-normal text-slate-500 mt-1">{row.days} {text('day(s)','วัน')}{row.period?` · ${row.period==='morning'?text('Morning','ช่วงเช้า'):text('Afternoon','ช่วงบ่าย')}`:''}</span></div><span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${row.status==='Approved'?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}`}>{row.status==='Approved'?text('Approved','อนุมัติแล้ว'):text('Pending','รออนุมัติ')}</span></div>
+   <p className="text-sm text-slate-600 flex items-start gap-2"><CalendarDays className="h-4 w-4 mt-0.5 shrink-0"/><span>{row.dates.map(formatDate).join(', ')}</span></p>
+   {row.cancellation?.status==='Rejected'&&<p className="text-xs text-rose-700">{text('Cancellation declined','ไม่อนุมัติการยกเลิก')}{row.cancellation.decision_reason?` — ${row.cancellation.decision_reason}`:''}</p>}
+   {row.cancellation?.status==='Expired'&&<p className="text-xs text-amber-800">{text('Leave changed. Please send a new request.','รายการลาเปลี่ยนแปลง กรุณาส่งคำขอใหม่')}</p>}
+   {row.cancellation?.status==='Pending'?<div className="flex gap-2 items-center rounded-lg bg-amber-50 p-2 text-xs text-amber-800"><Clock3 className="h-4 w-4 shrink-0"/>{text('Cancellation awaiting approval','กำลังรออนุมัติการยกเลิก')}</div>:<Button className="w-full rounded-full bg-amber-400 text-amber-950 hover:bg-amber-500 font-bold border-0" size="sm" disabled={busy} onClick={()=>{setSelected(row);setDates([...row.dates]);setReason('');setError('');}}>{row.status==='Pending'?text('Cancel leave','ยกเลิกวันลา'):text('Request cancellation','ขอยกเลิกวันลา')}</Button>}
   </article>)}
-  {relevant.length>visible&&<Button variant="outline" onClick={()=>setVisible(n=>n+5)}>Show more requests</Button>}
+  {relevant.length>visible&&<Button variant="ghost" className="w-full" onClick={()=>setVisible(n=>n+5)}>{text('Show more','ดูเพิ่มเติม')}</Button>}
   {selected&&<div role="dialog" aria-modal="true" aria-label="Choose leave dates to cancel" className="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4"><div className="bg-white rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-auto space-y-4">
-   <h3 className="font-bold">{selected.status==='Pending'?'Cancel pending leave':'Request cancellation'} #{selected.id}</h3>
-   <p className="text-sm">Select the dates to cancel. Other dates will stay unchanged.</p>
-   {selected.dates.map(date=><label key={date} className="flex gap-2"><input type="checkbox" disabled={busy||selected.status==='Approved'&&date<=today} checked={dates.includes(date)} onChange={e=>setDates(current=>e.target.checked?[...current,date]:current.filter(d=>d!==date))}/>{date}</label>)}
-   <label className="block text-sm">Reason (optional)<textarea value={reason} disabled={busy} onChange={e=>setReason(e.target.value)} maxLength={1000} className="block border rounded p-2 w-full"/></label>
-   <p className="text-sm">{selected.status==='Approved'?'Your leave remains approved until your boss approves this cancellation.':'These selected dates will be cancelled immediately.'}</p>
+   <h3 className="font-bold">{selected.status==='Pending'?text('Cancel leave','ยกเลิกวันลา'):text('Request cancellation','ขอยกเลิกวันลา')}</h3>
+   <p className="text-sm">{text('Choose dates to cancel','เลือกวันที่ต้องการยกเลิก')}</p>
+   {selected.dates.map(date=><label key={date} className="flex gap-2"><input type="checkbox" disabled={busy} checked={dates.includes(date)} onChange={e=>setDates(current=>e.target.checked?[...current,date]:current.filter(d=>d!==date))}/>{formatDate(date)}</label>)}
+   <label className="block text-sm">{text('Reason (optional)','เหตุผล (ไม่บังคับ)')}<textarea value={reason} disabled={busy} onChange={e=>setReason(e.target.value)} maxLength={1000} className="block border rounded p-2 w-full"/></label>
+   <p className="text-sm">{selected.status==='Approved'?text('Leave stays approved until your boss agrees.','วันลายังคงเดิมจนกว่าหัวหน้าจะอนุมัติ'):text('Selected dates will be cancelled immediately.','วันที่เลือกจะถูกยกเลิกทันที')}</p>
    {error&&<p role="alert" className="text-red-700">{error}</p>}
-   <div className="flex gap-2"><Button variant="outline" disabled={busy} onClick={()=>setSelected(null)}>Back</Button><Button disabled={busy||!dates.length} onClick={async()=>{setBusy(true);setError('');try{await call({id:selected.id,revision:selected.revision,dates,reason});setSelected(null);await refresh();onChanged();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}>{busy?'Saving…':selected.status==='Approved'?'Send to boss':'Confirm cancellation'}</Button></div>
+   <div className="flex gap-2"><Button variant="outline" disabled={busy} onClick={()=>setSelected(null)}>{text('Back','กลับ')}</Button><Button className="bg-amber-400 text-amber-950 hover:bg-amber-500 rounded-full" disabled={busy||!dates.length} onClick={async()=>{setBusy(true);setError('');try{await call({id:selected.id,revision:selected.revision,dates,reason});setSelected(null);await refresh();onChanged();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}>{busy?text('Saving…','กำลังบันทึก…'):selected.status==='Approved'?text('Send to boss','ส่งคำขอ'):text('Confirm cancellation','ยืนยันยกเลิก')}</Button></div>
   </div></div>}
  </section>;
 }

@@ -71,8 +71,6 @@ BEGIN
  END IF;
  RETURN result;
  END IF;
- IF dates[1] <= (now() AT TIME ZONE 'Asia/Bangkok')::date THEN
- RETURN jsonb_build_object('ok',false,'statusCode',422,'error','Ask your boss to cancel leave for today or earlier.'); END IF;
  IF EXISTS(SELECT 1 FROM tbs_cancellation_requests WHERE request_id=r.id AND status='Pending') THEN
  RETURN jsonb_build_object('ok',false,'statusCode',409,'error','A cancellation is already waiting for your boss.'); END IF;
  INSERT INTO tbs_cancellation_requests(request_id,user_id,account_user_id,dates,request_revision,reason)

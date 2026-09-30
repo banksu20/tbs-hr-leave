@@ -2,7 +2,7 @@
 
 ### Employee cancellation approvals
 
-Employees open **Cancel leave / ยกเลิกวันลา** in their LINE employee dashboard and choose the dates. Pending leave cancels immediately. Approved future leave creates a separate cancellation request: the original leave, quota usage and Calendar projection do not change while it is pending. Today/past approved leave still requires direct administrator handling.
+Employees open **Cancel leave / ยกเลิกวันลา** in their LINE employee dashboard and choose the dates. Pending leave cancels immediately. Approved leave (including today and past dates) creates a separate cancellation request: the original leave, quota usage and Calendar projection do not change while it is pending.
 
 The boss reviews these in **CEO → More → Pending requests → Cancellation requests**. Approving removes only the selected dates; rejecting preserves the leave. Changes to the underlying request expire an outstanding cancellation rather than applying a decision to different details. Decisions and submissions are recorded in change history. Existing Sheet/Calendar workers see changes only after actual cancellation. Calendar edits follow the existing managed-event rules; manually created events are not removed.
 

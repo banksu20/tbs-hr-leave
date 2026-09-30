@@ -34,7 +34,7 @@ test('pending cancels selected dates immediately; complete cancellation is audit
  assert.equal((await request(partial,['2099-11-02'])).ok,true);assert.equal((await snapshot(2)).status,'Rejected');
  assert.equal((await db.query("SELECT count(*)::int n FROM tbs_change_history WHERE entity='employee_cancellation' AND record_id='2'")).rows[0].n,2);
 });
-test('ownership, stale snapshots, invalid dates and approved past dates fail closed',async()=>{
+test('ownership, stale snapshots, invalid dates fail closed; past approved leave still needs boss approval',async()=>{
  const r=await create(3,'Approved',2,'2099-12-01,2099-12-02');
  assert.equal((await request(r,['2099-12-01'],'other')).statusCode,404);
  for(const dates of [[],['2099-12-03'],['2099-12-01','2099-12-01'],['2099-02-30']])assert.equal((await request(r,dates)).ok,false);
@@ -42,7 +42,7 @@ test('ownership, stale snapshots, invalid dates and approved past dates fail clo
  assert.equal((await call('approve',{id:c.id})).statusCode,409);
  assert.equal((await db.query('SELECT status FROM tbs_cancellation_requests WHERE id=$1',[c.id])).rows[0].status,'Expired');
  assert.equal((await request(r,['2099-12-02'])).statusCode,409);
- const past=await create(4,'Approved',2,'2020-01-01,2020-01-02');assert.equal((await request(past,['2020-01-01'])).statusCode,422);
+ const past=await create(4,'Approved',2,'2020-01-01,2020-01-02');const pastCancellation=await request(past,['2020-01-01']);assert.equal(pastCancellation.status,'Pending');assert.deepEqual(await snapshot(4),past);assert.equal((await call('approve',{id:pastCancellation.id})).ok,true);assert.equal((await snapshot(4)).selected_dates,'2020-01-02');
 });
 test('full approval cancels original leave and queues existing sheet and LINE sync',async()=>{
  const r=await create(5,'Approved',2,'2099-09-01,2099-09-02');const c=await request(r,['2099-09-01','2099-09-02']);
