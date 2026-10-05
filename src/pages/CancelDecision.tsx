@@ -1,3 +1,4 @@
+import {leaveTypeLabel} from '@/lib/leaveTypeLabel';
 import {useEffect,useState} from 'react';
 import liff from '@line/liff';
 import {Button} from '@/components/ui/button';
@@ -19,7 +20,7 @@ export default function CancelDecision(){
  <h1 className="font-bold text-xl text-amber-900">{text('Leave cancellation','คำขอยกเลิกวันลา')}</h1>
  {error&&<div role="alert"><p className="text-red-700">{error}</p><Button variant="outline" disabled={busy} onClick={()=>setAttempt(n=>n+1)}>{text('Refresh status and retry','ตรวจสอบสถานะและลองอีกครั้ง')}</Button></div>}
  {done?<><p className="text-emerald-800 font-semibold">{link?.action==='approve'?text('Cancellation approved.','อนุมัติการยกเลิกแล้ว'):text('Cancellation rejected. Original leave stays approved.','ไม่อนุมัติการยกเลิก วันลายังคงเดิม')}</p><Button variant="outline" onClick={()=>liff.isInClient()?liff.closeWindow():window.location.assign('/ceo')}>{text('Close','ปิด')}</Button></>:request&&link?<>
- <h2 className="font-semibold">{request.name}</h2><p>{request.type} · {request.days} {text('day(s)','วัน')} {request.period??''}</p><p>{request.dates.join(', ')}</p>{request.reason&&<p className="text-sm whitespace-pre-wrap">{request.reason}</p>}
+ <h2 className="font-semibold">{request.name}</h2><p>{leaveTypeLabel(request.type,language)} · {request.days} {text('day(s)','วัน')} {request.period??''}</p><p>{request.dates.join(', ')}</p>{request.reason&&<p className="text-sm whitespace-pre-wrap">{request.reason}</p>}
  <p className="rounded-xl bg-amber-50 p-3 text-sm">{link.action==='approve'?text('Cancel only these dates and restore the leave balance?','ยกเลิกเฉพาะวันที่แสดงและคืนยอดวันลาใช่ไหม?'):text('Reject cancellation and keep the original leave?','ปฏิเสธการยกเลิกและคงวันลาเดิมใช่ไหม?')}</p>
  <label className="block text-sm">{text('Note (optional)','หมายเหตุ (ไม่บังคับ)')}<textarea disabled={busy} className="border rounded-xl w-full mt-1 p-2" maxLength={1000} value={reason} onChange={e=>setReason(e.target.value)}/></label>
  <Button className="w-full rounded-full bg-amber-400 text-amber-950 hover:bg-amber-500" disabled={busy||!!error} onClick={async()=>{setBusy(true);try{await call('/api/cancellations?view=line',{...link,reason});setDone(true);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}>{busy?text('Saving…','กำลังบันทึก…'):link.action==='approve'?text('Confirm cancellation','ยืนยันอนุมัติการยกเลิก'):text('Reject cancellation','ไม่อนุมัติการยกเลิก')}</Button>

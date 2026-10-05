@@ -18,12 +18,25 @@ test('CEO retries by rechecking the saved state without automatically repeating 
 });
 test('employee history keeps newest date on top while offering cancellation on latest eligible entry',async()=>{
  const oldFetch=global.fetch;let view;
- global.fetch=async()=>new Response(JSON.stringify({requests:[{id:2,status:'Rejected',type:'annual',days:1,dates:['2099-12-02'],cancellation:null},{id:1,status:'Approved',type:'annual',days:1,dates:['2099-12-01'],cancellation:null},{id:3,status:'Approved',type:'annual',days:1,dates:['2020-01-01'],cancellation:null}]}));
+ global.fetch=async()=>new Response(JSON.stringify({requests:[{id:2,status:'Rejected',type:' Vacation ',days:1,dates:['2099-12-02'],cancellation:null},{id:1,status:'Approved',type:'annual',days:1,dates:['2099-12-01'],cancellation:null},{id:3,status:'Approved',type:'annual',days:1,dates:['2020-01-01'],cancellation:null}]}));
  const Component=loadTS(stubs)('src/components/EmployeeCancellations.tsx').default;
  try{
  await act(async()=>{view=renderer.create(React.createElement(Component,{userId:'test',onChanged(){}}));});
  assert.equal(view.root.findAllByType('article').length,1);
- await act(async()=>view.root.findAllByType('button').find(b=>b.props.children==='Show one more').props.onClick());
- const articles=view.root.findAllByType('article');assert.equal(articles[0].findAllByType('button').length,0);assert.equal(articles[1].findAllByType('button').length,1);
+ assert.match(JSON.stringify(view.toJSON()),/Annual Leave/);
+ assert.doesNotMatch(JSON.stringify(view.toJSON()),/Vacation/);
+ await act(async()=>view.root.findAllByType('button').find(b=>b.props.children==='Show more').props.onClick());
+ const articles=view.root.findAllByType('article');assert.equal(articles.length,3);assert.equal(articles[0].findAllByType('button').length,0);assert.equal(articles[1].findAllByType('button').length,1);assert.equal(articles[2].findAllByType('button').length,0);
+ await act(async()=>view.root.findAllByType('button').find(b=>b.props.children==='Show less').props.onClick());
+ assert.equal(view.root.findAllByType('article').length,1);
  }finally{view?.unmount();global.fetch=oldFetch;}
+});
+
+test('leave labels map legacy and Thai values to the three standard types',()=>{
+ const {leaveTypeLabel}=loadTS()('src/lib/leaveTypeLabel.ts');
+ for(const value of ['vacation',' Vacation Leave ','annual','ลาพักร้อน']) assert.equal(leaveTypeLabel(value),'Annual Leave');
+ for(const value of ['business','personal leave','ลากิจ']) assert.equal(leaveTypeLabel(value),'Personal Leave');
+ for(const value of ['SICK','sick leave','ลาป่วย']) assert.equal(leaveTypeLabel(value),'Sick Leave');
+ assert.equal(leaveTypeLabel('vacation','th'),'พักร้อน');
+ assert.equal(leaveTypeLabel('unexpected'),'Unknown leave type');
 });
