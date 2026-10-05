@@ -1,0 +1,913 @@
+[
+  {
+    "scenario": "New leave request for approval",
+    "recipient": "Configured approvers (including CEO)",
+    "type": "flex",
+    "altText": "New leave request: Demo Employee",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [
+          {
+            "text": "NEW LEAVE REQUEST",
+            "type": "text",
+            "color": "#009944",
+            "weight": "bold"
+          },
+          {
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "text": "15 Oct 2026, 16 Oct 2026",
+            "type": "text",
+            "wrap": true
+          },
+          {
+            "text": "annual · 2 day(s)",
+            "type": "text",
+            "wrap": true
+          },
+          {
+            "text": "No reason supplied",
+            "type": "text",
+            "wrap": true
+          }
+        ]
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "type": "button",
+            "style": "primary",
+            "action": {
+              "type": "uri",
+              "label": "Approve",
+              "uri": "https://example.invalid/preview-only"
+            }
+          },
+          {
+            "type": "button",
+            "style": "secondary",
+            "action": {
+              "type": "uri",
+              "label": "Reject",
+              "uri": "https://example.invalid/preview-only"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "scenario": "Leave approved",
+    "recipient": "Employee",
+    "type": "flex",
+    "altText": "อนุมัติแล้ว / Approved · Demo Employee · #1081",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "size": "xl",
+            "text": "อนุมัติแล้ว / Approved",
+            "type": "text",
+            "wrap": true,
+            "color": "#16A34A",
+            "weight": "bold"
+          },
+          {
+            "size": "md",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "Leave result / ผลการลา · #1081",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "วันที่ / Dates",
+                "type": "text",
+                "color": "#64748B"
+              },
+              {
+                "text": "15 Oct 2026, 16 Oct 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#16A34A",
+                "weight": "bold"
+              },
+              {
+                "text": "Annual / ลาพักร้อน",
+                "type": "text",
+                "wrap": true,
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "2 day(s) / วัน",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "lg",
+            "cornerRadius": "md",
+            "backgroundColor": "#F0FDF4"
+          }
+        ]
+      },
+      "type": "bubble"
+    }
+  },
+  {
+    "scenario": "Leave rejected",
+    "recipient": "Employee",
+    "type": "flex",
+    "altText": "ไม่อนุมัติ / Leave rejected · Demo Employee · #1081",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "size": "xl",
+            "text": "ไม่อนุมัติ / Leave rejected",
+            "type": "text",
+            "wrap": true,
+            "color": "#DC2626",
+            "weight": "bold"
+          },
+          {
+            "size": "md",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "Leave result / ผลการลา · #1081",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "วันที่ / Dates",
+                "type": "text",
+                "color": "#64748B"
+              },
+              {
+                "text": "15 Oct 2026, 16 Oct 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#DC2626",
+                "weight": "bold"
+              },
+              {
+                "text": "Annual / ลาพักร้อน",
+                "type": "text",
+                "wrap": true,
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "2 day(s) / วัน",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "lg",
+            "cornerRadius": "md",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "เหตุผล / Reason: Please choose different dates.",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          }
+        ]
+      },
+      "type": "bubble"
+    }
+  },
+  {
+    "scenario": "Leave cancelled by dashboard",
+    "recipient": "Employee",
+    "type": "flex",
+    "altText": "ยกเลิกวันลาแล้ว / Leave cancelled · Demo Employee · #1081",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "size": "xl",
+            "text": "ยกเลิกวันลาแล้ว / Leave cancelled",
+            "type": "text",
+            "wrap": true,
+            "color": "#DC2626",
+            "weight": "bold"
+          },
+          {
+            "size": "md",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "Leave result / ผลการลา · #1081",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "วันที่ / Dates",
+                "type": "text",
+                "color": "#64748B"
+              },
+              {
+                "text": "15 Oct 2026, 16 Oct 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#DC2626",
+                "weight": "bold"
+              },
+              {
+                "text": "Annual / ลาพักร้อน",
+                "type": "text",
+                "wrap": true,
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "2 day(s) / วัน",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "lg",
+            "cornerRadius": "md",
+            "backgroundColor": "#FEF2F2"
+          }
+        ]
+      },
+      "type": "bubble"
+    }
+  },
+  {
+    "scenario": "Pending leave cancelled immediately",
+    "recipient": "Employee",
+    "type": "flex",
+    "altText": "ยกเลิกคำขอแล้ว / Request cancelled · #1081",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "size": "xl",
+            "text": "ยกเลิกคำขอแล้ว / Request cancelled",
+            "type": "text",
+            "wrap": true,
+            "color": "#16A34A",
+            "weight": "bold"
+          },
+          {
+            "size": "md",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "Cancellation / การยกเลิก · #1081",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "วันที่ / Dates",
+                "type": "text",
+                "color": "#64748B"
+              },
+              {
+                "text": "15 Oct 2026, 16 Oct 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#16A34A",
+                "weight": "bold"
+              },
+              {
+                "text": "Annual / ลาพักร้อน",
+                "type": "text",
+                "wrap": true,
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "2 day(s) / วัน",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "lg",
+            "cornerRadius": "md",
+            "backgroundColor": "#F0FDF4"
+          },
+          {
+            "size": "sm",
+            "text": "The selected pending dates were cancelled. No boss approval was needed. / ยกเลิกวันที่เลือกแล้ว ไม่ต้องรอหัวหน้า",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          }
+        ]
+      },
+      "type": "bubble"
+    }
+  },
+  {
+    "scenario": "Cancellation request received",
+    "recipient": "Employee",
+    "type": "flex",
+    "altText": "รออนุมัติยกเลิก / Cancellation requested · #1081",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "size": "xl",
+            "text": "รออนุมัติยกเลิก / Cancellation requested",
+            "type": "text",
+            "wrap": true,
+            "color": "#B7791F",
+            "weight": "bold"
+          },
+          {
+            "size": "md",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "Cancellation / การยกเลิก · #1081",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "วันที่ / Dates",
+                "type": "text",
+                "color": "#64748B"
+              },
+              {
+                "text": "15 Oct 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#B7791F",
+                "weight": "bold"
+              },
+              {
+                "text": "Annual / ลาพักร้อน",
+                "type": "text",
+                "wrap": true,
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "1 day(s) / วัน",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "lg",
+            "cornerRadius": "md",
+            "backgroundColor": "#FFFBEB"
+          },
+          {
+            "size": "sm",
+            "text": "Leave and balance stay unchanged until your boss approves. / วันลาและยอดคงเหลือยังไม่เปลี่ยน",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "sm",
+            "text": "เหตุผล / Note: Personal plans changed.",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          }
+        ]
+      },
+      "type": "bubble"
+    }
+  },
+  {
+    "scenario": "Full cancellation approved",
+    "recipient": "Employee",
+    "type": "flex",
+    "altText": "ยกเลิกวันลาแล้ว / Cancellation approved · #1081",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "size": "xl",
+            "text": "ยกเลิกวันลาแล้ว / Cancellation approved",
+            "type": "text",
+            "wrap": true,
+            "color": "#16A34A",
+            "weight": "bold"
+          },
+          {
+            "size": "md",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "Cancellation / การยกเลิก · #1081",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "วันที่ / Dates",
+                "type": "text",
+                "color": "#64748B"
+              },
+              {
+                "text": "15 Oct 2026, 16 Oct 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#16A34A",
+                "weight": "bold"
+              },
+              {
+                "text": "Annual / ลาพักร้อน",
+                "type": "text",
+                "wrap": true,
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "2 day(s) / วัน",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "lg",
+            "cornerRadius": "md",
+            "backgroundColor": "#F0FDF4"
+          },
+          {
+            "size": "sm",
+            "text": "2 day(s) restored / คืนสิทธิ์วันลา. All dates in this request were cancelled. / ยกเลิกครบทุกวันในคำขอนี้",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "sm",
+            "text": "เหตุผล / Note: Approved.",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          }
+        ]
+      },
+      "type": "bubble"
+    }
+  },
+  {
+    "scenario": "Partial cancellation approved",
+    "recipient": "Employee",
+    "type": "flex",
+    "altText": "ยกเลิกบางวันแล้ว / Partial cancellation approved · #1081",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "size": "xl",
+            "text": "ยกเลิกบางวันแล้ว / Partial cancellation approved",
+            "type": "text",
+            "wrap": true,
+            "color": "#16A34A",
+            "weight": "bold"
+          },
+          {
+            "size": "md",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "Cancellation / การยกเลิก · #1081",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "วันที่ / Dates",
+                "type": "text",
+                "color": "#64748B"
+              },
+              {
+                "text": "15 Oct 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#16A34A",
+                "weight": "bold"
+              },
+              {
+                "text": "Annual / ลาพักร้อน",
+                "type": "text",
+                "wrap": true,
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "1 day(s) / วัน",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "lg",
+            "cornerRadius": "md",
+            "backgroundColor": "#F0FDF4"
+          },
+          {
+            "size": "sm",
+            "text": "1 day(s) restored / คืนสิทธิ์วันลา. Still approved / วันที่ยังอนุมัติ: 16 Oct 2026",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "sm",
+            "text": "เหตุผล / Note: Approved.",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          }
+        ]
+      },
+      "type": "bubble"
+    }
+  },
+  {
+    "scenario": "Cancellation declined",
+    "recipient": "Employee",
+    "type": "flex",
+    "altText": "ไม่อนุมัติการยกเลิก / Cancellation declined · #1081",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "size": "xl",
+            "text": "ไม่อนุมัติการยกเลิก / Cancellation declined",
+            "type": "text",
+            "wrap": true,
+            "color": "#DC2626",
+            "weight": "bold"
+          },
+          {
+            "size": "md",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "Cancellation / การยกเลิก · #1081",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "วันที่ / Dates",
+                "type": "text",
+                "color": "#64748B"
+              },
+              {
+                "text": "15 Oct 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#DC2626",
+                "weight": "bold"
+              },
+              {
+                "text": "Annual / ลาพักร้อน",
+                "type": "text",
+                "wrap": true,
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "1 day(s) / วัน",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "lg",
+            "cornerRadius": "md",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "Your original leave remains approved. / วันลาเดิมยังอนุมัติอยู่",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "sm",
+            "text": "เหตุผล / Note: Please keep the original leave.",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          }
+        ]
+      },
+      "type": "bubble"
+    }
+  },
+  {
+    "scenario": "Cancellation expired",
+    "recipient": "Employee + previously notified CEO",
+    "type": "flex",
+    "altText": "คำขอยกเลิกหมดอายุ / Cancellation expired · #1081",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "size": "xl",
+            "text": "คำขอยกเลิกหมดอายุ / Cancellation expired",
+            "type": "text",
+            "wrap": true,
+            "color": "#DC2626",
+            "weight": "bold"
+          },
+          {
+            "size": "md",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "Cancellation / การยกเลิก · #1081",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "separator"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "วันที่ / Dates",
+                "type": "text",
+                "color": "#64748B"
+              },
+              {
+                "text": "15 Oct 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#DC2626",
+                "weight": "bold"
+              },
+              {
+                "text": "Annual / ลาพักร้อน",
+                "type": "text",
+                "wrap": true,
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "1 day(s) / วัน",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "lg",
+            "cornerRadius": "md",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "Leave details changed. Review your history before requesting again. / รายละเอียดวันลาเปลี่ยน กรุณาตรวจสอบประวัติ",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "sm",
+            "text": "เหตุผล / Note: Leave details changed.",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          }
+        ]
+      },
+      "type": "bubble"
+    }
+  },
+  {
+    "scenario": "Boss receives cancellation request",
+    "recipient": "CEO",
+    "type": "flex",
+    "altText": "Leave cancellation request #1",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "text": "CANCEL LEAVE / ขอยกเลิกลา",
+            "type": "text",
+            "wrap": true,
+            "color": "#B7791F",
+            "weight": "bold"
+          },
+          {
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "text": "15 Oct 2026",
+            "type": "text",
+            "wrap": true
+          },
+          {
+            "text": "annual · 1 day(s)",
+            "type": "text",
+            "wrap": true
+          },
+          {
+            "text": "Personal plans changed.",
+            "type": "text",
+            "wrap": true
+          },
+          {
+            "size": "sm",
+            "text": "Leave stays approved until cancellation is approved.",
+            "type": "text",
+            "wrap": true
+          }
+        ]
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "type": "button",
+            "color": "#B7791F",
+            "style": "primary",
+            "action": {
+              "uri": "https://example.invalid/preview-only",
+              "type": "uri",
+              "label": "Approve cancellation"
+            }
+          },
+          {
+            "type": "button",
+            "style": "secondary",
+            "action": {
+              "uri": "https://example.invalid/preview-only",
+              "type": "uri",
+              "label": "Reject cancellation"
+            }
+          }
+        ]
+      }
+    }
+  }
+]

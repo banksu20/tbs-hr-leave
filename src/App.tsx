@@ -11,6 +11,7 @@ import { Loader2 } from "lucide-react"; // ไอคอนโหลด
 import Index from "@/pages/Index";
 import LeaveRequest from "@/pages/LeaveRequest";
 import NotFound from "@/pages/NotFound";
+import CancelDecision from "@/pages/CancelDecision";
 import RejectForm from "@/pages/RejectForm";
 import ProfileSetup from "@/components/ProfileSetup"; 
 import CeoDashboard from "@/pages/CeoDashboard"; 
@@ -131,6 +132,7 @@ const App = () => {
 
         <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
           <Routes>
+            <Route path="/cancel-decision" element={<CancelDecision />} />
             <Route path="/reject-form" element={<RejectForm />} />
             <Route path="/ceo" element={<ErrorBoundary><CeoDashboard /></ErrorBoundary>} />
 

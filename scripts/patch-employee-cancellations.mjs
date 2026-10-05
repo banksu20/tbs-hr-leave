@@ -31,7 +31,7 @@ export function patchEmployeeCancellations(original) {
     ],
     "parameters": {
       "operation": "executeQuery",
-      "query": "SELECT tbs_cancellation($1::text,$2::jsonb) AS result;",
+      "query": "SELECT CASE WHEN $1::text='admin-delivery' THEN tbs_delivery_status() WHEN $1::text IN ('line-review','line-approve','line-reject') THEN tbs_line_cancellation($1::text,$2::jsonb) ELSE tbs_cancellation($1::text,$2::jsonb) END AS result;",
       "options": {
         "queryReplacement": "={{ [$json.body.operation, JSON.stringify($json.body.payload || {})] }}"
       }
@@ -66,4 +66,3 @@ export function patchEmployeeCancellations(original) {
  for(let i=0;i<2;i++)w.connections[nodes[i].name]={main:[[{node:nodes[i+1].name,type:'main',index:0}]]};
  return w;
 }
-
