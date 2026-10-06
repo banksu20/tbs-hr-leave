@@ -418,7 +418,7 @@ export default function CeoDashboard() {
             <label className="flex items-center gap-2 text-xs font-bold text-slate-300 shrink-0">
               Department
               <select aria-label="Department filter" value={selectedDept} onChange={e => setSelectedDept(e.target.value)} className="rounded-lg border border-slate-700 bg-slate-800 text-white px-3 py-2 max-w-[220px]">
-                {departments.map(dept => <option key={dept} value={dept}>{dept === "All" ? "All departments" : dept} ({dept === "All" ? activeEmployees.length : activeEmployees.filter(e => e.department === dept).length})</option>)}
+                {departments.map(dept => <option key={dept} value={dept}>{dept === "All" ? "All departments" : dept === "AI Engineering" ? "AI" : dept} ({dept === "All" ? activeEmployees.length : activeEmployees.filter(e => e.department === dept).length})</option>)}
               </select>
             </label>
 
