@@ -28,7 +28,9 @@ test('individual rollover edits survive filtering and failed validation; draft s
   assert.equal(view.root.findAllByType('form').length,2);
   const button=view.root.findAllByType('button').find(b=>b.props.children==='Save browser draft');await act(async()=>button.props.onClick({currentTarget:{form:{reportValidity:()=>true}}}));
   const saved=JSON.parse(stored.get('tbs_rollover_preview_v1_2026'));assert.equal(saved.overrides[0].note,'Exception agreed');assert.equal(calls.length,3);
-  await act(async()=>view.root.findByProps({'aria-label':'Sick allowance for Bob'}).props.onChange({target:{value:''}}));
+  assert.equal(view.root.findByProps({'aria-label':'Sick allowance for Bob'}).props.disabled,true);
+  assert.equal(view.root.findByProps({'aria-label':'Sick allowance for Bob'}).props.value,30);
+  await act(async()=>view.root.findByProps({'aria-label':'Annual allowance for Bob'}).props.onChange({target:{value:''}}));
   await act(async()=>view.root.findByProps({'aria-label':'Search rollover employees'}).props.onChange({target:{value:'Alice'}}));
   await act(async()=>view.root.findAllByType('form')[1].props.onSubmit({preventDefault(){}}));
   assert.equal(calls.length,3);assert.match(JSON.stringify(view.toJSON()),/valid allowances/);
@@ -52,7 +54,7 @@ test('rollover requires reviewed edits and confirmation before applying every vi
   assert.equal(applyButton().props.disabled,false);
   await act(async()=>applyButton().props.onClick());assert.equal(applied,undefined);assert.equal(switched,undefined);
   await act(async()=>view.root.findAllByType('button').find(b=>b.props.children==='Confirm rollover').props.onClick());
-  assert.deepEqual(switched,{year:2027,saved:1});assert.equal(applied.token,'checked');assert.equal(applied.p.overrides[0].annualTotal,15);assert.equal(applied.p.overrides[0].carriedOver,8);assert.equal(applied.p.overrides[0].sickTotal,null);
+  assert.deepEqual(switched,{year:2027,saved:1});assert.equal(applied.token,'checked');assert.equal(applied.p.overrides[0].annualTotal,15);assert.equal(applied.p.overrides[0].carriedOver,8);assert.equal(applied.p.overrides[0].sickTotal,30);
   assert.equal(view.root.findAllByType('table').length,0);assert.match(JSON.stringify(view.toJSON()),/Rollover complete/);
  }finally{view?.unmount();}
 });

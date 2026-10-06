@@ -11,6 +11,7 @@ import { Loader2 } from "lucide-react"; // ไอคอนโหลด
 import Index from "@/pages/Index";
 import LeaveRequest from "@/pages/LeaveRequest";
 import NotFound from "@/pages/NotFound";
+import SickAcknowledgement from "@/pages/SickAcknowledgement";
 import CancelDecision from "@/pages/CancelDecision";
 import RejectForm from "@/pages/RejectForm";
 import ProfileSetup from "@/components/ProfileSetup"; 
@@ -37,6 +38,8 @@ const App = () => {
   const { language, toggleLanguage } = useLanguage();
 
   useEffect(() => {
+    // Reminder links verify LINE identity on their own; they do not need Sheets/profile lookup.
+    if(window.location.pathname==='/sick-acknowledge'){setIsInitializing(false);return;}
     const initializeLiffAndCheckUser = async () => {
       try {
         await liff.init({ liffId: LIFF_ID });
@@ -132,6 +135,7 @@ const App = () => {
 
         <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
           <Routes>
+            <Route path="/sick-acknowledge" element={<SickAcknowledgement />} />
             <Route path="/cancel-decision" element={<CancelDecision />} />
             <Route path="/reject-form" element={<RejectForm />} />
             <Route path="/ceo" element={<ErrorBoundary><CeoDashboard /></ErrorBoundary>} />

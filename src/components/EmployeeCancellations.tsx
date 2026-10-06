@@ -1,3 +1,4 @@
+import {useNotificationLanguage} from '@/hooks/useNotificationLanguage';
 import {leaveTypeLabel} from '@/lib/leaveTypeLabel';
 import {useEffect,useState} from 'react';
 import liff from '@line/liff';
@@ -10,6 +11,7 @@ export default function EmployeeCancellations({userId,onChanged}:{userId:string|
  const [expanded,setExpanded]=useState(false);
  const [selected,setSelected]=useState<Leave|null>(null),[dates,setDates]=useState<string[]>([]),[reason,setReason]=useState('');
  const {language}=useLanguage();
+ useNotificationLanguage(userId);
  const th=language==='th';
  const text=(en:string,thai:string)=>th?thai:en;
  const formatDate=(date:string)=>new Date(date+'T12:00:00+07:00').toLocaleDateString(th?'th-TH':'en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Bangkok'});

@@ -290,7 +290,7 @@ export default function CeoDashboard() {
     setEditEmpDept(emp.department);
     setEditEmpStartDate(emp.startDate);
     setQuotaAnnual(emp.quotas.annualTotal);
-    setQuotaSick(emp.quotas.sickTotal);
+    setQuotaSick(Number(selectedYear)>=2026?30:emp.quotas.sickTotal);
     setQuotaPersonal(emp.quotas.personalTotal);
     setQuotaCarried(emp.storedCarriedOver??emp.quotas.carriedOver);
     setQuotaExpiry(emp.carryoverExpiresOn??"");
@@ -323,7 +323,7 @@ export default function CeoDashboard() {
         employee: editingEmp,
         patch: {
           annualTotal: quotaAnnual,
-          sickTotal: quotaSick,
+          sickTotal: Number(selectedYear)>=2026?30:quotaSick,
           personalTotal: quotaPersonal,
           carriedOver: quotaCarried,
           carryoverExpiresOn:quotaExpiry||null,
@@ -678,8 +678,8 @@ export default function CeoDashboard() {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-600">Sick Quota</label>
-                  <Input type="number" min="0" max="365" step="0.25" disabled={quotaSick===null} value={quotaSick??""} onChange={(e) => setQuotaSick(Number(e.target.value))} className="h-9 text-xs mt-1" />
-                  <label className="text-xs"><input type="checkbox" checked={quotaSick===null} onChange={e=>setQuotaSick(e.target.checked?null:0)}/> Unlimited</label>
+                  <Input type="number" min="0" max="365" step="0.25" disabled={Number(selectedYear)>=2026||quotaSick===null} value={Number(selectedYear)>=2026?30:quotaSick??""} onChange={(e) => setQuotaSick(Number(e.target.value))} className="h-9 text-xs mt-1" />
+                  <p className="text-xs text-slate-500">{Number(selectedYear)>=2026?"30 paid days · company policy":<label><input type="checkbox" checked={quotaSick===null} onChange={e=>setQuotaSick(e.target.checked?null:0)}/> Unlimited</label>}</p>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-600">Carried Over</label>

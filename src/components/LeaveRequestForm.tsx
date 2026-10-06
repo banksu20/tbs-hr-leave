@@ -1,3 +1,4 @@
+import {useNotificationLanguage} from '@/hooks/useNotificationLanguage';
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import liff from "@line/liff";
@@ -56,6 +57,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(userId || "");
 
+  useNotificationLanguage(currentUserId || null);
   const { remainingDays, isLoading: isQuotaLoading } = useLeaveQuota(currentUserId || null);
   const [error, setError] = useState<string | null>(null);
   const [isDepartmentLocked, setIsDepartmentLocked] = useState(false);

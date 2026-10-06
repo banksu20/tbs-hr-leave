@@ -1,0 +1,1346 @@
+[
+  {
+    "threshold": 5,
+    "audience": "Employee",
+    "language": "en",
+    "type": "flex",
+    "altText": "⚠ SICK LEAVE REMINDER: 5 days · 2026",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "⚠ SICK LEAVE REMINDER",
+                "type": "text",
+                "wrap": true,
+                "color": "#FFFFFF",
+                "weight": "bold"
+              }
+            ],
+            "paddingAll": "12px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#B91C1C"
+          },
+          {
+            "size": "lg",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "Approved sick leave",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "xxl",
+                "text": "5 days · 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#B91C1C",
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "Paid sick leave remaining: 25 / 30 days",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "16px",
+            "cornerRadius": "12px",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "Please take care of your health.",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "xs",
+            "text": "Approved leave through 06 Oct 2026",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          }
+        ],
+        "paddingAll": "20px"
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "size": "xs",
+            "text": "Daily reminder at 8:30 AM until acknowledged.",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "button",
+            "color": "#B91C1C",
+            "style": "primary",
+            "action": {
+              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
+              "type": "uri",
+              "label": "Acknowledge"
+            }
+          }
+        ],
+        "paddingAll": "20px"
+      }
+    }
+  },
+  {
+    "threshold": 5,
+    "audience": "Employee",
+    "language": "th",
+    "type": "flex",
+    "altText": "⚠ แจ้งเตือนยอดวันลาป่วย: 5 วัน · ปี 2026",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "⚠ แจ้งเตือนยอดวันลาป่วย",
+                "type": "text",
+                "wrap": true,
+                "color": "#FFFFFF",
+                "weight": "bold"
+              }
+            ],
+            "paddingAll": "12px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#B91C1C"
+          },
+          {
+            "size": "lg",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "วันลาป่วยที่อนุมัติ",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "xxl",
+                "text": "5 วัน · ปี 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#B91C1C",
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "สิทธิ์ลาป่วยแบบได้รับค่าจ้างคงเหลือ 25 / 30 วัน",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "16px",
+            "cornerRadius": "12px",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "โปรดดูแลสุขภาพและพักผ่อนให้เพียงพอ",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "xs",
+            "text": "นับวันลาที่อนุมัติถึง 06 Oct 2026",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          }
+        ],
+        "paddingAll": "20px"
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "size": "xs",
+            "text": "แจ้งเตือนทุกวันเวลา 08:30 จนกว่าจะกดรับทราบ",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "button",
+            "color": "#B91C1C",
+            "style": "primary",
+            "action": {
+              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
+              "type": "uri",
+              "label": "รับทราบ"
+            }
+          }
+        ],
+        "paddingAll": "20px"
+      }
+    }
+  },
+  {
+    "threshold": 10,
+    "audience": "Employee",
+    "language": "en",
+    "type": "flex",
+    "altText": "⚠ SICK LEAVE REVIEW: 10 days · 2026",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "⚠ SICK LEAVE REVIEW",
+                "type": "text",
+                "wrap": true,
+                "color": "#FFFFFF",
+                "weight": "bold"
+              }
+            ],
+            "paddingAll": "12px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#B91C1C"
+          },
+          {
+            "size": "lg",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "Approved sick leave",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "xxl",
+                "text": "10 days · 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#B91C1C",
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "Paid sick leave remaining: 20 / 30 days",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "16px",
+            "cornerRadius": "12px",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "Please take care of your health. If your symptoms continue, we recommend getting a health check-up.",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "xs",
+            "text": "Approved leave through 06 Oct 2026",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          }
+        ],
+        "paddingAll": "20px"
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "size": "xs",
+            "text": "Daily reminder at 8:30 AM until acknowledged.",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "button",
+            "color": "#B91C1C",
+            "style": "primary",
+            "action": {
+              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
+              "type": "uri",
+              "label": "Acknowledge"
+            }
+          }
+        ],
+        "paddingAll": "20px"
+      }
+    }
+  },
+  {
+    "threshold": 10,
+    "audience": "Employee",
+    "language": "th",
+    "type": "flex",
+    "altText": "⚠ แจ้งทบทวนยอดวันลาป่วย: 10 วัน · ปี 2026",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "⚠ แจ้งทบทวนยอดวันลาป่วย",
+                "type": "text",
+                "wrap": true,
+                "color": "#FFFFFF",
+                "weight": "bold"
+              }
+            ],
+            "paddingAll": "12px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#B91C1C"
+          },
+          {
+            "size": "lg",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "วันลาป่วยที่อนุมัติ",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "xxl",
+                "text": "10 วัน · ปี 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#B91C1C",
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "สิทธิ์ลาป่วยแบบได้รับค่าจ้างคงเหลือ 20 / 30 วัน",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "16px",
+            "cornerRadius": "12px",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "โปรดดูแลสุขภาพ หากยังมีอาการต่อเนื่อง แนะนำให้เข้ารับการตรวจสุขภาพ",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "xs",
+            "text": "นับวันลาที่อนุมัติถึง 06 Oct 2026",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          }
+        ],
+        "paddingAll": "20px"
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "size": "xs",
+            "text": "แจ้งเตือนทุกวันเวลา 08:30 จนกว่าจะกดรับทราบ",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "button",
+            "color": "#B91C1C",
+            "style": "primary",
+            "action": {
+              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
+              "type": "uri",
+              "label": "รับทราบ"
+            }
+          }
+        ],
+        "paddingAll": "20px"
+      }
+    }
+  },
+  {
+    "threshold": 10,
+    "audience": "CEO",
+    "language": "en",
+    "type": "flex",
+    "altText": "⚠ HR FOLLOW-UP REQUIRED: 10 days · 2026",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "⚠ HR FOLLOW-UP REQUIRED",
+                "type": "text",
+                "wrap": true,
+                "color": "#FFFFFF",
+                "weight": "bold"
+              }
+            ],
+            "paddingAll": "12px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#B91C1C"
+          },
+          {
+            "size": "lg",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "TBS-099 · Web Developer",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "xxl",
+                "text": "10 days · 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#B91C1C",
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "Paid sick leave remaining: 20 / 30 days",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "16px",
+            "cornerRadius": "12px",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "The 10-day sick leave threshold has been reached. Please arrange a supportive check-in with the employee if appropriate.",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "xs",
+            "text": "Approved leave through 06 Oct 2026",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          }
+        ],
+        "paddingAll": "20px"
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "size": "xs",
+            "text": "Daily reminder at 8:30 AM until acknowledged.",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "button",
+            "color": "#B91C1C",
+            "style": "primary",
+            "action": {
+              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
+              "type": "uri",
+              "label": "Acknowledge"
+            }
+          }
+        ],
+        "paddingAll": "20px"
+      }
+    }
+  },
+  {
+    "threshold": 20,
+    "audience": "Employee",
+    "language": "en",
+    "type": "flex",
+    "altText": "⚠ 20 SICK DAYS USED: 20 days · 2026",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "⚠ 20 SICK DAYS USED",
+                "type": "text",
+                "wrap": true,
+                "color": "#FFFFFF",
+                "weight": "bold"
+              }
+            ],
+            "paddingAll": "12px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#B91C1C"
+          },
+          {
+            "size": "lg",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "Approved sick leave",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "xxl",
+                "text": "20 days · 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#B91C1C",
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "Paid sick leave remaining: 10 / 30 days",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "16px",
+            "cornerRadius": "12px",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "Please take care of your health. If your symptoms continue, we recommend getting a health check-up.",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "xs",
+            "text": "Approved leave through 06 Oct 2026",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          }
+        ],
+        "paddingAll": "20px"
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "size": "xs",
+            "text": "Daily reminder at 8:30 AM until acknowledged.",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "button",
+            "color": "#B91C1C",
+            "style": "primary",
+            "action": {
+              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
+              "type": "uri",
+              "label": "Acknowledge"
+            }
+          }
+        ],
+        "paddingAll": "20px"
+      }
+    }
+  },
+  {
+    "threshold": 20,
+    "audience": "Employee",
+    "language": "th",
+    "type": "flex",
+    "altText": "⚠ ใช้วันลาป่วยแล้ว 20 วัน: 20 วัน · ปี 2026",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "⚠ ใช้วันลาป่วยแล้ว 20 วัน",
+                "type": "text",
+                "wrap": true,
+                "color": "#FFFFFF",
+                "weight": "bold"
+              }
+            ],
+            "paddingAll": "12px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#B91C1C"
+          },
+          {
+            "size": "lg",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "วันลาป่วยที่อนุมัติ",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "xxl",
+                "text": "20 วัน · ปี 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#B91C1C",
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "สิทธิ์ลาป่วยแบบได้รับค่าจ้างคงเหลือ 10 / 30 วัน",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "16px",
+            "cornerRadius": "12px",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "โปรดดูแลสุขภาพ หากยังมีอาการต่อเนื่อง แนะนำให้เข้ารับการตรวจสุขภาพ",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "xs",
+            "text": "นับวันลาที่อนุมัติถึง 06 Oct 2026",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          }
+        ],
+        "paddingAll": "20px"
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "size": "xs",
+            "text": "แจ้งเตือนทุกวันเวลา 08:30 จนกว่าจะกดรับทราบ",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "button",
+            "color": "#B91C1C",
+            "style": "primary",
+            "action": {
+              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
+              "type": "uri",
+              "label": "รับทราบ"
+            }
+          }
+        ],
+        "paddingAll": "20px"
+      }
+    }
+  },
+  {
+    "threshold": 25,
+    "audience": "Employee",
+    "language": "en",
+    "type": "flex",
+    "altText": "⚠ ONLY 5 PAID SICK DAYS REMAINING: 25 days · 2026",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "⚠ ONLY 5 PAID SICK DAYS REMAINING",
+                "type": "text",
+                "wrap": true,
+                "color": "#FFFFFF",
+                "weight": "bold"
+              }
+            ],
+            "paddingAll": "12px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#B91C1C"
+          },
+          {
+            "size": "lg",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "Approved sick leave",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "xxl",
+                "text": "25 days · 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#B91C1C",
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "Paid sick leave remaining: 5 / 30 days",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "16px",
+            "cornerRadius": "12px",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "If you would like advice on health benefits, please contact HR.",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "xs",
+            "text": "Approved leave through 06 Oct 2026",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          }
+        ],
+        "paddingAll": "20px"
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "size": "xs",
+            "text": "Daily reminder at 8:30 AM until acknowledged.",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "button",
+            "color": "#B91C1C",
+            "style": "primary",
+            "action": {
+              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
+              "type": "uri",
+              "label": "Acknowledge"
+            }
+          }
+        ],
+        "paddingAll": "20px"
+      }
+    }
+  },
+  {
+    "threshold": 25,
+    "audience": "Employee",
+    "language": "th",
+    "type": "flex",
+    "altText": "⚠ เหลือสิทธิ์ลาป่วยแบบได้รับค่าจ้าง 5 วัน: 25 วัน · ปี 2026",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "⚠ เหลือสิทธิ์ลาป่วยแบบได้รับค่าจ้าง 5 วัน",
+                "type": "text",
+                "wrap": true,
+                "color": "#FFFFFF",
+                "weight": "bold"
+              }
+            ],
+            "paddingAll": "12px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#B91C1C"
+          },
+          {
+            "size": "lg",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "วันลาป่วยที่อนุมัติ",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "xxl",
+                "text": "25 วัน · ปี 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#B91C1C",
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "สิทธิ์ลาป่วยแบบได้รับค่าจ้างคงเหลือ 5 / 30 วัน",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "16px",
+            "cornerRadius": "12px",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "หากต้องการคำแนะนำเกี่ยวกับสิทธิประโยชน์ด้านสุขภาพ กรุณาติดต่อ HR",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "xs",
+            "text": "นับวันลาที่อนุมัติถึง 06 Oct 2026",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          }
+        ],
+        "paddingAll": "20px"
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "size": "xs",
+            "text": "แจ้งเตือนทุกวันเวลา 08:30 จนกว่าจะกดรับทราบ",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "button",
+            "color": "#B91C1C",
+            "style": "primary",
+            "action": {
+              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
+              "type": "uri",
+              "label": "รับทราบ"
+            }
+          }
+        ],
+        "paddingAll": "20px"
+      }
+    }
+  },
+  {
+    "threshold": 30,
+    "audience": "Employee",
+    "language": "en",
+    "type": "flex",
+    "altText": "⚠ PAID SICK LEAVE ALLOWANCE EXHAUSTED: 30 days · 2026",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "⚠ PAID SICK LEAVE ALLOWANCE EXHAUSTED",
+                "type": "text",
+                "wrap": true,
+                "color": "#FFFFFF",
+                "weight": "bold"
+              }
+            ],
+            "paddingAll": "12px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#B91C1C"
+          },
+          {
+            "size": "lg",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "Approved sick leave",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "xxl",
+                "text": "30 days · 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#B91C1C",
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "Paid sick leave remaining: 0 / 30 days",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "16px",
+            "cornerRadius": "12px",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "You have used all of your paid sick leave allowance. Further sick leave follows company policy. Please contact HR.",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "xs",
+            "text": "Approved leave through 06 Oct 2026",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          }
+        ],
+        "paddingAll": "20px"
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "size": "xs",
+            "text": "Daily reminder at 8:30 AM until acknowledged.",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "button",
+            "color": "#B91C1C",
+            "style": "primary",
+            "action": {
+              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
+              "type": "uri",
+              "label": "Acknowledge"
+            }
+          }
+        ],
+        "paddingAll": "20px"
+      }
+    }
+  },
+  {
+    "threshold": 30,
+    "audience": "Employee",
+    "language": "th",
+    "type": "flex",
+    "altText": "⚠ ใช้สิทธิ์ลาป่วยแบบได้รับค่าจ้างครบแล้ว: 30 วัน · ปี 2026",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "⚠ ใช้สิทธิ์ลาป่วยแบบได้รับค่าจ้างครบแล้ว",
+                "type": "text",
+                "wrap": true,
+                "color": "#FFFFFF",
+                "weight": "bold"
+              }
+            ],
+            "paddingAll": "12px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#B91C1C"
+          },
+          {
+            "size": "lg",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "วันลาป่วยที่อนุมัติ",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "xxl",
+                "text": "30 วัน · ปี 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#B91C1C",
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "สิทธิ์ลาป่วยแบบได้รับค่าจ้างคงเหลือ 0 / 30 วัน",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "16px",
+            "cornerRadius": "12px",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "ใช้สิทธิ์ลาป่วยแบบได้รับค่าจ้างครบแล้ว การลาป่วยเพิ่มเติมเป็นไปตามนโยบายบริษัท กรุณาติดต่อ HR",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "xs",
+            "text": "นับวันลาที่อนุมัติถึง 06 Oct 2026",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          }
+        ],
+        "paddingAll": "20px"
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "size": "xs",
+            "text": "แจ้งเตือนทุกวันเวลา 08:30 จนกว่าจะกดรับทราบ",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "button",
+            "color": "#B91C1C",
+            "style": "primary",
+            "action": {
+              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
+              "type": "uri",
+              "label": "รับทราบ"
+            }
+          }
+        ],
+        "paddingAll": "20px"
+      }
+    }
+  },
+  {
+    "threshold": 30,
+    "audience": "CEO",
+    "language": "en",
+    "type": "flex",
+    "altText": "⚠ HR FOLLOW-UP REQUIRED: 30 days · 2026",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+              {
+                "size": "sm",
+                "text": "⚠ HR FOLLOW-UP REQUIRED",
+                "type": "text",
+                "wrap": true,
+                "color": "#FFFFFF",
+                "weight": "bold"
+              }
+            ],
+            "paddingAll": "12px",
+            "cornerRadius": "8px",
+            "backgroundColor": "#B91C1C"
+          },
+          {
+            "size": "lg",
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "size": "xs",
+            "text": "TBS-099 · Web Developer",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+              {
+                "size": "xxl",
+                "text": "30 days · 2026",
+                "type": "text",
+                "wrap": true,
+                "color": "#B91C1C",
+                "weight": "bold"
+              },
+              {
+                "size": "sm",
+                "text": "Paid sick leave remaining: 0 / 30 days",
+                "type": "text",
+                "wrap": true
+              }
+            ],
+            "paddingAll": "16px",
+            "cornerRadius": "12px",
+            "backgroundColor": "#FEF2F2"
+          },
+          {
+            "size": "sm",
+            "text": "The 30-day paid sick leave allowance has been reached. Please contact the employee about the next steps under company policy.",
+            "type": "text",
+            "wrap": true,
+            "color": "#475569"
+          },
+          {
+            "size": "xs",
+            "text": "Approved leave through 06 Oct 2026",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          }
+        ],
+        "paddingAll": "20px"
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "size": "xs",
+            "text": "Daily reminder at 8:30 AM until acknowledged.",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "button",
+            "color": "#B91C1C",
+            "style": "primary",
+            "action": {
+              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
+              "type": "uri",
+              "label": "Acknowledge"
+            }
+          }
+        ],
+        "paddingAll": "20px"
+      }
+    }
+  }
+]

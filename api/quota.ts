@@ -39,6 +39,7 @@ async function updateQuota(req: VercelRequest, res: VercelResponse) {
     .refine(v=>!v.carryoverExpiresOn||v.carryoverExpiresOn.startsWith(String(v.year)),{message:'Expiry must be in the quota year'});
   const parsed=schema.safeParse({...body,userId,year});
   if(!parsed.success)return json(res,422,{error:'Invalid quota values. Refresh first; use nonnegative quarter days.',issues:parsed.error.issues.map(i=>i.message)});
+  if(year>=2026 && parsed.data.sickTotal!==undefined && parsed.data.sickTotal!==30)return json(res,422,{error:"Paid sick leave allowance is 30 days for everyone from 2026."});
   try {
     const result = await n8nPost("dashboard-quota-update", parsed.data);
     return json(res, 200, { ok: true, userId, year, n8n: result });

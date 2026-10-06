@@ -86,7 +86,7 @@ export async function n8nPost(endpoint: string, body: unknown) {
   }
   if (row.ok === false || row.error) {
     const status = Number(row.statusCode);
-    throw new N8nMutationError([404, 409, 422, 503].includes(status) ? status : 502, String(row.error || "The workflow rejected this change"));
+    throw new N8nMutationError([403, 404, 409, 422, 503].includes(status) ? status : 502, String(row.error || "The workflow rejected this change"));
   }
   return result;
 }
