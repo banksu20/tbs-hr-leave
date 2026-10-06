@@ -91,7 +91,7 @@
         "contents": [
           {
             "size": "xs",
-            "text": "Daily reminder at 8:30 AM until acknowledged.",
+            "text": "Please acknowledge that you have read this notice.",
             "type": "text",
             "wrap": true,
             "color": "#64748B"
@@ -203,7 +203,7 @@
         "contents": [
           {
             "size": "xs",
-            "text": "แจ้งเตือนทุกวันเวลา 08:30 จนกว่าจะกดรับทราบ",
+            "text": "กดรับทราบเพื่อยืนยันว่าได้อ่านแล้ว",
             "type": "text",
             "wrap": true,
             "color": "#64748B"
@@ -315,7 +315,7 @@
         "contents": [
           {
             "size": "xs",
-            "text": "Daily reminder at 8:30 AM until acknowledged.",
+            "text": "Please acknowledge that you have read this notice.",
             "type": "text",
             "wrap": true,
             "color": "#64748B"
@@ -427,7 +427,7 @@
         "contents": [
           {
             "size": "xs",
-            "text": "แจ้งเตือนทุกวันเวลา 08:30 จนกว่าจะกดรับทราบ",
+            "text": "กดรับทราบเพื่อยืนยันว่าได้อ่านแล้ว",
             "type": "text",
             "wrap": true,
             "color": "#64748B"
@@ -531,32 +531,7 @@
         ],
         "paddingAll": "20px"
       },
-      "type": "bubble",
-      "footer": {
-        "type": "box",
-        "layout": "vertical",
-        "spacing": "sm",
-        "contents": [
-          {
-            "size": "xs",
-            "text": "Daily reminder at 8:30 AM until acknowledged.",
-            "type": "text",
-            "wrap": true,
-            "color": "#64748B"
-          },
-          {
-            "type": "button",
-            "color": "#B91C1C",
-            "style": "primary",
-            "action": {
-              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
-              "type": "uri",
-              "label": "Acknowledge"
-            }
-          }
-        ],
-        "paddingAll": "20px"
-      }
+      "type": "bubble"
     }
   },
   {
@@ -651,7 +626,7 @@
         "contents": [
           {
             "size": "xs",
-            "text": "Daily reminder at 8:30 AM until acknowledged.",
+            "text": "Please acknowledge that you have read this notice.",
             "type": "text",
             "wrap": true,
             "color": "#64748B"
@@ -763,7 +738,7 @@
         "contents": [
           {
             "size": "xs",
-            "text": "แจ้งเตือนทุกวันเวลา 08:30 จนกว่าจะกดรับทราบ",
+            "text": "กดรับทราบเพื่อยืนยันว่าได้อ่านแล้ว",
             "type": "text",
             "wrap": true,
             "color": "#64748B"
@@ -875,7 +850,7 @@
         "contents": [
           {
             "size": "xs",
-            "text": "Daily reminder at 8:30 AM until acknowledged.",
+            "text": "Please acknowledge that you have read this notice.",
             "type": "text",
             "wrap": true,
             "color": "#64748B"
@@ -987,7 +962,7 @@
         "contents": [
           {
             "size": "xs",
-            "text": "แจ้งเตือนทุกวันเวลา 08:30 จนกว่าจะกดรับทราบ",
+            "text": "กดรับทราบเพื่อยืนยันว่าได้อ่านแล้ว",
             "type": "text",
             "wrap": true,
             "color": "#64748B"
@@ -1099,7 +1074,7 @@
         "contents": [
           {
             "size": "xs",
-            "text": "Daily reminder at 8:30 AM until acknowledged.",
+            "text": "Please acknowledge that you have read this notice.",
             "type": "text",
             "wrap": true,
             "color": "#64748B"
@@ -1211,7 +1186,7 @@
         "contents": [
           {
             "size": "xs",
-            "text": "แจ้งเตือนทุกวันเวลา 08:30 จนกว่าจะกดรับทราบ",
+            "text": "กดรับทราบเพื่อยืนยันว่าได้อ่านแล้ว",
             "type": "text",
             "wrap": true,
             "color": "#64748B"
@@ -1315,32 +1290,7 @@
         ],
         "paddingAll": "20px"
       },
-      "type": "bubble",
-      "footer": {
-        "type": "box",
-        "layout": "vertical",
-        "spacing": "sm",
-        "contents": [
-          {
-            "size": "xs",
-            "text": "Daily reminder at 8:30 AM until acknowledged.",
-            "type": "text",
-            "wrap": true,
-            "color": "#64748B"
-          },
-          {
-            "type": "button",
-            "color": "#B91C1C",
-            "style": "primary",
-            "action": {
-              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
-              "type": "uri",
-              "label": "Acknowledge"
-            }
-          }
-        ],
-        "paddingAll": "20px"
-      }
+      "type": "bubble"
     }
   }
 ]

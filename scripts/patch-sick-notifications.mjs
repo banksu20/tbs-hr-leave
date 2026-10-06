@@ -1,4 +1,4 @@
-// Apply 016–018 first. Adds an isolated clock; existing approval and delivery paths stay intact.
+// Apply 016–019 first. Adds an isolated clock; existing approval and delivery paths stay intact.
 export function patchSickNotifications(original) {
  const w=structuredClone(original);
  const db=w.nodes.find(n=>n.type==='n8n-nodes-base.postgres'&&n.credentials?.postgres);

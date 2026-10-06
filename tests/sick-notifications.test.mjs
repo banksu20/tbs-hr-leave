@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 const db=new PGlite();
 const fixture=readFileSync('tests/employee-cancellation.test.mjs','utf8');
 await db.exec(fixture.match(/await db.exec\(`([\s\S]*?)`\);/)[1]);
-for(const file of ['001_request_safety.sql','002_history_and_conflicts.sql','003_year_rollover.sql','004_line_decisions.sql','005_sync_outbox.sql','006_employee_submission.sql','007_sheet_employee_links.sql','008_quota_safety.sql','009_linked_employee_accounts.sql','011_employee_cancellation.sql','012_line_cancellation.sql','013_leave_result_flex.sql','014_cancellation_result_cards.sql','015_delivery_reliability.sql','016_sick_notifications.sql','017_paid_sick_rollover.sql','018_sick_acknowledgements.sql'])await db.exec(readFileSync('n8n/sql/'+file,'utf8').replaceAll("(now() AT TIME ZONE 'Asia/Bangkok')::date","'2026-10-06'::date"));
+for(const file of ['001_request_safety.sql','002_history_and_conflicts.sql','003_year_rollover.sql','004_line_decisions.sql','005_sync_outbox.sql','006_employee_submission.sql','007_sheet_employee_links.sql','008_quota_safety.sql','009_linked_employee_accounts.sql','011_employee_cancellation.sql','012_line_cancellation.sql','013_leave_result_flex.sql','014_cancellation_result_cards.sql','015_delivery_reliability.sql','016_sick_notifications.sql','017_paid_sick_rollover.sql','018_sick_acknowledgements.sql','019_ceo_sick_notices.sql'])await db.exec(readFileSync('n8n/sql/'+file,'utf8').replaceAll("(now() AT TIME ZONE 'Asia/Bangkok')::date","'2026-10-06'::date"));
 await db.exec("INSERT INTO tbs_employees(user_id,tbs_id,first_name,last_name,status) VALUES('emp',1,'Sample','Employee','active'),('alias',2,'Alias','Employee','inactive'); INSERT INTO tbs_employee_accounts VALUES('alias','emp',now()); UPDATE tbs_cancellation_line_settings SET ceo_account_id='U00000000000000000000000000000000'");
 const today='2026-10-06';
 let offset=0;
@@ -91,19 +91,16 @@ const alert=async audience=>(await db.query('SELECT * FROM tbs_sick_alerts WHERE
 const acknowledge=async(a,accountId,operation='sick-acknowledge')=>(await db.query('SELECT tbs_sick_acknowledge($1,$2::jsonb) r',[operation,JSON.stringify({id:a.id,token:a.token,accountId})])).rows[0].r;
 const finishAll=()=>db.exec('UPDATE tbs_sync_jobs SET completed_generation=generation,lease_until=NULL');
 const outstanding=async()=>(await db.query("SELECT count(*)::int n FROM tbs_sync_jobs WHERE kind='line' AND completed_generation<generation")).rows[0].n;
-test('unacknowledged cards repeat at 08:30 next day only, acknowledgement stops only its audience',async()=>{
+test('delivered cards never repeat, even without acknowledgement, while higher thresholds still notify',async()=>{
  await db.query('SELECT tbs_activate_sick_notifications()');await add(10);
- assert.equal(await outstanding(),2);await finishAll();
- await db.query("SELECT tbs_run_sick_daily('2026-10-06T01:30:00Z')");assert.equal(await outstanding(),0);
- await db.query("SELECT tbs_run_sick_daily('2026-10-07T01:29:59Z')");assert.equal(await outstanding(),0);
- await db.query("SELECT tbs_run_sick_daily('2026-10-07T01:30:00Z')");assert.equal(await outstanding(),2);
- await db.query("SELECT tbs_run_sick_daily('2026-10-07T01:31:00Z')");assert.equal(await outstanding(),2);
- const emp=await alert('employee');assert.equal((await acknowledge(emp,'alias')).ok,true);
- assert.equal(await outstanding(),1);await finishAll();
- await db.query("SELECT tbs_run_sick_daily('2026-10-08T01:30:00Z')");assert.equal(await outstanding(),1);
- const row=(await db.query("SELECT payload FROM tbs_sync_jobs WHERE kind='line' AND completed_generation<generation")).rows[0];assert.equal(row.payload.to,'U00000000000000000000000000000000');
- assert.equal((await acknowledge(await alert('ceo'),'U00000000000000000000000000000000')).ok,true);
- await db.query("SELECT tbs_run_sick_daily('2026-10-09T01:30:00Z')");assert.equal(await outstanding(),0);
+ for(const j of (await db.query("SELECT * FROM tbs_claim_line_batch('line')")).rows)await db.query('SELECT tbs_finish_sync($1,$2,$3,NULL)',[j.id,j.lease_token,j.generation]);
+ for(const day of ['2026-10-07','2026-10-08','2027-01-01']){
+  await db.query('SELECT tbs_run_sick_daily($1::timestamptz)',[day+'T01:30:00Z']);assert.equal(await outstanding(),0);
+ }
+ const emp=await alert('employee');assert.equal(emp.acknowledged_at,null);
+ assert.equal((await acknowledge(emp,'alias')).ok,true);
+ await add(10);assert.equal(await outstanding(),1);assert.equal((await alert('employee')).threshold,20);
+ assert.doesNotMatch(JSON.stringify(await jobs()),/Daily reminder|แจ้งเตือนทุกวัน/);
 });
 test('review never acknowledges, wrong identities/tokens fail and repeat clicks are safe',async()=>{
  await db.query('SELECT tbs_activate_sick_notifications()');await add(10);const emp=await alert('employee'),boss=await alert('ceo');
@@ -145,8 +142,8 @@ test('missing CEO recipient cannot roll back approval, and recovery queues its p
   await db.query("SELECT tbs_run_sick_daily('2026-10-06T01:30:00Z')");assert.equal(await outstanding(),2);
  }finally{await db.exec("UPDATE tbs_cancellation_line_settings SET ceo_account_id='U00000000000000000000000000000000'");}
 });
-test('unacknowledged year-end reminders continue with their original year until clicked',async()=>{
- await db.query('SELECT tbs_activate_sick_notifications()');await add(5);await finishAll();
+test('undelivered year-end notices remain deliverable with their original year',async()=>{
+ await db.query('SELECT tbs_activate_sick_notifications()');await add(5);
  await db.query("SELECT tbs_run_sick_daily('2027-01-01T01:30:00Z')");assert.equal(await outstanding(),1);
  const p=(await db.query("SELECT payload FROM tbs_sync_jobs WHERE kind='line' AND completed_generation<generation")).rows[0].payload;
  assert.match(JSON.stringify(p),/2026/);assert.match(JSON.stringify(p),/5 days/);
@@ -187,7 +184,7 @@ test('successful delivery is recorded separately and prevents a second daily rem
  assert.ok((await db.query('SELECT delivered_at FROM tbs_sick_alert_jobs WHERE job_id=$1',[job.id])).rows[0].delivered_at);
  await db.query("UPDATE tbs_sick_alert_jobs SET delivered_at='2026-10-07T01:15:00Z' WHERE job_id=$1",[job.id]);
  await db.query("SELECT tbs_run_sick_daily('2026-10-07T01:30:00Z')");assert.equal(await outstanding(),0);
- await db.query("SELECT tbs_run_sick_daily('2026-10-08T01:30:00Z')");assert.equal(await outstanding(),1);
+ await db.query("SELECT tbs_run_sick_daily('2026-10-08T01:30:00Z')");assert.equal(await outstanding(),0);
 });
 test('late preference retries cannot overwrite a newer employee language',async()=>{
  const stamp=Date.now()-60000;
@@ -218,4 +215,17 @@ test('isolated delivery cards authenticate only their recipient, expire, and nev
  assert.equal((await db.query('SELECT count(*)::int n FROM tbs_sick_milestones')).rows[0].n,0);
  await db.query("UPDATE tbs_sick_delivery_tests SET expires_at=now()-interval '1 second' WHERE id=$1",[a.id]);
  assert.equal((await acknowledge(a,'emp')).statusCode,409);
+});
+
+test('CEO notices have no acknowledgement and stop after delivery; employees retain acknowledgement and CEO 30 still sends',async()=>{
+ await db.query('SELECT tbs_activate_sick_notifications()');await add(10);
+ const initial=await jobs();const ceo=initial.find(j=>j.to!=='emp'),emp=initial.find(j=>j.to==='emp');
+ assert.equal(ceo.messages[0].contents.footer,undefined);assert.doesNotMatch(JSON.stringify(ceo),/Acknowledge|Daily reminder/);
+ assert.match(JSON.stringify(emp),/Acknowledge/);
+ for(const j of (await db.query("SELECT * FROM tbs_claim_line_batch('line')")).rows)await db.query('SELECT tbs_finish_sync($1,$2,$3,NULL)',[j.id,j.lease_token,j.generation]);
+ await db.query("SELECT tbs_run_sick_daily('2026-10-07T01:30:00Z')");
+ const pending=(await db.query("SELECT payload FROM tbs_sync_jobs WHERE kind='line' AND completed_generation<generation")).rows;
+ assert.equal(pending.length,0);
+ await add(20);const boss=await alert('ceo');assert.equal(boss.threshold,30);
+ assert.equal((await db.query("SELECT count(*)::int n FROM tbs_sync_jobs WHERE completed_generation<generation AND payload->>'to'<>'emp'")).rows[0].n,1);
 });

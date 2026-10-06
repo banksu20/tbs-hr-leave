@@ -31,6 +31,26 @@ test('employee acknowledgement responds to app language; CEO remains English; fa
   assert.ok(button('Acknowledge'));language='th';await act(async()=>view.update(React.createElement(Component)));assert.ok(button('รับทราบ'));
   await act(async()=>button('รับทราบ').props.onClick());assert.equal(posts,1);assert.equal(button('รับทราบ').props.disabled,false);
   fail=false;await act(async()=>button('รับทราบ').props.onClick());assert.equal(posts,2);assert.match(JSON.stringify(view.toJSON()),/รับทราบแล้ว/);
-  await act(async()=>view.unmount());audience='ceo';await act(async()=>{view=renderer.create(React.createElement(Component));});assert.ok(button('Acknowledge'));assert.equal(button('รับทราบ'),undefined);
+  await act(async()=>view.unmount());audience='ceo';await act(async()=>{view=renderer.create(React.createElement(Component));});assert.equal(button('Acknowledge'),undefined);assert.equal(button('รับทราบ'),undefined);assert.match(JSON.stringify(view.toJSON()),/No acknowledgement is required/);
+ }finally{await act(async()=>view?.unmount());global.fetch=oldFetch;global.window=oldWindow;}
+});
+
+test('acknowledgement locks rapid duplicate clicks and stays disabled on reopening',async()=>{
+ const oldFetch=global.fetch,oldWindow=global.window;let view,posts=0,saved=false,resolveSave;
+ global.window={location:{search:'?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002'}};
+ global.fetch=async(_,options)=>{
+  if(options.method==='POST'){posts++;await new Promise(r=>{resolveSave=r;});saved=true;return new Response(JSON.stringify({ok:true,acknowledged:true}));}
+  return new Response(JSON.stringify({acknowledged:saved,name:'Dale',total:10,threshold:10,year:2026,language:'en',audience:'employee'}));
+ };
+ const Component=loadTS({'@/lib/liffConfig':{LIFF_ID:'sample'},'@/hooks/useLanguage':{useLanguage:()=>({language:'en'})},'@/hooks/useNotificationLanguage':{useNotificationLanguage:()=>{}},'@/components/ui/button':{Button:p=>React.createElement('button',p,p.children)},'@line/liff':{default:{init:async()=>{},isLoggedIn:()=>true,isInClient:()=>false,getAccessToken:()=> 'sample'}}})('src/pages/SickAcknowledgement.tsx').default;
+ try{
+  await act(async()=>{view=renderer.create(React.createElement(Component));});
+  const click=view.root.findByType('button').props.onClick;let first;
+  await act(async()=>{first=click();await click();});assert.equal(posts,1);assert.equal(view.root.findByType('button').props.disabled,true);
+  await act(async()=>{resolveSave();await first;});
+  assert.equal(view.root.findByType('button').props.children,'Already acknowledged');assert.equal(view.root.findByType('button').props.disabled,true);
+  await act(async()=>click());assert.equal(posts,1);
+  await act(async()=>view.unmount());await act(async()=>{view=renderer.create(React.createElement(Component));});
+  assert.equal(view.root.findByType('button').props.children,'Already acknowledged');assert.equal(view.root.findByType('button').props.disabled,true);assert.equal(posts,1);
  }finally{await act(async()=>view?.unmount());global.fetch=oldFetch;global.window=oldWindow;}
 });

@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import cards from './sick-fixtures.json';
 import '../../src/index.css';
 function Block({block}:{block:any}){
+ if(!block)return null;
  if(block.type==='button')return <button type="button" className="w-full rounded-lg py-3 text-white font-semibold" style={{background:block.color??'#B91C1C'}} onClick={()=>window.alert(block.action.label==='รับทราบ'?'ตัวอย่างเท่านั้น — ระบบจริงจะเปิดหน้ายืนยันรับทราบใน LINE':'Preview only — the real card opens a confirmation screen in LINE.')}>{block.action.label}</button>;
  if(block.type==='text')return <p style={{fontSize:({xs:12,sm:14,lg:18,xl:24,xxl:32} as Record<string,number>)[block.size]??16,lineHeight:1.6,fontWeight:block.weight==='bold'?700:400,color:block.color??'#0f172a',overflowWrap:'anywhere'}}>{block.text}</p>;
  return <div style={{display:'flex',flexDirection:'column',gap:block.spacing==='md'?16:8,padding:block.paddingAll??0,background:block.backgroundColor,borderRadius:block.cornerRadius??0}}>{block.contents?.map((b:any,i:number)=><Block key={i} block={b}/>)}</div>;
