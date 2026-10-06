@@ -134,7 +134,7 @@ export default function OverviewDashboard({
   const periodEmployees = useMemo(()=>employees.map(e=>({...e,leaves:e.leaves.filter(l=>(month==='all'||Number(l.date.slice(5,7))===Number(month))&&selectedTypes.includes(l.type))})),[employees,month,selectedTypes]);
   const months = useMemo(() => month === 'all' ? monthlyTotals(periodEmployees, year, selectedTypes) : dailyTotals(periodEmployees, year, Number(month), selectedTypes), [periodEmployees, year, selectedTypes,month]);
   const todayEmployees = onLeaveToday.filter(e=>employees.some(p=>p.id===e.id));
-  const departments = useMemo(() => departmentTotals(periodEmployees, year), [periodEmployees, year]);
+  const departments = useMemo(() => departmentTotals(employees.map(e=>({...e,leaves:e.leaves.filter(l=>l.type==="sick"&&(month==="all"||Number(l.date.slice(5,7))===Number(month)))})), year), [employees, month, year]);
   const quotaUsage = useMemo(() => annualQuotaUsage(employees, year, 4), [employees, year]);
   const overQuota = useMemo(() => overQuotaList(employees, year), [employees, year]);
   const peak = useMemo(() => busiestMonth(months), [months]);
@@ -258,7 +258,7 @@ export default function OverviewDashboard({
       {exportOpen && <MonthlyExportDialog employees={employees} year={year} initialMonth={month==='all'?undefined:Number(month)} initialTypes={selectedTypes} scope={exportScope} ready={exportReady} onClose={() => setExportOpen(false)} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <Card title="Days taken by department" hint={`Selected period and leave type · ${period}`}>
+        <Card title="Sick leave usage by department" hint={`Approved sick leave only · ${period}`}>
           <ResponsiveContainer width="100%" height={130}>
             <BarChart data={departments} layout="vertical" margin={{ top: 0, right: 44, left: 8, bottom: 0 }} barSize={11}>
               <CartesianGrid stroke={GRID} strokeDasharray="2 4" horizontal={false} />
@@ -292,7 +292,7 @@ export default function OverviewDashboard({
                 {departments.map((row) => (
                   <Cell
                     key={row.department}
-                    fill="#0099FF"
+                    fill={SERIES.sick}
                     fillOpacity={maxDepartment ? 0.35 + (row.days / maxDepartment) * 0.65 : 0.6}
                   />
                 ))}
