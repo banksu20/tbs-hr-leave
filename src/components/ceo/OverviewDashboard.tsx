@@ -1,7 +1,7 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import MonthlyExportDialog from "./MonthlyExportDialog";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -20,7 +20,6 @@ import {
   annualQuotaUsage,
   awaitingQuota,
   busiestMonth,
-  departmentTotals,
   monthlyTotals,
   dailyTotals,
   MONTH_LABELS,
@@ -134,7 +133,17 @@ export default function OverviewDashboard({
   const periodEmployees = useMemo(()=>employees.map(e=>({...e,leaves:e.leaves.filter(l=>(month==='all'||Number(l.date.slice(5,7))===Number(month))&&selectedTypes.includes(l.type))})),[employees,month,selectedTypes]);
   const months = useMemo(() => month === 'all' ? monthlyTotals(periodEmployees, year, selectedTypes) : dailyTotals(periodEmployees, year, Number(month), selectedTypes), [periodEmployees, year, selectedTypes,month]);
   const todayEmployees = onLeaveToday.filter(e=>employees.some(p=>p.id===e.id));
-  const departments = useMemo(() => departmentTotals(employees.map(e=>({...e,leaves:e.leaves.filter(l=>l.type==="sick"&&(month==="all"||Number(l.date.slice(5,7))===Number(month)))})), year), [employees, month, year]);
+  const sickEmployees = useMemo(() => employees.map(employee => ({
+    id: employee.id,
+    employee,
+    label: employee.nickname || employee.name,
+    days: Math.round(sumLeavesByType(employee.leaves.filter(leave => month === "all" || Number(leave.date.slice(5, 7)) === Number(month)), "sick", year) * 100) / 100,
+  })).sort((a, b) => b.days - a.days || a.employee.empCode.localeCompare(b.employee.empCode, undefined, {numeric: true})), [employees, month, year]);
+  const [sickPage, setSickPage] = useState(0);
+  useEffect(() => setSickPage(0), [employees, month, year]);
+  const sickPageCount = Math.max(1, Math.ceil(sickEmployees.length / 6));
+  const currentSickPage = Math.min(sickPage, sickPageCount - 1);
+  const visibleSickEmployees = sickEmployees.slice(currentSickPage * 6, (currentSickPage + 1) * 6);
   const quotaUsage = useMemo(() => annualQuotaUsage(employees, year, 4), [employees, year]);
   const overQuota = useMemo(() => overQuotaList(employees, year), [employees, year]);
   const peak = useMemo(() => busiestMonth(months), [months]);
@@ -151,7 +160,7 @@ export default function OverviewDashboard({
     };
   }, [periodEmployees, year]);
 
-  const maxDepartment = departments[0]?.days ?? 0;
+  const maxSickDays = sickEmployees[0]?.days ?? 0;
 
   return (
     <div className="space-y-2">
@@ -258,14 +267,14 @@ export default function OverviewDashboard({
       {exportOpen && <MonthlyExportDialog employees={employees} year={year} initialMonth={month==='all'?undefined:Number(month)} initialTypes={selectedTypes} scope={exportScope} ready={exportReady} onClose={() => setExportOpen(false)} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <Card title="Sick leave usage by department" hint={`Approved sick leave only · ${period}`}>
+        <Card title="Sick leave usage by person" hint={`Approved sick leave only · ${period}`}>
           <ResponsiveContainer width="100%" height={130}>
-            <BarChart data={departments} layout="vertical" margin={{ top: 0, right: 44, left: 8, bottom: 0 }} barSize={11}>
+            <BarChart data={visibleSickEmployees} layout="vertical" margin={{ top: 0, right: 44, left: 8, bottom: 0 }} barSize={11}>
               <CartesianGrid stroke={GRID} strokeDasharray="2 4" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: MUTED, fontWeight: 700 }} axisLine={false} tickLine={false} />
+              <XAxis type="number" domain={[0, Math.max(1, maxSickDays)]} tick={{ fontSize: 11, fill: MUTED, fontWeight: 700 }} axisLine={false} tickLine={false} />
               <YAxis
                 type="category"
-                dataKey="department"
+                dataKey="label"
                 width={92}
                 interval={0}
                 tick={{ fontSize: 10, fill: INK, fontWeight: 700 }}
@@ -277,23 +286,23 @@ export default function OverviewDashboard({
                 content={({ active, payload }: any) =>
                   active && payload?.length ? (
                     <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2">
-                      <p className="text-[11px] font-extrabold text-slate-900">{payload[0].payload.department}</p>
+                      <p className="text-[11px] font-extrabold text-slate-900">{payload[0].payload.employee.name} · {payload[0].payload.employee.empCode}</p>
                       <p className="text-[11px] font-semibold text-slate-600">
-                        {payload[0].payload.days} days · {payload[0].payload.headcount} staff
+                        {payload[0].payload.days} sick days
                       </p>
                       <p className="text-[11px] font-semibold text-slate-600">
-                        {payload[0].payload.perPerson} days per person
+                        {payload[0].payload.employee.department}
                       </p>
                     </div>
                   ) : null
                 }
               />
               <Bar dataKey="days" radius={[0, 4, 4, 0]} isAnimationActive={false}>
-                {departments.map((row) => (
+                {visibleSickEmployees.map((row) => (
                   <Cell
-                    key={row.department}
+                    key={row.id}
                     fill={SERIES.sick}
-                    fillOpacity={maxDepartment ? 0.35 + (row.days / maxDepartment) * 0.65 : 0.6}
+                    fillOpacity={maxSickDays ? 0.35 + (row.days / maxSickDays) * 0.65 : 0.6}
                   />
                 ))}
                 <LabelList
@@ -304,6 +313,12 @@ export default function OverviewDashboard({
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+          {sickEmployees.length === 0 && <p className="text-xs text-slate-400 text-center">No employees match these filters</p>}
+          {sickPageCount > 1 && <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+            <button type="button" aria-label="Previous employees in sick leave chart" disabled={currentSickPage === 0} onClick={() => setSickPage(currentSickPage - 1)} className="px-2 py-1 rounded hover:bg-slate-100 disabled:opacity-40">Previous</button>
+            <span>{currentSickPage * 6 + 1}–{Math.min((currentSickPage + 1) * 6, sickEmployees.length)} of {sickEmployees.length}</span>
+            <button type="button" aria-label="Next employees in sick leave chart" disabled={currentSickPage === sickPageCount - 1} onClick={() => setSickPage(currentSickPage + 1)} className="px-2 py-1 rounded hover:bg-slate-100 disabled:opacity-40">Next</button>
+          </div>}
         </Card>
 
         <Card title="Annual leave used" hint="Full year · top 4 by allowance used">
