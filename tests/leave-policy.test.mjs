@@ -253,17 +253,17 @@ test('intern personal reminder is once for the entire internship, including a ne
 test('server handlers join registration, HR activation, verified intern submission and decision without live calls',async()=>{
  const hr=await session('hr');const id='integration-intern';
  const mock=loadTS({
-  './_lib/lineIdentity.js':{verifyLineIdentity:async auth=>{if(!auth?.startsWith('Bearer '))throw Error('Unauthorized');return auth.slice(7);}},
-  './_lib/dashboardAuth.js':{dashboardSession:async()=>({role:'hr'}),tokenHash:()=>hr,sameOrigin:()=>true},
-  './_lib/n8nClient.js':{n8nPost:async(_endpoint,{operation,payload})=>{const fn={'registration':'tbs_registration','employee-submit':'tbs_employee_request','intern-decision':'tbs_intern_decision'}[operation];assert.ok(fn);const r=await rpc(fn,payload);if(!r.ok){const e=Error(r.error);e.status=r.statusCode;throw e;}return r;}}
+  '../_lib/lineIdentity.js':{verifyLineIdentity:async auth=>{if(!auth?.startsWith('Bearer '))throw Error('Unauthorized');return auth.slice(7);}},
+  '../_lib/dashboardAuth.js':{dashboardSession:async()=>({role:'hr'}),tokenHash:()=>hr,sameOrigin:()=>true},
+  '../_lib/n8nClient.js':{n8nPost:async(_endpoint,{operation,payload})=>{const fn={'registration':'tbs_registration','employee-submit':'tbs_employee_request','intern-decision':'tbs_intern_decision'}[operation];assert.ok(fn);const r=await rpc(fn,payload);if(!r.ok){const e=Error(r.error);e.status=r.statusCode;throw e;}return r;}}
  });
  async function api(file,method,body,identity=id){let output;const res={statusCode:200,setHeader(){},status(n){this.statusCode=n;return this;},send(v){output=JSON.parse(v);return this;}};await mock(file).default({method,query:{},headers:{authorization:'Bearer '+identity},body},res);return {status:res.statusCode,body:output};}
- const reg=await api('api/registration.ts','POST',{firstName:'Integration',lastName:'Intern',nickname:'Test',department:'AI',employmentType:'intern',accountId:'spoof'});assert.equal(reg.body.pending,true);
- const activated=await api('api/registration.ts','PATCH',{userId:id,months:4,startDate:'2099-10-01',endDate:'2100-01-31'});assert.equal(activated.status,200);
- const submitted=await api('api/employee-request.ts','POST',{userId:'victim',leaveType:'annual',selectedDates:['2099-10-15'],leaveDays:1,reason:'Family trip'});assert.equal(submitted.status,200,JSON.stringify(submitted));assert.equal(submitted.body.user_id,id);
+ const reg=await api('api/_handlers/registration.ts','POST',{firstName:'Integration',lastName:'Intern',nickname:'Test',department:'AI',employmentType:'intern',accountId:'spoof'});assert.equal(reg.body.pending,true);
+ const activated=await api('api/_handlers/registration.ts','PATCH',{userId:id,months:4,startDate:'2099-10-01',endDate:'2100-01-31'});assert.equal(activated.status,200);
+ const submitted=await api('api/_handlers/employee-request.ts','POST',{userId:'victim',leaveType:'annual',selectedDates:['2099-10-15'],leaveDays:1,reason:'Family trip'});assert.equal(submitted.status,200,JSON.stringify(submitted));assert.equal(submitted.body.user_id,id);
  const row=submitted.body,body={id:row.id,token:row.decision_token,revision:row.revision,action:'approve'};
- assert.equal((await api('api/intern-decision.ts','POST',body,'someone-else')).status,403);
- assert.equal((await api('api/intern-decision.ts','POST',body,'U437d78a035fce09cd623650fb6c3fc97')).status,200);
+ assert.equal((await api('api/_handlers/intern-decision.ts','POST',body,'someone-else')).status,403);
+ assert.equal((await api('api/_handlers/intern-decision.ts','POST',body,'U437d78a035fce09cd623650fb6c3fc97')).status,200);
  assert.equal((await query('SELECT status FROM leave_requests WHERE id=$1',[row.id]))[0].status,'Approved');
  const jobs=await query("SELECT payload FROM tbs_sync_jobs WHERE user_id=$1 AND kind='line'",[id]);assert.ok(jobs.length>=2);assert.ok(jobs.every(j=>j.payload.messages.every(m=>m.type==='flex')));
 });

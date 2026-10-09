@@ -1,6 +1,6 @@
 import type {VercelRequest,VercelResponse} from '@vercel/node';
-import {z} from 'zod';import {isPlainDate} from './_lib/date.js';import {json} from './_lib/http.js';
-import {dashboardSession,tokenHash,sameOrigin} from './_lib/dashboardAuth.js';import {n8nPost} from './_lib/n8nClient.js';
+import {z} from 'zod';import {isPlainDate} from '../_lib/date.js';import {json} from '../_lib/http.js';
+import {dashboardSession,tokenHash,sameOrigin} from '../_lib/dashboardAuth.js';import {n8nPost} from '../_lib/n8nClient.js';
 const schema=z.object({userId:z.string().min(1),startDate:z.string().refine(isPlainDate),endDate:z.string().refine(isPlainDate),months:z.union([z.literal(4),z.literal(6)])}).refine(b=>b.endDate>=b.startDate);
 export default async function handler(req:VercelRequest,res:VercelResponse){res.setHeader('Cache-Control','no-store');try{
  if(!await dashboardSession(req))return json(res,401,{error:'Sign in required'});

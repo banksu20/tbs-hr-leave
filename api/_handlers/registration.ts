@@ -1,10 +1,10 @@
 import type {VercelRequest,VercelResponse} from '@vercel/node';
 import {z} from 'zod';
-import {headerValue,json} from './_lib/http.js';
-import {verifyLineIdentity} from './_lib/lineIdentity.js';
-import {dashboardSession,tokenHash,sameOrigin} from './_lib/dashboardAuth.js';
-import {n8nPost} from './_lib/n8nClient.js';
-import {isPlainDate} from './_lib/date.js';
+import {headerValue,json} from '../_lib/http.js';
+import {verifyLineIdentity} from '../_lib/lineIdentity.js';
+import {dashboardSession,tokenHash,sameOrigin} from '../_lib/dashboardAuth.js';
+import {n8nPost} from '../_lib/n8nClient.js';
+import {isPlainDate} from '../_lib/date.js';
 const name=z.string().trim().min(1).max(100);
 const registration=z.object({firstName:name,lastName:name,nickname:z.string().trim().max(100),department:name,employmentType:z.enum(['employee','intern'])});
 const activation=z.object({userId:z.string().min(1),months:z.union([z.literal(4),z.literal(6)]).optional(),startDate:z.string().refine(isPlainDate).optional(),endDate:z.string().refine(isPlainDate).optional(),annualTotal:z.number().min(0).max(366).optional()}).refine(b=>b.annualTotal!==undefined||(b.months&&b.startDate&&b.endDate&&b.endDate>=b.startDate));

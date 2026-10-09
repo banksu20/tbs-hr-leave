@@ -1,8 +1,8 @@
 import type {VercelRequest,VercelResponse} from '@vercel/node';
-import {headerValue,json} from './_lib/http.js';
-import {verifyLineIdentity} from './_lib/lineIdentity.js';
-import {dashboardSession,tokenHash} from './_lib/dashboardAuth.js';
-import {n8nPost} from './_lib/n8nClient.js';
+import {headerValue,json} from '../_lib/http.js';
+import {verifyLineIdentity} from '../_lib/lineIdentity.js';
+import {dashboardSession,tokenHash} from '../_lib/dashboardAuth.js';
+import {n8nPost} from '../_lib/n8nClient.js';
 export default async function handler(req:VercelRequest,res:VercelResponse){
  res.setHeader('Cache-Control','no-store');
  try{
