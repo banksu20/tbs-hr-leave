@@ -12,7 +12,7 @@ export const requestTargetSchema = z.object({
 // A complete request is required. No partial day can accidentally overwrite a range.
 export const requestUpdateSchema = requestTargetSchema.extend({
   dates,
-  type: z.enum(["annual", "sick", "personal"]),
+  type: z.enum(["annual", "sick", "personal", "university"]),
   daysPerDate: z.union([z.literal(0.25), z.literal(0.5), z.literal(1)]),
   halfDayPeriod: z.enum(["morning", "afternoon"]).nullable(),
   note: z.string().max(5000),

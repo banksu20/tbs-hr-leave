@@ -33,6 +33,7 @@ const cardsOnly=new URLSearchParams(location.search).has('cards');
 window.fetch=async(input,init)=>{
  const url=String(input);
  const json=(value:unknown)=>new Response(JSON.stringify(value),{status:200});
+ if(url.includes('/api/company-holidays'))return json({confirmed:true,holidays:[{date:'2026-10-13',name:'King Bhumibol Memorial Day',localName:'วันนวมินทรมหาราช'},{date:'2026-10-23',name:'Chulalongkorn Day',localName:'วันปิยมหาราช'}]});
  if(url.includes('delivery=1'))return json({pending:0,failed:0,jobs:[]});
  if(url.includes('/webhook/check-user'))return json({found:true,name:'Demo Employee',department:'Web Developer'});
  if(url.includes('/webhook/get-quota'))return json({remainingDays:10,annualTotal:12,sickTaken:1,sickTotal:null,sickRemaining:null,personalRemaining:2,personalTotal:3,personalTaken:1});

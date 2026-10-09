@@ -1,3 +1,4 @@
+import LeaveEvidence from '../LeaveEvidence';
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { LeaveRequestUpdate } from "@/lib/api";
 import { normalizeDateInput } from "./leaveSheetUtils";
 
 export interface LeaveRecordDialogProps {
+  requestId?:string;
   initial: LeaveRequestUpdate;
   employeeName: string;
   creating?: boolean;
@@ -13,7 +15,7 @@ export interface LeaveRecordDialogProps {
   onSave: (value: LeaveRequestUpdate) => Promise<void>;
 }
 
-export default function LeaveRecordDialog({ initial, employeeName, creating, onClose, onSave }: LeaveRecordDialogProps) {
+export default function LeaveRecordDialog({ requestId, initial, employeeName, creating, onClose, onSave }: LeaveRecordDialogProps) {
   const [form, setForm] = useState(initial);
   const [datesText, setDatesText] = useState(initial.dates.join(", "));
   const [busy, setBusy] = useState(false);
@@ -28,6 +30,7 @@ export default function LeaveRecordDialog({ initial, employeeName, creating, onC
             : "Choose the leave date, duration and period before saving."}
         </DialogDescription>
       </DialogHeader>
+      {requestId&&<LeaveEvidence requestId={requestId}/>}
       <form className="space-y-4" onSubmit={async (event) => {
         event.preventDefault();
         const dates = datesText.split(/[,\n]+/).map((text) => normalizeDateInput(text.trim(), initial.dates[0].slice(0, 4)));
@@ -45,7 +48,7 @@ export default function LeaveRecordDialog({ initial, employeeName, creating, onC
         </label>
         <label className="block text-sm">Leave type
           <select className="w-full border rounded p-2" value={form.type} disabled={busy} onChange={(e) => setForm({ ...form, type: e.target.value as LeaveRequestUpdate["type"] })}>
-            <option value="annual">Annual</option><option value="sick">Sick</option><option value="personal">Personal</option>
+            {initial.type==='university'&&<option value="university">University Activity</option>}<option value="annual">Annual</option><option value="sick">Sick</option><option value="personal">Personal</option>
           </select>
         </label>
         <label className="block text-sm">Duration on each date
@@ -58,7 +61,7 @@ export default function LeaveRecordDialog({ initial, employeeName, creating, onC
             <option value="" disabled>Choose a period</option><option value="morning">Morning</option><option value="afternoon">Afternoon</option>
           </select>
         </label>}
-        <label className="block text-sm">Reason / notes<Input value={form.note} disabled={busy} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
+        <label className="block text-sm">Reason / notes<Input required value={form.note} disabled={busy} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={busy} onClick={onClose}>Cancel</Button><Button disabled={busy}>{busy ? "Saving…" : "Save request"}</Button></div>
       </form>

@@ -1,3 +1,4 @@
+import LeaveEvidence from '../LeaveEvidence';
 import CancellationRequests from "./CancellationRequests";
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -30,6 +31,7 @@ export default function PendingRequests({employees,ready,cohort="employee"}: {em
       <p className="text-sm">{employee.department} · {leave.type} · {leave.days} day(s) per date{leave.halfDayPeriod?` · ${leave.halfDayPeriod}`:''}</p>
       <p className="text-sm break-words">{(leave.requestDates??[leave.date]).join(', ')}</p>
       <p className="text-sm whitespace-pre-wrap break-words">{leave.note||'No reason provided'}</p>
+      {leave.requestId&&['sick','university'].includes(leave.type)&&<LeaveEvidence requestId={leave.requestId}/>}
       {!leave.requestRevision&&<p className="text-sm text-amber-800">Refresh after the approval workflow is deployed to approve this request.</p>}
       <label className="block text-sm text-slate-600">Rejection reason (optional)
         <textarea maxLength={1000} disabled={approve.isPending} className="block w-full rounded-lg border p-2 mt-1" rows={2} placeholder="For example: please choose another date" value={reasons[leave.requestId??leave.id]??''} onChange={e=>setReasons(current=>({...current,[leave.requestId??leave.id]:e.target.value}))}/>

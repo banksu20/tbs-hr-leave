@@ -9,6 +9,7 @@ import { buildMonthlyReport } from '@/lib/monthlyReport';
 export default function MonthlyExportDialog({employees,year,initialMonth,initialTypes,scope,ready,onClose}: {
   employees: Employee[]; year: string; initialMonth?: number; initialTypes: LeaveType[]; scope: string; ready: boolean; onClose:()=>void;
 }) {
+  const availableTypes:LeaveType[]=scope==='Interns'?[...LEAVE_TYPES,'university']:LEAVE_TYPES;
   const [month,setMonth]=useState(initialMonth??new Date().getMonth()+1);
   const [types,setTypes]=useState<LeaveType[]>(initialTypes);
   const [selected,setSelected]=useState(()=>new Set(employees.map(e=>e.id)));
@@ -32,7 +33,7 @@ export default function MonthlyExportDialog({employees,year,initialMonth,initial
       <fieldset disabled={pdfBusy} className="contents">
       <div className="flex flex-wrap gap-4 items-center">
         <label className="text-sm font-medium">Report month <select className="border rounded p-2" value={month} onChange={e=>{setMonth(Number(e.target.value));setDownloaded(false);}}>{MONTH_LABELS.map((m,i)=><option key={m} value={i+1}>{m} {year}</option>)}</select></label>
-        <fieldset className="flex flex-wrap gap-3"><legend className="text-sm font-medium mb-1">Leave types</legend>{LEAVE_TYPES.map(t=><label key={t} className="flex items-center gap-1 text-sm"><input type="checkbox" checked={types.includes(t)} onChange={e=>{setTypes(current=>e.target.checked?LEAVE_TYPES.filter(v=>current.includes(v)||v===t):current.filter(v=>v!==t));setDownloaded(false);}}/>{LEAVE_META[t].short}</label>)}</fieldset>
+        <fieldset className="flex flex-wrap gap-3"><legend className="text-sm font-medium mb-1">Leave types</legend>{availableTypes.map(t=><label key={t} className="flex items-center gap-1 text-sm"><input type="checkbox" checked={types.includes(t)} onChange={e=>{setTypes(current=>e.target.checked?LEAVE_TYPES.filter(v=>current.includes(v)||v===t):current.filter(v=>v!==t));setDownloaded(false);}}/>{LEAVE_META[t].short}</label>)}</fieldset>
       </div>
       <div className="border rounded-lg p-3 space-y-2">
         <div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold text-sm">Employees ({selectedEmployees.length} selected)</h3>

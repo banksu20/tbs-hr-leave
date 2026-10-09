@@ -8,11 +8,12 @@ export interface MonthRow {
   sick: number;
   annual: number;
   personal: number;
+  university: number;
   total: number;
 }
 
 export function monthlyTotals(employees: Employee[], year: string, types: LeaveType[] = LEAVE_TYPES): MonthRow[] {
-  const rows: MonthRow[] = MONTH_LABELS.map((month) => ({ month, sick: 0, annual: 0, personal: 0, total: 0 }));
+  const rows: MonthRow[] = MONTH_LABELS.map((month) => ({ month, sick: 0, annual: 0, personal: 0, university: 0, total: 0 }));
 
   for (const emp of employees) {
     for (const leave of leavesForYear(emp.leaves, year)) {
@@ -38,7 +39,7 @@ export function monthlyTotals(employees: Employee[], year: string, types: LeaveT
 export function dailyTotals(employees: Employee[], year: string, month: number, types: LeaveType[] = LEAVE_TYPES): MonthRow[] {
   const count = new Date(Date.UTC(Number(year), month, 0)).getUTCDate();
   const rows: MonthRow[] = Array.from({ length: count }, (_, index) => ({
-    month: String(index + 1), sick: 0, annual: 0, personal: 0, total: 0,
+    month: String(index + 1), sick: 0, annual: 0, personal: 0, university: 0, total: 0,
   }));
   for (const employee of employees) {
     for (const leave of leavesForYear(employee.leaves, year)) {

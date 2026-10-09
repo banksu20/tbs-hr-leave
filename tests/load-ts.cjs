@@ -17,7 +17,7 @@ module.exports = function loader(mocks = {}) {
       else if (id.startsWith('.')) id = path.resolve(path.dirname(file), id);
       else return require(id);
       if (id.endsWith('.js') && !fs.existsSync(id) && fs.existsSync(id.slice(0, -3) + '.ts')) id = id.slice(0, -3) + '.ts';
-      return load(path.extname(id) ? id : `${id}.ts`);
+      return load(path.extname(id) ? id : fs.existsSync(`${id}.ts`) ? `${id}.ts` : `${id}.tsx`);
     }, module, module.exports);
     return module.exports;
   }

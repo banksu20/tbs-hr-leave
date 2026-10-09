@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -21,7 +20,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Loader2, Calendar as CalendarIcon, User, FileText, ArrowLeft, AlertTriangle, Clock } from "lucide-react";
-import { useLeaveQuota } from "@/hooks/useLeaveQuota";
+import { exceedsBalance, type LeavePolicy } from "@/lib/leavePolicy";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -58,10 +57,21 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   const [currentUserId, setCurrentUserId] = useState(userId || "");
 
   useNotificationLanguage(currentUserId || null);
-  const { remainingDays, isLoading: isQuotaLoading } = useLeaveQuota(currentUserId || null);
+  const [isIntern,setIsIntern]=useState(false);
+  const [policy, setPolicy] = useState<LeavePolicy | null>(null);
+  const [uploadError,setUploadError]=useState('');
+  const [policyError, setPolicyError] = useState("");
+  const [isQuotaLoading, setQuotaLoading] = useState(true);
+  const [policyAttempt, setPolicyAttempt] = useState(0);
+  const [emergencyReason,setEmergencyReason]=useState('');
+  const [emergency,setEmergency]=useState(false);
+  const [evidence,setEvidence]=useState<{id:string;filename:string}[]>([]);
+  const [uploading,setUploading]=useState(false);
+  const [reasonError, setReasonError] = useState(false);
+  const [clock, setClock] = useState(Date.now());
   const [error, setError] = useState<string | null>(null);
   const [isDepartmentLocked, setIsDepartmentLocked] = useState(false);
-  const isLeaveTypeLocked = Boolean(defaultType);
+
 
   const [formData, setFormData] = useState<FormData>({
     userName: userName || "",
@@ -89,8 +99,36 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     [selectedDates]
   );
 
-  const displayRemainingDays = remainingDays ?? 10;
-  const isOverQuota = (formData.leaveType === "sick" || formData.leaveType === "personal") ? false : requestedDays > displayRemainingDays;
+  const isOverQuota = exceedsBalance(policy, formData.leaveType);
+  const deadlinePassed = !!policy?.deadline && clock>=Date.parse(policy.deadline);
+  const canEmergency=['sick','personal'].includes(formData.leaveType);
+  const late = (deadlinePassed && !(canEmergency&&emergency&&emergencyReason.trim())) || (canEmergency&&emergency&&!emergencyReason.trim());
+  const canSwitchAnnual = formData.leaveType === 'personal' && isOverQuota && !!policy?.annualBalances.length && policy.annualBalances.every(b => b.allowed);
+  const policyKey = JSON.stringify([currentUserId, formData.leaveType, localDates, isHalfDay]);
+  const [checkedPolicyKey, setCheckedPolicyKey] = useState('');
+  const policyReady = !!policy && checkedPolicyKey === policyKey && !isQuotaLoading && !policyError;
+  useEffect(() => { const timer = window.setInterval(() => setClock(Date.now()), 15000); return () => clearInterval(timer); }, []);
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    setPolicy(null); setQuotaLoading(true); setPolicyError('');
+    if (!currentUserId) {setQuotaLoading(false); return;}
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
+    const timer = window.setTimeout(async () => {
+      try {
+        const token = liff.getAccessToken();
+        if (!token) throw new Error(language === 'th' ? 'กรุณาเปิดแบบฟอร์มผ่าน LINE' : 'Please open this form in LINE.');
+        const response = await fetch('/api/leave-policy', {method:'POST', signal:controller.signal,
+          headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+          body:JSON.stringify({type:formData.leaveType||'annual',dates:localDates,daysPerDate:isHalfDay&&localDates.length===1?0.5:1})});
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Could not check your leave balance.');
+        if (active) {setPolicy(result);setIsIntern(Boolean(result.isIntern));setCheckedPolicyKey(policyKey);}
+      } catch (e) {if(active)setPolicyError((e as Error).message);}
+      finally {window.clearTimeout(timeout);if(active)setQuotaLoading(false);}
+    }, 200);
+    return () => {active=false;controller.abort();window.clearTimeout(timer);window.clearTimeout(timeout);};
+  }, [policyKey, policyAttempt, language]);
 
   useEffect(() => {
     if (department) setIsDepartmentLocked(true);
@@ -250,8 +288,8 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const isReasonRequired = formData.leaveType !== "vacation";
-    if (!formData.department || !formData.leaveType || selectedDates.length === 0 || (isReasonRequired && !formData.reason)) {
+    setReasonError(!formData.reason.trim());
+    if (!formData.department || !formData.leaveType || selectedDates.length === 0 || !formData.reason.trim()) {
       Swal.fire({
         icon: "warning",
         title: language === 'th' ? "ข้อมูลไม่ครบถ้วน" : "Incomplete Form",
@@ -261,13 +299,16 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       return;
     }
 
+    if (!policyReady || isOverQuota || late || (formData.leaveType==='university'&&!evidence.length)) {
+      setClock(Date.now());setPolicyAttempt(n=>n+1);return;
+    }
     setIsSubmitting(true);
 
     try {
       // 1. Submit to n8n Webhook / PostgreSQL Backend
-      const response = await fetch(`${N8N_URL}/webhook/submit-leave`, {
+      const response = await fetch(`/api/employee-request`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${liff.getAccessToken()}` },
         body: JSON.stringify({
           userName: formData.userName,
           userId: formData.userId,
@@ -279,7 +320,9 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
           endDate: endDate,
           leaveDays: requestedDays, 
           selectedDates: localDates,
-          reason: formData.reason,
+          reason: formData.reason.trim(),
+          emergencyReason: canEmergency&&emergency?emergencyReason.trim():'',
+          evidenceIds:evidence.map(f=>f.id),
           submittedAt: new Date().toISOString(),
           isHalfDay: isHalfDay,
           halfDayPeriod: isHalfDay ? halfDayType : null, 
@@ -287,8 +330,8 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       });
 
       const result = await response.json();
-      if (!response.ok || result.status === "error") {
-        throw new Error(result.message || "An error occurred");
+      if (!response.ok || result.ok === false || result.status === "error") {
+        throw new Error(result.error || result.message || "An error occurred");
       }
 
       await Swal.fire({
@@ -299,7 +342,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       });
 
       navigate("/"); 
-      setFormData((prev) => ({ ...prev, reason: "" }));
+      setFormData((prev) => ({ ...prev, reason: "" }));setEvidence([]);setEmergency(false);setEmergencyReason('');
       setSelectedDates([]);
       setIsHalfDay(false);
 
@@ -313,7 +356,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
         text: err.message || (language === 'th' ? "ไม่สามารถส่งคำขอได้" : "Failed to submit your request."),
         confirmButtonColor: "#00B5E2",
       });
-      navigate("/");
+      setPolicyAttempt(n=>n+1);
     } finally {
       setIsSubmitting(false);
     }
@@ -423,7 +466,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 <Label className="flex items-center gap-2 text-slate-700 font-semibold text-xs uppercase tracking-wider">
                   <FileText className="h-4 w-4" /> {t('leave_type')}
                 </Label>
-                <Select value={formData.leaveType} onValueChange={(val) => setFormData({ ...formData, leaveType: val })} disabled={isLeaveTypeLocked}>
+                <Select value={formData.leaveType} onValueChange={(val) => setFormData({ ...formData, leaveType: val })}>
                   <SelectTrigger className={`h-12 rounded-xl font-bold border-white bg-white shadow-sm text-sm ${
                     formData.leaveType === 'sick' ? 'text-rose-600 ring-1 ring-rose-100' : 
                     formData.leaveType === 'vacation' ? 'text-sky-600 ring-1 ring-sky-100' : 
@@ -436,6 +479,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                     <SelectItem value="sick" className="font-bold text-rose-600">{t('sick_leave')}</SelectItem>
                     <SelectItem value="vacation" className="font-bold text-sky-600">{t('annual_leave')}</SelectItem>
                     <SelectItem value="personal" className="font-bold text-amber-600">{t('personal_leave')}</SelectItem>
+                  {isIntern&&<SelectItem value="university">{language==='th'?'กิจกรรมมหาวิทยาลัย':'University activities'}</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>
@@ -583,19 +627,37 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
               </div>
 
               {/* กล่องเหตุผล */}
-              {formData.leaveType !== "vacation" && (
+              {(
                 <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
                   <Label className="flex items-center gap-2 text-slate-700 font-semibold text-xs uppercase tracking-wider">
-                    <FileText className="h-4 w-4" /> {t('reason')}
+                    <FileText className="h-4 w-4" /> {t('reason')} *
                   </Label>
                   <Textarea
+                    aria-label={t('reason')}
+                    aria-required="true"
+                    aria-invalid={reasonError}
+                    maxLength={2000}
                     placeholder={t('reason_placeholder')}
                     value={formData.reason}
-                    onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                    onChange={(e) => {setFormData({ ...formData, reason: e.target.value });setReasonError(false);}}
                     className={`min-h-[80px] resize-none rounded-xl bg-white shadow-sm text-sm border-white ${formData.leaveType === 'sick' ? 'ring-1 ring-rose-100 focus-visible:ring-rose-400' : 'border-slate-200 focus-visible:ring-sky-400'}`}
                   />
+                  {reasonError && <p role="alert" className="text-xs text-red-700">{language==='th'?'กรุณากรอกเหตุผลในการลา':'Please enter a reason for your leave.'}</p>}
                 </div>
               )}
+              {late && <p role="alert" className="rounded-xl bg-amber-100 p-3 text-sm text-amber-900">{language==='th'?'เลยเวลาขอลาแล้ว กรุณาติดต่อหัวหน้างาน':'The request deadline has passed. Please contact your manager.'}</p>}
+              {policy?.deadline&&<p className="text-xs text-slate-500">{language==='th'?'ส่งคำขอก่อน':'Submit before'} {new Date(policy.deadline).toLocaleString(language==='th'?'th-TH':'en-GB',{timeZone:'Asia/Bangkok',dateStyle:'medium',timeStyle:'short'})} (Bangkok)</p>}
+              {canEmergency&&<div className="space-y-2"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={emergency} onChange={e=>setEmergency(e.target.checked)}/>{language==='th'?'เหตุฉุกเฉิน':'Emergency request'}</label>{emergency&&<Textarea aria-label="Emergency explanation" maxLength={2000} required placeholder={language==='th'?'อธิบายเหตุฉุกเฉินให้ผู้อนุมัติทราบ':'Explain the emergency for your approver'} value={emergencyReason} onChange={e=>setEmergencyReason(e.target.value)}/>}</div>}
+              {['sick','university'].includes(formData.leaveType)&&<div className="rounded-xl border bg-white p-3 space-y-2"><label className="text-sm font-semibold">{formData.leaveType==='university'?(language==='th'?'หลักฐานกิจกรรม *':'Activity evidence *'):(language==='th'?'ใบรับรองแพทย์ (แนบภายหลังได้)':'Medical certificate (can be supplied later)')}<input aria-label="Supporting evidence" className="block mt-2 w-full text-xs" type="file" accept="application/pdf,image/png,image/jpeg" disabled={uploading||evidence.length>=3} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>2097152){setUploadError('Use a file up to 2 MB.');return;}setUploadError('');setUploading(true);try{const content=await new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(file);});const r=await fetch('/api/leave-evidence',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${liff.getAccessToken()}`},body:JSON.stringify({filename:file.name,mime:file.type,content})});const b=await r.json();if(!r.ok)throw Error(b.error);setEvidence(old=>[...old,{id:b.id,filename:b.filename}]);}catch(err){setUploadError((err as Error).message);}finally{setUploading(false);e.target.value='';}}}/></label><p className="text-xs text-slate-500">PDF, PNG or JPG · 2 MB each · up to 3 files</p>{uploadError&&<p role="alert" className="text-red-700 text-xs">{uploadError}</p>}{uploading&&<p className="text-xs">Uploading…</p>}{evidence.map(f=><div key={f.id} className="flex items-center justify-between gap-2 text-xs"><span className="truncate">{f.filename}</span><button type="button" disabled={uploading} onClick={async()=>{setUploading(true);setUploadError('');try{const r=await fetch('/api/leave-evidence?id='+f.id,{method:'DELETE',headers:{Authorization:`Bearer ${liff.getAccessToken()}`}});if(!r.ok)throw Error((await r.json()).error);setEvidence(old=>old.filter(x=>x.id!==f.id));}catch(e){setUploadError((e as Error).message);}finally{setUploading(false);}}}>Remove</button></div>)}</div>}
+              {policy?.medicalCertificateRequired && <p role="status" className="rounded-xl bg-rose-100 p-3 text-sm text-rose-900">{language==='th'?'ลาป่วยติดต่อกันอย่างน้อย 3 วันทำงาน กรุณาส่งใบรับรองแพทย์ให้ฝ่ายบุคคล':'Sick leave covers at least 3 consecutive working days. Please submit a medical certificate to HR.'}</p>}
+              {policyError && <div role="alert" className="text-sm text-red-700">{policyError} <button type="button" className="underline" onClick={()=>setPolicyAttempt(n=>n+1)}>{language==='th'?'ลองอีกครั้ง':'Retry'}</button></div>}
+              {policy && formData.leaveType !== 'sick' && <div className="space-y-2 text-sm">
+                {policy.unlimited ? <p>{language==='th'?'ไม่จำกัดวันลา':'No leave limit'}</p> : policy.balances.map(b=><p key={b.year} className="rounded-xl bg-white p-3 text-slate-700">
+                  {b.year} · {b.known ? (language==='th'?`ทั้งหมด ${b.total} · อนุมัติ ${b.approved} · รออนุมัติ ${b.pending} · ขอเพิ่มได้ ${b.available} วัน`:`${b.total} total · ${b.approved} approved · ${b.pending} pending · ${b.available} available`) : (language==='th'?'ยังไม่กำหนดโควตาปีนี้ กรุณาติดต่อฝ่ายบุคคล':'Allowance is not configured for this year. Contact HR.')}
+                </p>)}
+                {isOverQuota && <p className="text-red-700">{language==='th'?'วันลาคงเหลือไม่เพียงพอสำหรับคำขอนี้':'Not enough leave available for these dates.'}</p>}
+                {canSwitchAnnual && <Button type="button" variant="outline" onClick={()=>setFormData(prev=>({...prev,leaveType:'vacation'}))}>{language==='th'?'เปลี่ยนเป็นลาพักร้อน':'Switch to annual leave'}</Button>}
+              </div>}
             </div>
           </div>
         </form>
@@ -604,36 +666,15 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 md:px-6 md:py-5 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-50">
         <div className="max-w-2xl mx-auto space-y-3">
           
-          {(formData.leaveType !== "sick" && formData.leaveType !== "personal") && (
-            <div className={`px-4 py-2.5 rounded-xl border flex items-center justify-between transition-colors ${
-              isOverQuota ? "bg-rose-50 border-rose-200" : "bg-slate-800 border-slate-800 text-white"
-            }`}>
-              <div className="flex items-center gap-2">
-                <CalendarIcon className={`h-4 w-4 ${isOverQuota ? "text-rose-500" : "text-slate-400"}`} />
-                <span className={`text-xs font-semibold uppercase tracking-wider ${isOverQuota ? "text-rose-700" : "text-slate-300"}`}>{t('remaining_quota')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {isQuotaLoading ? (
-                  <Skeleton className="h-5 w-12 bg-slate-600/50 rounded-md" />
-                ) : (
-                  <>
-                    {isOverQuota && <AlertTriangle className="h-4 w-4 text-rose-500 animate-pulse" />}
-                    <span className={`text-lg font-extrabold ${isOverQuota ? "text-rose-600" : "text-white"}`}>
-                      {displayRemainingDays} <span className="text-[10px] font-medium opacity-80 uppercase ml-0.5">{t('days')}</span>
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
+          {isQuotaLoading && <p className="text-xs text-slate-500">{language==='th'?'กำลังตรวจสอบสิทธิ์ลา…':'Checking leave allowance…'}</p>}
 
           {/* ปุ่มกดลางาน */}
           <Button
             type="submit"
             form="leave-form" 
-            disabled={isSubmitting || isOverQuota || selectedDates.length === 0}
+            disabled={isSubmitting || uploading || !policyReady || isOverQuota || late || (formData.leaveType==='university'&&!evidence.length) || selectedDates.length === 0}
             className={`w-full h-12 md:h-14 text-base font-bold text-white rounded-xl shadow-md transition-all active:scale-[0.98]
-                ${isSubmitting || isOverQuota || selectedDates.length === 0 
+                ${isSubmitting || uploading || !policyReady || isOverQuota || late || (formData.leaveType==='university'&&!evidence.length) || selectedDates.length === 0
                   ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed" 
                   : formData.leaveType === 'sick' 
                     ? "bg-gradient-to-r from-rose-500 to-pink-600 hover:shadow-rose-500/30"

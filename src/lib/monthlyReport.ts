@@ -8,6 +8,7 @@ export interface MonthlyReportRow {
   sick: number;
   annual: number;
   personal: number;
+  university?: number;
   total: number;
 }
 export interface MonthlyReport {
@@ -27,18 +28,19 @@ export function csvCell(value: string|number): string {
 }
 export function buildMonthlyReport(employees: Employee[], year: string, month: number, types: LeaveType[], scope: string): MonthlyReport {
   if(!/^\d{4}$/.test(year)||!Number.isInteger(month)||month<1||month>12)throw Error('Select a valid month and year');
-  const chosen=LEAVE_TYPES.filter(t=>types.includes(t));
+  const available:LeaveType[]=scope==='Interns'?[...LEAVE_TYPES,'university']:LEAVE_TYPES;
+  const chosen=available.filter(t=>types.includes(t));
   if(!chosen.length)throw Error('Select at least one leave type');
   const period=`${year}-${String(month).padStart(2,'0')}`;
   const rows=employees.map(employee=>{
-    const row:MonthlyReportRow={employeeCode:employee.empCode,name:employee.name,department:employee.department,sick:0,annual:0,personal:0,total:0};
+    const row:MonthlyReportRow={employeeCode:employee.empCode,name:employee.name,department:employee.department,sick:0,annual:0,personal:0,...(chosen.includes('university')?{university:0}:{}),total:0};
     for(const leave of leavesForYear(employee.leaves,year)){
       if(!leave.date.startsWith(period+'-')||!chosen.includes(leave.type))continue;
       const days=Number(leave.days);
       if(!Number.isFinite(days)||days<=0)continue;
       row[leave.type]+=days;row.total+=days;
     }
-    for(const key of [...LEAVE_TYPES,'total'] as const)row[key]=round(row[key]);
+    for(const key of [...available,'total'] as const)if(row[key]!==undefined)row[key]=round(row[key]);
     return row;
   }).sort((a,b)=>a.employeeCode.localeCompare(b.employeeCode,undefined,{numeric:true})||a.name.localeCompare(b.name));
   const total=round(rows.reduce((sum,row)=>sum+row.total,0));

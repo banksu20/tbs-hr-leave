@@ -18,6 +18,9 @@ window.fetch=async(input,init)=>{
   if(init?.method==='POST'){const b=JSON.parse(String(init.body));session=accounts.find(a=>a.username===b.username);return session?json({ok:true}):json({error:'Use admin, ceo or hr for this demo'},401);}
   return json({required:true,signedIn:!!session,session});
  }
+ if(url.pathname==='/api/company-holidays')return json({ok:true,confirmed:true,revision:'demo',holidays:[{date:`${year}-10-13`,name:'Company holiday'}]});
+ if(url.pathname==='/api/registration')return json({ok:true,registrations:[]});
+ if(url.pathname==='/api/intern-terms')return json({ok:true,terms:[]});
  if(!session)return json({error:'Sign in required'},401);
  if(url.pathname==='/api/employees'){const intern=url.searchParams.get('cohort')==='intern';if(session.role==='hr'&&!intern)return json({error:'Access denied'},403);return json({year,count:1,employees:[employee(intern)]});}
  if(url.pathname==='/api/accounts')return session.role==='admin'?json({accounts,ok:true}):json({error:'Access denied'},403);

@@ -4,6 +4,8 @@ const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefuge
 const QUOTA_API_URL = `${N8N_URL}/webhook/get-quota`;
 
 interface UseLeaveQuotaResult {
+  unlimitedLeave: boolean;
+  policyConfigured: boolean;
   remainingDays: number | null;
   sickRemaining: number | null;
   annualTotal: number | null; 
@@ -18,6 +20,8 @@ interface UseLeaveQuotaResult {
 }
 
 export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
+  const [policyConfigured,setPolicyConfigured] = useState(true);
+  const [unlimitedLeave, setUnlimitedLeave] = useState(false);
   const [remainingDays, setRemainingDays] = useState<number | null>(null);
   const [sickRemaining, setSickRemaining] = useState<number | null>(null);
   
@@ -53,6 +57,8 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
 
       const data = await response.json();
 
+      setUnlimitedLeave(data.unlimitedLeave === true);
+      setPolicyConfigured(data.policyConfigured !== false);
       setRemainingDays(data.remainingDays ?? null);
       setSickRemaining(data.sickRemaining ?? null);
       
@@ -77,6 +83,8 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
   }, [userId]);
 
   return { 
+    unlimitedLeave,
+    policyConfigured,
     remainingDays, 
     sickRemaining, 
     annualTotal, 

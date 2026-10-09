@@ -704,6 +704,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
       />
 
       {requestEditor && <LeaveRecordDialog
+        requestId={requestEditor.requestId}
         initial={requestEditor.value}
         employeeName={employees.find((employee) => employee.id === requestEditor.empId)?.name ?? "Employee"}
         creating={requestEditor.creating}

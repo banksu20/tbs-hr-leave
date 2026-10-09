@@ -27,6 +27,7 @@ import {
 } from "./overviewData";
 
 const SERIES = {
+  university: "#7c3aed",
   sick: "#CC0000",
   annual: "#D4A000",
   personal: "#0099FF",
@@ -131,7 +132,8 @@ export default function OverviewDashboard({
   const employees = useMemo(()=>availableEmployees.filter(e=>!activeEmployeeId||e.id===activeEmployeeId),[availableEmployees,activeEmployeeId]);
   const period = month==='all' ? year : `${MONTH_LABELS[Number(month)-1]} ${year}`;
   const [exportOpen, setExportOpen] = useState(false);
-  const [selectedTypes, setSelectedTypes] = useState<LeaveType[]>([...LEAVE_TYPES]);
+  const availableTypes:LeaveType[]=exportScope==='Interns'?[...LEAVE_TYPES,'university']:LEAVE_TYPES;
+  const [selectedTypes, setSelectedTypes] = useState<LeaveType[]>(availableTypes);
   const periodEmployees = useMemo(()=>employees.map(e=>({...e,leaves:e.leaves.filter(l=>(month==='all'||Number(l.date.slice(5,7))===Number(month))&&selectedTypes.includes(l.type))})),[employees,month,selectedTypes]);
   const months = useMemo(() => month === 'all' ? monthlyTotals(periodEmployees, year, selectedTypes) : dailyTotals(periodEmployees, year, Number(month), selectedTypes), [periodEmployees, year, selectedTypes,month]);
   const todayEmployees = onLeaveToday.filter(e=>employees.some(p=>p.id===e.id));
@@ -152,7 +154,7 @@ export default function OverviewDashboard({
   const newJoiners = useMemo(() => awaitingQuota(employees), [employees]);
 
   const totals = useMemo(() => {
-    const byType = LEAVE_TYPES.map((type) => ({
+    const byType = availableTypes.map((type) => ({
       type,
       days: periodEmployees.reduce((sum, emp) => sum + sumLeavesByType(emp.leaves, type, year), 0),
     }));
@@ -251,7 +253,7 @@ export default function OverviewDashboard({
           </PopoverContent>
         </Popover>
         <label className="text-xs font-semibold text-slate-500 flex items-center gap-2">Month<select aria-label="Overview month" className="border rounded-md h-8 px-2 text-xs text-slate-900" value={month} onChange={e=>setMonth(e.target.value)}><option value="all">All year</option>{MONTH_LABELS.map((m,i)=><option key={m} value={i+1}>{m} {year}</option>)}</select></label>
-        <label className="text-xs font-semibold text-slate-500 flex items-center gap-2">Leave type<select aria-label="Overview leave type" className="border rounded-md h-8 px-2 text-xs text-slate-900" value={selectedTypes.length===3?'all':selectedTypes[0]} onChange={e=>setSelectedTypes(e.target.value==='all'?[...LEAVE_TYPES]:[e.target.value as LeaveType])}><option value="all">All types</option>{LEAVE_TYPES.map(t=><option key={t} value={t}>{LEAVE_META[t].label}</option>)}</select></label>
+        <label className="text-xs font-semibold text-slate-500 flex items-center gap-2">Leave type<select aria-label="Overview leave type" className="border rounded-md h-8 px-2 text-xs text-slate-900" value={selectedTypes.length===availableTypes.length?'all':selectedTypes[0]} onChange={e=>setSelectedTypes(e.target.value==='all'?[...availableTypes]:[e.target.value as LeaveType])}><option value="all">All types</option>{availableTypes.map(t=><option key={t} value={t}>{LEAVE_META[t].label}</option>)}</select></label>
         <button type="button" className="ml-auto h-8 flex items-center gap-1.5 rounded-md px-3 text-xs font-bold bg-slate-900 text-white hover:bg-slate-700" onClick={() => setExportOpen(true)}><Download className="h-3.5 w-3.5" />Export</button>
       </div>
         <div className="h-[170px] xl:h-[clamp(110px,16vh,200px)]"><ResponsiveContainer width="100%" height="100%">

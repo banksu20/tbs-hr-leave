@@ -66,7 +66,7 @@ export function expandRequest(raw: unknown, index: number): NormalizedLeave[] {
   const row = raw as Record<string, unknown>;
 
   const type = normalizeLeaveType(row.leave_type ?? row.leaveType ?? row.type);
-  if (type !== "sick" && type !== "annual" && type !== "personal") return [];
+  if (type !== "sick" && type !== "annual" && type !== "personal" && type !== "university") return [];
 
   const selected = parseSelectedDates(row.selected_dates ?? row.selectedDates);
   const start = cleanString(row.start_date ?? row.startDate).split("T")[0];

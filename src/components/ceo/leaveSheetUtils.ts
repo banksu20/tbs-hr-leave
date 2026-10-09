@@ -1,10 +1,11 @@
 import { Employee, LeaveRecord } from "@/data/mockEmployees";
 
-export type LeaveType = "sick" | "annual" | "personal";
+export type LeaveType = "sick" | "annual" | "personal" | "university";
 
 export const LEAVE_TYPES: LeaveType[] = ["sick", "annual", "personal"];
 
 export const LEAVE_META: Record<LeaveType, { label: string; short: string; chip: string; band: string; text: string; ring: string }> = {
+  university: {label:"University Activity",short:"University",chip:"bg-violet-600 text-white",band:"bg-violet-50",text:"text-violet-700",ring:"focus-visible:ring-violet-400"},
   sick: {
     label: "Sick Leave",
     short: "Sick",

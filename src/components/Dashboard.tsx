@@ -24,9 +24,9 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
   const [userDept, setUserDept] = useState<string>(""); 
   
 
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
-  const { remainingDays, sickRemaining, annualTotal, sickTaken, sickTotal, personalRemaining, personalTotal, personalTaken, isLoading: isQuotaLoading, refetch: refreshQuota } = useLeaveQuota(userId);
+  const { policyConfigured, unlimitedLeave, remainingDays, sickRemaining, annualTotal, sickTaken, sickTotal, personalRemaining, personalTotal, personalTaken, isLoading: isQuotaLoading, refetch: refreshQuota } = useLeaveQuota(userId);
 
   const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefugeeroute.org";
 
@@ -168,7 +168,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
             <div className="flex items-baseline gap-1 mt-1">
               {isQuotaLoading ? <Skeleton className="h-8 w-12" /> : (
                 <><span className="text-3xl font-extrabold text-slate-800">{sickTaken || 0}</span>
-                <span className="text-sm font-medium text-slate-400">{t('days')}</span></>
+                <span className="text-sm font-medium text-slate-400">{t('days')}{!policyConfigured ? (language==='th'?' · ยังไม่กำหนด':' · Not set') : unlimitedLeave ? (language==='th'?' · ไม่จำกัด':' · No limit') : ''}</span></>
               )}
             </div>
           </div>
@@ -186,8 +186,11 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
             </div>
             <div className="flex items-baseline gap-1 mt-1 z-10">
               {isQuotaLoading ? <Skeleton className="h-8 w-12" /> : 
+                !policyConfigured ? <span className="text-sm text-slate-500">{language==='th'?'ยังไม่กำหนด':'Not set'}</span> :
+                unlimitedLeave ? <span className="text-lg font-bold text-slate-800">{language==='th'?'ไม่จำกัด':'No limit'}</span> :
+                remainingDays === null ? <span className="text-sm text-slate-500">—</span> :
                 Number(remainingDays) <= 0 ? (
-                  <span className="text-[11px] font-bold text-rose-500 bg-rose-50 border border-rose-100 px-2 py-1 rounded-md">วันหยุดหมดแล้ว</span>
+                  <span className="text-[11px] font-bold text-rose-500 bg-rose-50 border border-rose-100 px-2 py-1 rounded-md">{language==='th'?'วันหยุดหมดแล้ว':'No days available'}</span>
                 ) : (
                   <><span className="text-3xl font-extrabold text-slate-800">{remainingDays}</span>
                   <span className="text-sm font-bold text-slate-300">/ {annualTotal}</span></>
@@ -212,7 +215,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
           <div className="flex items-baseline gap-1 z-10">
             {isQuotaLoading ? <Skeleton className="h-8 w-16" /> : (
                 <><span className="text-3xl font-extrabold text-slate-800">{personalTaken || 0}</span>
-                <span className="text-sm font-medium text-slate-400">{t('days')}</span></>
+                <span className="text-sm font-medium text-slate-400">{t('days')}{!policyConfigured ? (language==='th'?' · ยังไม่กำหนด':' · Not set') : unlimitedLeave ? (language==='th'?' · ไม่จำกัด':' · No limit') : ''}</span></>
             )}
           </div>
         </div>

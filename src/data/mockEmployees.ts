@@ -5,7 +5,7 @@ export interface LeaveRecord {
   requestDates?: string[];
   halfDayPeriod?: "morning" | "afternoon" | null;
   date: string; // "YYYY-MM-DD"
-  type: "sick" | "annual" | "personal";
+  type: "sick" | "annual" | "personal" | "university";
   days: number;
   note: string;
   status: "Approved" | "Pending" | "Rejected";

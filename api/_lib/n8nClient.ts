@@ -98,7 +98,7 @@ export interface NormalizedLeave {
   requestDates?: string[];
   halfDayPeriod?: "morning" | "afternoon" | null;
   date: string;
-  type: "sick" | "annual" | "personal";
+  type: "sick" | "annual" | "personal" | "university";
   days: number;
   note: string;
   status: "Approved" | "Pending" | "Rejected";
@@ -159,7 +159,7 @@ export function normalizeLeave(raw: unknown, index: number): NormalizedLeave | n
   const days = normalizeDays(pick(row, ["days", "leave_days", "leaveDays"]));
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  if (type !== "sick" && type !== "annual" && type !== "personal") return null;
+  if (type !== "sick" && type !== "annual" && type !== "personal" && type !== "university") return null;
   if (days === null || days <= 0) return null;
 
   return {

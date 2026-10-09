@@ -9,7 +9,7 @@ export const leaveRowSchema = z
     emp_no: z.union([z.number(), z.string()]).optional(),
     emp_code: z.string().optional(),
     leave_date: z.string(),
-    leave_type: z.enum(["sick", "annual", "personal"]),
+    leave_type: z.enum(["sick", "annual", "personal", "university"]),
     days: z.number().refine((d) => d === 0.25 || d === 0.5 || d === 1, {
       message: "days must be 0.25, 0.5 or 1",
     }),

@@ -8,13 +8,14 @@ import liff from "@line/liff";
 
 interface ProfileSetupProps {
   defaultName: string;
-  onSave: (data: { name: string; department: string }) => void;
+  onSave: (data: { name: string; department: string; employmentType: 'employee'|'intern' }) => void;
 }
 
 export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [nickName, setNickName] = useState("");
+  const [employmentType,setEmploymentType]=useState<'employee'|'intern'>('employee');
   const [department, setDepartment] = useState("");
 
   const [isLiffInit, setIsLiffInit] = useState(false);
@@ -40,8 +41,8 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!firstName.trim() && !lastName.trim() && !nickName.trim()) {
-      alert("Please fill at least one name field / กรุณากรอกชื่ออย่างน้อย 1 ช่อง");
+    if (!firstName.trim() || !lastName.trim()) {
+      alert("Please enter your first and last name / กรุณากรอกชื่อและนามสกุล");
       return;
     }
     if (!department) {
@@ -51,7 +52,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
 
     const combinedName = `${firstName.trim()}|${lastName.trim()}|${nickName.trim()}`;
     
-    onSave({ name: combinedName, department });
+    onSave({ name: combinedName, department, employmentType });
   };
 
   const capitalize = (val: string) => val.replace(/\b\w/g, char => char.toUpperCase());
@@ -112,6 +113,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
             
+            <label className="block text-sm font-semibold text-slate-700">Employment type / ประเภทพนักงาน<select className="mt-2 w-full border rounded-xl p-3 bg-white" value={employmentType} onChange={e=>setEmploymentType(e.target.value as 'employee'|'intern')}><option value="employee">Full-time / พนักงานประจำ</option><option value="intern">Intern / นักศึกษาฝึกงาน</option></select></label>
             {/* ชื่อจริง - นามสกุล */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
@@ -173,7 +175,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
             </div>
 
             <Button type="submit" className="w-full mt-8 h-12 text-md font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white shadow-md">
-              Save & Continue
+              Submit registration
             </Button>
           </form>
         </CardContent>
