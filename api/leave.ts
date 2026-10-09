@@ -1,3 +1,4 @@
+import {dashboardCall} from './_lib/dashboardAuth.js';
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { requestTargetSchema, requestUpdateSchema } from "./_lib/requestMutation.js";
 import { isWithinWindow } from "./_lib/date.js";
@@ -45,7 +46,7 @@ async function create(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const result = await n8nPost("dashboard-leave-create", {
+    const result = await dashboardCall(req,"leave-create", {body:{
       userId,
       empNo: row.emp_no ?? null,
       leaveDate: row.leave_date,
@@ -55,7 +56,7 @@ async function create(req: VercelRequest, res: VercelResponse) {
       reason: row.note,
       status: row.status,
       source: "dashboard",
-    });
+    }});
 
     return json(res, 201, { ok: true, userId, n8n: result });
   } catch (err) {
@@ -70,7 +71,7 @@ async function update(req: VercelRequest, res: VercelResponse, id: string) {
     if(req.body.action==='reject'&&rejectionReason!==undefined&&(typeof rejectionReason!=='string'||rejectionReason.length>1000))return json(res,422,{error:'Rejection reason must be 1,000 characters or fewer'});
     if (typeof revision !== "string" || !/^[a-f0-9]{32}$/.test(revision)) return json(res,422,{error:"Refresh the request before deciding"});
     try {
-      const result = await n8nPost("dashboard-leave-update", {id,action:req.body.action,expectedRevision:revision,...(req.body.action==='reject'?{rejectionReason:rejectionReason?.trim()??''}:{})});
+      const result = await dashboardCall(req,"leave-update", {body:{id,action:req.body.action,expectedRevision:revision,...(req.body.action==='reject'?{rejectionReason:rejectionReason?.trim()??''}:{})}});
       return json(res,200,{ok:true,id,n8n:result});
     } catch (err) { return n8nFailure(res,err); }
   }
@@ -78,7 +79,7 @@ async function update(req: VercelRequest, res: VercelResponse, id: string) {
     const cancellationId = req.body.cancellationId;
     if (typeof cancellationId !== "string" || !/^[1-9]\d*$/.test(cancellationId)) return json(res,422,{error:"Invalid cancellation id"});
     try {
-      const result = await n8nPost("dashboard-leave-update", {id, action:"restore", cancellationId});
+      const result = await dashboardCall(req,"leave-update", {body:{id, action:"restore", cancellationId}});
       return json(res,200,{ok:true,id,n8n:result});
     } catch (err) { return n8nFailure(res,err); }
   }
@@ -88,12 +89,12 @@ async function update(req: VercelRequest, res: VercelResponse, id: string) {
   });
   const row = parsed.data;
   try {
-    const result = await n8nPost("dashboard-leave-update", {
+    const result = await dashboardCall(req,"leave-update", {body:{
       id, scope: row.scope, expectedDates: row.expectedDates, expectedRevision: row.expectedRevision,
       leaveDates: [...row.dates].sort(), leaveType: row.type,
       leaveDays: row.daysPerDate * row.dates.length,
       halfDayPeriod: row.halfDayPeriod, reason: row.note, status: row.status,
-    });
+    }});
     return json(res, 200, { ok: true, id, n8n: result });
   } catch (err) { return n8nFailure(res, err); }
 }
@@ -102,17 +103,17 @@ async function remove(req: VercelRequest, res: VercelResponse, id: string) {
   const parsed = requestTargetSchema.safeParse(req.body);
   if (!parsed.success) return json(res, 422, { error: "Explicit request scope and expectedDates are required" });
   try {
-    const result = await n8nPost("dashboard-leave-delete", { id, ...parsed.data });
+    const result = await dashboardCall(req,"leave-delete", {body:{ id, ...parsed.data }});
     return json(res, 200, { ok: true, id, deleted: true, n8n: result });
   } catch (err) { return n8nFailure(res, err); }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (!ceoAuthorised(req)) {
+  if (!await ceoAuthorised(req)) {
     return json(res, 401, { error: "not signed in" });
   }
 
-  if (!writesAllowed(req)) {
+  if (!await writesAllowed(req)) {
     return json(res, 401, { error: "invalid or missing dashboard token" });
   }
 

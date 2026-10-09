@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { authRequired, signedIn } from "./auth.js";
+import { dashboardSession, sameOrigin } from "./dashboardAuth.js";
 import { webhookSecret } from "./webhookSecret.js";
 
 export function secretMatches(provided: unknown): boolean {
@@ -23,16 +23,11 @@ export function headerValue(req: VercelRequest, name: string): string | undefine
   return Array.isArray(value) ? value[0] : value;
 }
 
-export function ceoAuthorised(req: VercelRequest): boolean {
-  return signedIn(req.headers.cookie);
+export async function ceoAuthorised(req: VercelRequest): Promise<boolean> {
+  try { return !!await dashboardSession(req); } catch { return false; }
 }
-
-export function writesAllowed(req: VercelRequest): boolean {
-  if (!authRequired()) return true;
-  if (authRequired() && signedIn(req.headers.cookie)) return true;
-  const required = process.env.CEO_API_TOKEN;
-  if (!required) return true;
-  return headerValue(req, "x-ceo-token") === required;
+export async function writesAllowed(req: VercelRequest): Promise<boolean> {
+  return sameOrigin(req) && await ceoAuthorised(req);
 }
 
 export function queryParam(req: VercelRequest, name: string): string | undefined {

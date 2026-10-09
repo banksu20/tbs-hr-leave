@@ -19,7 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Employee, LeaveRecord } from "@/data/mockEmployees";
-import tbsLogo from "@/image/TBS-Logo.png";
+import DashboardHeader from "@/components/ceo/DashboardHeader";
+import type { ReactNode } from "react";
 
 import SheetView from "@/components/ceo/SheetView";
 import QuickAddLeaveModal from "@/components/ceo/QuickAddLeaveModal";
@@ -38,7 +39,7 @@ const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefuge
 
 const KNOWN_DEPARTMENTS = ["SEO", "Web Developer", "UX/UI Designer", "Graphic", "Content", "PBN", "SEM", "Account", "Sale"];
 
-export default function CeoDashboard() {
+export default function CeoDashboard({navigation, account}: {navigation?: ReactNode; account?: ReactNode} = {}) {
   // Selected Year & Department Filters
   const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
@@ -114,7 +115,7 @@ export default function CeoDashboard() {
       localStorage.removeItem(`tbs_employees_v2_${year}`);
       localStorage.removeItem(`tbs_employees_v2_${year}_at`);
     } catch { /* Network refresh remains available without local storage. */ }
-    void queryClient.resetQueries({ queryKey: ["employees", year], exact: true });
+    void queryClient.resetQueries({ queryKey: ["employees", year], exact: false });
     setSelectedEmployee(null);
     setEditingEmp(null);
     setSelectedYear(year);
@@ -340,27 +341,11 @@ export default function CeoDashboard() {
     <div className="min-h-screen bg-slate-100 font-sans text-slate-900 pb-3">
       
       {/* 1. Top Executive Navigation Header */}
-      <header className="bg-slate-900 text-white sticky top-0 z-30 shadow-md border-b border-slate-800">
-        <div className="h-1 w-full bg-gradient-to-r from-[#00B5E2] via-[#F5A623] to-[#68BD24]"></div>
-        <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between gap-4">
-          
-          {/* Logo & Year Switcher */}
-          <div className="flex items-center gap-3">
-            <div className="bg-white p-1 rounded shadow-xs">
-              <img src={tbsLogo} alt="TBS Logo" className="h-6 w-auto object-contain" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-extrabold text-white tracking-tight">TBS HR - Leave Request System</h1>
+      <DashboardHeader navigation={navigation} account={account} year={
                 <select aria-label="Leave year" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="bg-slate-800 text-white border border-slate-700 rounded px-2 py-1 text-xs font-bold">
                   {[...new Set([...Array.from({ length: 5 }, (_, index) => currentYear + 1 - index), Number(selectedYear)])].sort((a,b)=>b-a).map((year) => <option key={year} value={year}>{year}</option>)}
                 </select>
-              </div>
-              <p className="text-[10px] text-slate-400 font-medium">TBS Marketing &bull; Staff leave and quotas</p>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
+      } actions={
           <div className="flex items-center gap-2">
             <div className={`hidden lg:flex items-center gap-1.5 font-bold border px-2.5 py-1 rounded-full text-[11px] mr-2 ${
               dataSource === "live"
@@ -390,8 +375,7 @@ export default function CeoDashboard() {
 
 
           </div>
-        </div>
-      </header>
+      } />
 
       {/* 2. Executive Metric Cards Strip */}
       <div className="max-w-[1600px] mx-auto px-4 mt-2">

@@ -1,3 +1,4 @@
+import {dashboardSession,dashboardCall} from './_lib/dashboardAuth.js';
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { ceoAuthorised, currentYear, json, queryParam, writesAllowed } from "./_lib/http.js";
 import { N8nMutationError, N8nNotRegisteredError, N8nUnavailableError, n8nGet, n8nPost, normalizeEmployeeList } from "./_lib/n8nClient.js";
@@ -77,12 +78,13 @@ async function setProfile(req: VercelRequest, res: VercelResponse) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (!ceoAuthorised(req)) {
+  if (!await ceoAuthorised(req)) {
     return json(res, 401, { error: "not signed in" });
   }
 
   if (req.method === "PATCH") {
-    if (!writesAllowed(req)) return json(res, 401, { error: "not authorised" });
+    if((await dashboardSession(req))?.role==='hr')return json(res,403,{error:'HR can manage intern leave, not employee profiles'});
+    if (!await writesAllowed(req)) return json(res, 401, { error: "not authorised" });
     const body = typeof req.body === "object" && req.body !== null ? (req.body as Record<string, unknown>) : {};
     return body.status === undefined ? setProfile(req, res) : setStatus(req, res);
   }
@@ -100,7 +102,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const includeInactive = queryParam(req, "includeInactive") === "1";
 
-    const payload = await n8nGet("get-all-leaves", { year });
+    const cohort=queryParam(req,"cohort")??"employee";
+    if(!["employee","intern"].includes(cohort))return json(res,422,{error:"Invalid record group"});
+    const scoped = await dashboardCall(req,"data", { year,cohort });
+    const payload = scoped.employees;
     const all = normalizeEmployeeList(payload);
 
     const employees = all

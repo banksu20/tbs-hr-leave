@@ -15,7 +15,7 @@ import SickAcknowledgement from "@/pages/SickAcknowledgement";
 import CancelDecision from "@/pages/CancelDecision";
 import RejectForm from "@/pages/RejectForm";
 import ProfileSetup from "@/components/ProfileSetup"; 
-import CeoDashboard from "@/pages/CeoDashboard"; 
+import DashboardAccess from "@/components/ceo/DashboardAccess";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 import { useLanguage } from "./hooks/useLanguage";
@@ -39,7 +39,7 @@ const App = () => {
 
   useEffect(() => {
     // Reminder links verify LINE identity on their own; they do not need Sheets/profile lookup.
-    if(window.location.pathname==='/sick-acknowledge'){setIsInitializing(false);return;}
+    if(window.location.pathname==='/sick-acknowledge'||window.location.pathname==='/ceo'){setIsInitializing(false);return;}
     const initializeLiffAndCheckUser = async () => {
       try {
         await liff.init({ liffId: LIFF_ID });
@@ -138,7 +138,7 @@ const App = () => {
             <Route path="/sick-acknowledge" element={<SickAcknowledgement />} />
             <Route path="/cancel-decision" element={<CancelDecision />} />
             <Route path="/reject-form" element={<RejectForm />} />
-            <Route path="/ceo" element={<ErrorBoundary><CeoDashboard /></ErrorBoundary>} />
+            <Route path="/ceo" element={<ErrorBoundary><DashboardAccess /></ErrorBoundary>} />
 
             <Route 
               path="/" 

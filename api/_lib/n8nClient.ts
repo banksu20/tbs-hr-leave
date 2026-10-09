@@ -86,7 +86,7 @@ export async function n8nPost(endpoint: string, body: unknown) {
   }
   if (row.ok === false || row.error) {
     const status = Number(row.statusCode);
-    throw new N8nMutationError([403, 404, 409, 422, 503].includes(status) ? status : 502, String(row.error || "The workflow rejected this change"));
+    throw new N8nMutationError([401, 403, 404, 409, 422, 429, 503].includes(status) ? status : 502, String(row.error || "The workflow rejected this change"));
   }
   return result;
 }
@@ -115,6 +115,8 @@ export interface NormalizedEmployee {
   quotas: { annualTotal: number | null; sickTotal: number | null; personalTotal: number; carriedOver: number };
   rolloverNeedsReview?: boolean;
   quotaRevision?: string;
+  employmentType?: "employee"|"intern";
+  internNumber?: number|null;
   storedCarriedOver?: number;
   carryoverExpiresOn?: string|null;
   quotasKnown: boolean;
@@ -220,7 +222,7 @@ export function normalizeEmployee(raw: unknown, index: number): NormalizedEmploy
   return {
     id,
     empNo,
-    empCode: empNo === null ? null : `TBS-${String(empNo).padStart(3, "0")}`,
+    empCode: row.employment_type==='intern' && row.intern_number ? `TBSInterns-${String(row.intern_number).padStart(3,"0")}` : empNo === null ? null : `TBS-${String(empNo).padStart(3, "0")}`,
     name,
     nickname,
     department: cleanString(pick(row, ["department", "Department"])) || "General",
@@ -228,6 +230,8 @@ export function normalizeEmployee(raw: unknown, index: number): NormalizedEmploy
     quotas,
     rolloverNeedsReview: row.rolloverNeedsReview===true,
     quotaRevision: cleanString(row.quotaRevision)||undefined,
+    employmentType: row.employment_type==='intern'?'intern':'employee',
+    internNumber: normalizeDays(row.intern_number),
     storedCarriedOver: normalizeDays(row.storedCarriedOver)??quotas.carriedOver,
     carryoverExpiresOn: cleanString(row.carryoverExpiresOn).split("T")[0]||null,
     quotasKnown: typeof row.quotasKnown === "boolean" ? row.quotasKnown : sawQuota,

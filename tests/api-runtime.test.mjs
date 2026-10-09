@@ -35,11 +35,11 @@ test('compiled API modules load in Node ESM and return JSON without an auth cook
       };
       await handler({ method: route === 'auth' ? 'GET' : 'OPTIONS', headers: {}, query: {} }, response);
       assert.equal(response.headers['Content-Type'], 'application/json');
-      assert.equal(response.statusCode, route === 'auth' ? 200 : 405);
-      if (route === 'auth') assert.deepEqual(response.body, { required: false, signedIn: true });
+      assert.equal(response.statusCode, route === 'auth' ? 200 : 401);
+      if (route === 'auth') assert.deepEqual(response.body, { required: true, signedIn: false, session: null });
       if (route === 'rollover') {
         await handler({method:'POST',headers:{},query:{},body:{action:'apply',sourceYear:2025,carryLimit:5,expiresOn:'2026-03-31'}},response);
-        assert.equal(response.statusCode,422);assert.ok(response.body.issues.includes('Preview is required before applying'));
+        assert.equal(response.statusCode,401);
       }
     }
   } finally {

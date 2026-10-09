@@ -1,3 +1,4 @@
+import {dashboardSession} from './_lib/dashboardAuth.js';
 import { z } from "zod";
 import { isPlainDate } from "./_lib/date.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
@@ -16,7 +17,7 @@ function num(source: Record<string, unknown>, keys: string[], fallback: number |
 }
 
 async function updateQuota(req: VercelRequest, res: VercelResponse) {
-  if (!writesAllowed(req)) {
+  if (!await writesAllowed(req)) {
     return json(res, 401, { error: "invalid or missing dashboard token" });
   }
 
@@ -56,7 +57,9 @@ async function updateQuota(req: VercelRequest, res: VercelResponse) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (!ceoAuthorised(req)) {
+  if((await dashboardSession(req).catch(()=>null))?.role==='hr')return json(res,403,{error:'This area is restricted to Admin and CEO'});
+  res.setHeader('Cache-Control','no-store');
+  if (!await ceoAuthorised(req)) {
     return json(res, 401, { error: "not signed in" });
   }
 

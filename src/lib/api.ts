@@ -74,6 +74,8 @@ export interface ApiEmployee {
   quotas: Employee["quotas"];
   rolloverNeedsReview?: boolean;
   quotaRevision?: string;
+  employmentType?: "employee"|"intern";
+  internNumber?: number|null;
   storedCarriedOver?: number;
   carryoverExpiresOn?: string|null;
   quotasKnown?: boolean;
@@ -117,6 +119,8 @@ export function toEmployee(api: ApiEmployee): Employee {
     quotas: api.quotas,
     rolloverNeedsReview: api.rolloverNeedsReview,
     quotaRevision: api.quotaRevision,
+    employmentType: api.employmentType,
+    internNumber: api.internNumber,
     storedCarriedOver: api.storedCarriedOver,
     carryoverExpiresOn: api.carryoverExpiresOn,
     quotasKnown: api.quotasKnown !== false,
@@ -143,9 +147,9 @@ export interface EmployeesResult {
   warning?: string;
 }
 
-export async function fetchEmployees(year: string, includeInactive = false): Promise<EmployeesResult> {
+export async function fetchEmployees(year: string, includeInactive = false, cohort: "employee"|"intern" = "employee"): Promise<EmployeesResult> {
   const data = await request<{ employees: ApiEmployee[]; partial?: boolean; warning?: string }>(
-    `/api/employees?year=${encodeURIComponent(year)}${includeInactive ? "&includeInactive=1" : ""}`
+    `/api/employees?cohort=${cohort}&year=${encodeURIComponent(year)}${includeInactive ? "&includeInactive=1" : ""}`
   );
   return {
     employees: data.employees.map(toEmployee),

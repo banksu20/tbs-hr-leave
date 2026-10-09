@@ -4,7 +4,7 @@ import loadTS from './load-ts.cjs';
 
 test('quota API rejects invalid input before forwarding and preserves historical unlimited values and enforces the new paid sick policy',async()=>{
  const calls=[];
- const {default:handler}=loadTS({'./_lib/n8nClient.js':{n8nPost:async(_endpoint,body)=>{calls.push(body);return {ok:true}},N8nMutationError:class extends Error{},N8nNotRegisteredError:class extends Error{},N8nUnavailableError:class extends Error{}}})('api/quota.ts');
+ const {default:handler}=loadTS({'./dashboardAuth.js':{dashboardSession:async()=>({role:'ceo'}),sameOrigin:()=>true},'./_lib/dashboardAuth.js':{dashboardSession:async()=>({role:'ceo'}),sameOrigin:()=>true},'./_lib/n8nClient.js':{n8nPost:async(_endpoint,body)=>{calls.push(body);return {ok:true}},N8nMutationError:class extends Error{},N8nNotRegisteredError:class extends Error{},N8nUnavailableError:class extends Error{}}})('api/quota.ts');
  const send=async body=>{const res={status(n){this.code=n;return this},setHeader(){return this},send(v){this.body=JSON.parse(v);return this}};await handler({method:'PATCH',headers:{},body:{userId:'test',year:2026,expectedRevision:'a'.repeat(32),...body}},res);return res};
  for(const body of [{annualTotal:-1},{sickTotal:-1},{carriedOver:.3},{personalTotal:null},{expectedRevision:undefined},{carryoverExpiresOn:'2027-01-01'}])assert.equal((await send(body)).code,422);
  assert.equal(calls.length,0);assert.equal((await send({year:2025,sickTotal:null,carriedOver:0,carryoverExpiresOn:null})).code,200);
@@ -13,7 +13,7 @@ test('quota API rejects invalid input before forwarding and preserves historical
 });
 
 test('quota API preserves unlimited historical values on read',async()=>{
- const {default:handler}=loadTS({'./_lib/n8nClient.js':{n8nGet:async()=>({annualTotal:12,sickTotal:null,sickRemaining:null,sickTaken:4,carriedOver:2,annualTaken:1}),N8nMutationError:class extends Error{},N8nNotRegisteredError:class extends Error{},N8nUnavailableError:class extends Error{}}})('api/quota.ts');
+ const {default:handler}=loadTS({'./dashboardAuth.js':{dashboardSession:async()=>({role:'ceo'}),sameOrigin:()=>true},'./_lib/dashboardAuth.js':{dashboardSession:async()=>({role:'ceo'}),sameOrigin:()=>true},'./_lib/n8nClient.js':{n8nGet:async()=>({annualTotal:12,sickTotal:null,sickRemaining:null,sickTaken:4,carriedOver:2,annualTaken:1}),N8nMutationError:class extends Error{},N8nNotRegisteredError:class extends Error{},N8nUnavailableError:class extends Error{}}})('api/quota.ts');
  const res={status(n){this.code=n;return this},setHeader(){return this},send(v){this.body=JSON.parse(v);return this}};
  await handler({method:'GET',headers:{},query:{userId:'test',year:'2025'}},res);
  assert.equal(res.code,200);assert.equal(res.body.sickTotal,null);assert.equal(res.body.sickRemaining,null);assert.equal(res.body.sickTaken,4);assert.equal(res.body.remainingDays,13);

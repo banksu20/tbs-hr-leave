@@ -1,3 +1,4 @@
+import {dashboardCall,dashboardSession} from './_lib/dashboardAuth.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
 import { ceoAuthorised, writesAllowed, headerValue, json, queryParam } from './_lib/http.js';
@@ -14,7 +15,7 @@ export default async function handler(req:VercelRequest,res:VercelResponse) {
  const line=queryParam(req,'view')==='line';
  let accountId:string|undefined;
  if(admin) {
-  if(!ceoAuthorised(req)||!writesAllowed(req)) return json(res,401,{error:'Not signed in'});
+  if(!await ceoAuthorised(req)||!await writesAllowed(req)) return json(res,401,{error:'Not signed in'});
  } else {
   try {accountId=await verifyLineIdentity(headerValue(req,'authorization'));}
   catch {return json(res,401,{error:'Cannot verify your LINE session. Open the employee app in LINE and sign in again.'});}
@@ -33,7 +34,8 @@ export default async function handler(req:VercelRequest,res:VercelResponse) {
    operation=line?'line-'+(parsed.data as z.infer<typeof lineDecisionSchema>).action:admin?(parsed.data as z.infer<typeof decisionSchema>).action:'request';
    payload={...parsed.data,accountId};
   }
-  const result=await n8nPost('employee-cancellations',{operation,payload});
+  if(admin&&operation==='admin-delivery'&&(await dashboardSession(req))?.role==='hr')return json(res,403,{error:'Delivery administration is restricted'});
+  const result=admin&&operation!=='admin-delivery'?await dashboardCall(req,operation==='admin-list'?'cancel-list':'cancel-'+operation,{body:payload,cohort:queryParam(req,'cohort')??'employee'}):await n8nPost('employee-cancellations',{operation,payload});
   const row=Array.isArray(result)?result[0]:result;
   return json(res,200,row);
  } catch(error) { return json(res,error instanceof N8nMutationError?error.status:502,{error:error instanceof N8nMutationError?error.message:'Cancellation service is unavailable. Please try again.'}); }

@@ -1,3 +1,4 @@
+import {dashboardSession} from './_lib/dashboardAuth.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
 import { isPlainDate } from './_lib/date.js';
@@ -11,7 +12,9 @@ const schema=z.object({action:z.enum(['preview','apply']),sourceYear:z.number().
   .refine(r=>r.expiresOn.startsWith(String(r.sourceYear+1)),{message:'Expiry must be in the target year'})
   .refine(r=>r.action==='preview'||!!r.token,{message:'Preview is required before applying'});
 export default async function handler(req:VercelRequest,res:VercelResponse){
-  if(!ceoAuthorised(req)||!writesAllowed(req))return json(res,401,{error:'Not signed in'});
+  if((await dashboardSession(req).catch(()=>null))?.role==='hr')return json(res,403,{error:'This area is restricted to Admin and CEO'});
+  res.setHeader('Cache-Control','no-store');
+  if(!await ceoAuthorised(req)||!await writesAllowed(req))return json(res,401,{error:'Not signed in'});
   if(req.method!=='POST')return json(res,405,{error:'Method not allowed'});
   const parsed=schema.safeParse(req.body);
   if(!parsed.success)return json(res,422,{error:'Invalid rollover settings',issues:parsed.error.issues.map(i=>i.message)});

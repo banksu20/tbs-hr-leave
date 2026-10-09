@@ -8,27 +8,10 @@ export type DataSource = "live" | "cached" | "empty";
 const CACHE_KEY = "tbs_employees_v2";
 const keyFor = (year: string) => `${CACHE_KEY}_${year}`;
 
-export function readCache(year: string): Employee[] | null {
-  try {
-    const saved = localStorage.getItem(keyFor(year));
-    const parsed = saved ? JSON.parse(saved) : null;
-    return Array.isArray(parsed) ? parsed : null;
-  } catch { return null; }
-}
-
-export function readCacheTime(year: string): number {
-  try {
-    const time = Number(localStorage.getItem(`${keyFor(year)}_at`));
-    return Number.isFinite(time) ? time : 0;
-  } catch { return 0; }
-}
-
-export function writeCache(year: string, employees: Employee[]) {
-  try {
-    localStorage.setItem(keyFor(year), JSON.stringify(employees));
-    localStorage.setItem(`${keyFor(year)}_at`, String(Date.now()));
-  } catch { /* Storage can be unavailable. The network result remains usable. */ }
-}
+// Sensitive records must not survive logout or be shared between roles.
+export function readCache(_year: string): Employee[] | null { return null; }
+export function readCacheTime(_year: string): number { return 0; }
+export function writeCache(_year: string, _employees: Employee[]) { /* memory cache only */ }
 
 export function describeError(error: unknown): string {
   if (error instanceof NetworkError) return "Cannot reach the server. Check your connection.";
@@ -40,10 +23,10 @@ export function describeError(error: unknown): string {
   return error instanceof Error ? error.message : "Unknown error";
 }
 
-export function useEmployeesData(year: string, enabled = true) {
+export function useEmployeesData(year: string, enabled = true, cohort: "employee"|"intern" = "employee") {
   const query = useQuery({
-    queryKey: ["employees", year],
-    queryFn: () => fetchEmployees(year, true),
+    queryKey: ["employees", year, cohort],
+    queryFn: () => fetchEmployees(year, true, cohort),
     enabled,
     initialData: () => {
       const cached = enabled ? readCache(year) : null;

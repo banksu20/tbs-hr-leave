@@ -6,7 +6,7 @@ import type { Employee } from '@/data/mockEmployees';
 import { approveLeave, rejectLeave } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 
-export default function PendingRequests({employees,ready}: {employees: Employee[]; ready:boolean}) {
+export default function PendingRequests({employees,ready,cohort="employee"}: {employees: Employee[]; ready:boolean;cohort?:"employee"|"intern"}) {
   const client=useQueryClient();
   const [reasons,setReasons]=useState<Record<string,string>>({});
   const approve=useMutation({mutationFn:({id,revision,action,reason}:{id:string;revision:string;action:'approve'|'reject';reason?:string})=>action==='approve'?approveLeave(id,revision):rejectLeave(id,revision,reason),
@@ -20,7 +20,7 @@ export default function PendingRequests({employees,ready}: {employees: Employee[
       if(seen.has(key))return false;seen.add(key);return true;
     }).map(leave=>({employee,leave}));
   }).sort((a,b)=>a.leave.date.localeCompare(b.leave.date));
-  return <><CancellationRequests /><section className="bg-white border rounded-xl p-4 space-y-4">
+  return <><CancellationRequests cohort={cohort}/><section className="bg-white border rounded-xl p-4 space-y-4">
     <h2 className="font-bold text-lg">Pending requests ({requests.length})</h2>
     <p className="text-sm text-slate-500">Shows requests in the selected year, department and search. Approve or reject the entire request, including dates in another year.</p>
     {!ready&&<p role="alert" className="text-amber-800">Refresh live data before deciding on requests.</p>}

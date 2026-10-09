@@ -37,6 +37,7 @@ const MUTED = "#94a3b8";
 const GRID = "#e2e8f0";
 
 export interface OverviewDashboardProps {
+  showQuota?: boolean;
   employees: Employee[];
   year: string;
   departmentCount: number;
@@ -114,6 +115,7 @@ function ChartTooltip({ active, payload, label, labelFormatter }: any) {
 }
 
 export default function OverviewDashboard({
+  showQuota = true,
   employees: availableEmployees,
   year,
   departmentCount,
@@ -164,7 +166,7 @@ export default function OverviewDashboard({
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className={`grid grid-cols-2 ${showQuota ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-3`}>
         <StatTile
           label="Total staff"
           value={employees.length}
@@ -185,6 +187,7 @@ export default function OverviewDashboard({
             </span>
           }
         />
+        {showQuota && <>
         <StatTile
           label={newJoiners.length > 0 ? "Quota not set" : "Quota warnings"}
           value={newJoiners.length > 0 ? newJoiners.length : overQuota.length}
@@ -203,6 +206,7 @@ export default function OverviewDashboard({
             )
           }
         />
+        </>}
         <StatTile
           label={`Days taken (${period})`}
           value={totals.all}
@@ -266,7 +270,7 @@ export default function OverviewDashboard({
 
       {exportOpen && <MonthlyExportDialog employees={employees} year={year} initialMonth={month==='all'?undefined:Number(month)} initialTypes={selectedTypes} scope={exportScope} ready={exportReady} onClose={() => setExportOpen(false)} />}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <div className={`grid grid-cols-1 ${showQuota ? "lg:grid-cols-3" : ""} gap-3`}>
         <Card title="Sick leave usage by person" hint={`Approved sick leave only · ${period}`}>
           <ResponsiveContainer width="100%" height={130}>
             <BarChart data={visibleSickEmployees} layout="vertical" margin={{ top: 0, right: 44, left: 8, bottom: 0 }} barSize={11}>
@@ -321,6 +325,7 @@ export default function OverviewDashboard({
           </div>}
         </Card>
 
+        {showQuota && <>
         <Card title="Annual leave used" hint="Full year · top 4 by allowance used">
           <div className="space-y-2">
             {quotaUsage.length === 0 && (
@@ -398,6 +403,7 @@ export default function OverviewDashboard({
             ))}
           </div>
         </Card>
+        </>}
       </div>
     </div>
   );

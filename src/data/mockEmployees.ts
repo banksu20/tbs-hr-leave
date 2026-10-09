@@ -26,6 +26,8 @@ export interface Employee {
   };
   rolloverNeedsReview?: boolean;
   quotaRevision?: string;
+  employmentType?: "employee"|"intern";
+  internNumber?: number|null;
   storedCarriedOver?: number;
   carryoverExpiresOn?: string|null;
   quotasKnown?: boolean;
