@@ -24,7 +24,7 @@ window.fetch=async(input,init)=>{
  if(url.pathname==='/api/intern-terms')return json({ok:true,terms:[]});
  if(!session)return json({error:'Sign in required'},401);
  if(url.pathname==='/api/employees'){const intern=url.searchParams.get('cohort')==='intern';if(session.role==='hr'&&!intern)return json({error:'Access denied'},403);return json({year,count:intern&&internDeleted?0:1,employees:intern&&internDeleted?[]:[employee(intern)]});}
- if(url.pathname==='/api/accounts')return session.role==='admin'?json({accounts,ok:true}):json({error:'Access denied'},403);
+ if(url.pathname==='/api/accounts')return ['admin','ceo'].includes(session.role)?json({accounts,ok:true}):json({error:'Access denied'},403);
  if(url.pathname==='/api/interns'&&init?.method==='POST'){const b=JSON.parse(String(init.body));if(b.action==='delete'){if(internStatus!=='inactive'||b.confirmation!=='TBSInterns-001')return json({error:'Archive the intern and enter TBSInterns-001 to confirm.'},422);internDeleted=true;return json({ok:true});}if(b.action==='archive')internStatus='inactive';if(b.action==='restore')internStatus='active';return json({ok:true});}
  if(url.pathname==='/api/interns')return json({employees:[{id:'demo-intern',name:'Sample Intern',type:'intern',internNumber:1}]});
  if(url.pathname==='/api/history')return json({events:[],nextCursor:null});

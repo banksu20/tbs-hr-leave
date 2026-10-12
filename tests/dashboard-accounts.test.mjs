@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import loadTS from './load-ts.cjs';
 const db=new PGlite();
 await db.exec(readFileSync('tests/employee-cancellation.test.mjs','utf8').match(/await db.exec\(`([\s\S]*?)`\);/)[1]);
-const files=['001_request_safety','002_history_and_conflicts','003_year_rollover','004_line_decisions','005_sync_outbox','006_employee_submission','007_sheet_employee_links','008_quota_safety','009_linked_employee_accounts','011_employee_cancellation','012_line_cancellation','013_leave_result_flex','014_cancellation_result_cards','015_delivery_reliability','016_sick_notifications','017_paid_sick_rollover','018_sick_acknowledgements','019_ceo_sick_notices','020_retire_sheet_sync','023_dashboard_accounts'];
+const files=['001_request_safety','002_history_and_conflicts','003_year_rollover','004_line_decisions','005_sync_outbox','006_employee_submission','007_sheet_employee_links','008_quota_safety','009_linked_employee_accounts','011_employee_cancellation','012_line_cancellation','013_leave_result_flex','014_cancellation_result_cards','015_delivery_reliability','016_sick_notifications','017_paid_sick_rollover','018_sick_acknowledgements','019_ceo_sick_notices','020_retire_sheet_sync','023_dashboard_accounts','037_ceo_account_management'];
 for(const f of files)await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
 const q=async(sql,args=[])=>(await db.query(sql,args)).rows;
 const call=async(operation,payload={},sessionHash='a'.repeat(64))=>(await q('SELECT tbs_dashboard_auth($1::jsonb) r',[JSON.stringify({...payload,operation,sessionHash})]))[0].r;
@@ -38,7 +38,7 @@ test('Admin and CEO can switch groups without merging data',async()=>{
  for(const token of ['a','c'])for(const cohort of ['employee','intern']){
   const r=await call('data',{year:2026,cohort},token.repeat(64));assert.equal(r.ok,true);assert.ok(r.employees.every(e=>e.employment_type===cohort));
  }
- assert.equal((await call('accounts-list',{},'c'.repeat(64))).statusCode,403);
+ assert.equal((await call('accounts-list',{},'c'.repeat(64))).ok,true);
 });
 test('HR cannot mutate full-time leave by guessing an id; intern approval uses the existing guards',async()=>{
  const r=(await q("INSERT INTO leave_requests(user_id,user_name,leave_type,leave_days,start_date,end_date,selected_dates,reason,status) VALUES('staff','Staff','sick',1,'2026-10-08','2026-10-08','2026-10-08','Ill','Pending') RETURNING *,md5(to_jsonb(leave_requests)::text) revision"))[0];
@@ -79,6 +79,15 @@ test('archive and restore preserve intern history and code; HR cannot archive fu
 });
 test('migration reapply preserves accounts and does not reopen public access',async()=>{
  await db.exec(readFileSync('n8n/sql/023_dashboard_accounts.sql','utf8'));
+ await db.exec(readFileSync('n8n/sql/037_ceo_account_management.sql','utf8'));
  assert.equal((await call('accounts-list')).accounts.length,3);
  assert.equal((await call('data',{year:2026,cohort:'intern'},'f'.repeat(64))).statusCode,401);
+});
+
+test('CEO can manage accounts and reset passwords but cannot remove own access',async()=>{
+ const before=(await q('SELECT version FROM tbs_dashboard_accounts WHERE id=$1',[hr.id]))[0].version;
+ assert.equal((await call('account-save',{id:hr.id,username:'hr',role:'hr',active:true,passwordHash:hash},'c'.repeat(64))).ok,true);
+ assert.equal((await q('SELECT version FROM tbs_dashboard_accounts WHERE id=$1',[hr.id]))[0].version,before+1);
+ assert.equal((await call('account-save',{id:ceo.id,username:'ceo-user',role:'hr',active:true},'c'.repeat(64))).statusCode,409);
+ assert.equal((await call('account-save',{id:ceo.id,username:'ceo-user',role:'ceo',active:false},'c'.repeat(64))).statusCode,409);
 });

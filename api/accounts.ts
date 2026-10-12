@@ -7,7 +7,7 @@ export default async function handler(req:VercelRequest,res:VercelResponse){
  res.setHeader('Cache-Control','no-store');
  try{
   const session=await dashboardSession(req);if(!session)return json(res,401,{error:'Sign in required'});
-  if(session.role!=='admin')return json(res,403,{error:'Admin access required'});
+  if(!['admin','ceo'].includes(session.role))return json(res,403,{error:'Admin or CEO access required'});
   if(req.method==='GET')return json(res,200,await dashboardCall(req,'accounts-list'));
   if(req.method!=='POST'||!sameOrigin(req))return json(res,403,{error:'Operation not permitted'});
   const parsed=schema.safeParse(req.body);if(!parsed.success)return json(res,422,{error:'Invalid account details'});
