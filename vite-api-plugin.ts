@@ -31,7 +31,9 @@ export function apiDevServer(): Plugin {
         });
 
         try {
-          const mod = await server.ssrLoadModule(`/api/${route}.ts`);
+          const bundled = new Set(['employee-data','company-holidays','employee-request','intern-decision','intern-terms','leave-evidence','leave-policy','registration']);
+          if (!/^[a-z-]+$/.test(route)) { res.statusCode=404; res.end(); return; }
+          const mod = await server.ssrLoadModule(bundled.has(route) ? '/api/[policy].ts' : `/api/${route}.ts`);
           const handler = mod.default;
 
           const shimReq = Object.assign(req, {

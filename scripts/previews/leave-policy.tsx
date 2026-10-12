@@ -12,8 +12,8 @@ liff.getAccessToken=()=> 'local-preview-only';
 liff.isInClient=()=>false;
 window.fetch=async(input,init)=>{
  const url=String(input),json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status});
- if(url.includes('/get-leave-history'))return json([]);
- if(url.includes('/check-user'))return json({found:true,name:'Demo Employee',department:'AI'});
+ if(url.includes('action=get-leave-history'))return json([]);
+ if(url.includes('action=check-user'))return json({found:true,name:'Demo Employee',department:'AI'});
  if(url.includes('/api/notification-preferences')||url.includes('/api/sick-language'))return json({ok:true});
  if(url==='/api/leave-policy'){
   if(scenario==='error')return json({error:'Could not check leave allowance. Please try again.'},503);

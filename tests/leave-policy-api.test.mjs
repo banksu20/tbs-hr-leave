@@ -24,7 +24,7 @@ test('workflow patch is idempotent and preserves other routes and credentials',(
  const p=patchLeavePolicy(w);assert.deepEqual(patchLeavePolicy(p),p);assert.match(p.nodes[2].parameters.query,/sick-review/);assert.deepEqual(p.nodes[2].credentials,w.nodes[2].credentials);assert.deepEqual(p.nodes[3].parameters.options,w.nodes[3].parameters.options);assert.deepEqual(p.connections,w.connections);assert.equal(w.nodes[3].parameters.query,'old');
 });
 test('bundled policy router uses the URL path and preserves query parameters without exposing unknown handlers',async()=>{
- let called='';const names=['company-holidays','employee-request','intern-decision','intern-terms','leave-evidence','leave-policy','registration'];
+ let called='';const names=['employee-data','company-holidays','employee-request','intern-decision','intern-terms','leave-evidence','leave-policy','registration'];
  const stubs=Object.fromEntries(names.map(name=>['./_handlers/'+name+'.js',{default:async(req,res)=>{called=name;res.status(200).send(JSON.stringify({query:req.query}));}}]));
  const handler=loadTS(stubs)('api/[policy].ts').default;
  const response=()=>({statusCode:200,setHeader(){},status(n){this.statusCode=n;return this;},send(v){this.body=JSON.parse(v);return this;}});

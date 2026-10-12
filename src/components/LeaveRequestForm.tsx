@@ -1,3 +1,4 @@
+import {employeeData} from "@/lib/employeeData";
 import {useNotificationLanguage} from '@/hooks/useNotificationLanguage';
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -178,10 +179,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
   useEffect(() => {
     if (currentUserId) {
-      fetch(`${N8N_URL}/webhook/get-leave-history?userId=${currentUserId}`, {
-        headers: { "ngrok-skip-browser-warning": "true" }
-      })
-      .then(res => res.json())
+      employeeData('get-leave-history')
       .then(data => {
         if (Array.isArray(data)) {
           const leaves: TakenLeaveRecord[] = [];

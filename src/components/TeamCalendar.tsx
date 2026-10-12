@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2, X } from "lucide-react";
-const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefugeeroute.org";
+import {employeeData} from "@/lib/employeeData";
 
 interface CalendarProps {
   department: string;
@@ -13,6 +13,7 @@ export default function TeamCalendar({ department, userId }: CalendarProps) {
   const [leaveData, setLeaveData] = useState<any>({});
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error,setError] = useState(false);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -32,63 +33,19 @@ export default function TeamCalendar({ department, userId }: CalendarProps) {
   }
   useEffect(() => {
     if (!department) return;
-    
-    setIsLoading(true);
-
-    const fetchCalendarData = async () => {
-      try {
-        if (isTechTeam) {
-          const [resDev, resUx] = await Promise.all([
-            fetch(`${N8N_URL}/webhook/get-team-calendar?department=Web Developer&year=${year}&month=${month +1}`, { headers: { "ngrok-skip-browser-warning": "true" } }),
-            fetch(`${N8N_URL}/webhook/get-team-calendar?department=UX/UI Designer&year=${year}&month=${month +1}`, { headers: { "ngrok-skip-browser-warning": "true" } })
-          ]);
-
-          const dataDev = await resDev.json();
-          const dataUx = await resUx.json();
-
-          const mergedData = { ...dataDev };
-          for (const date in dataUx) {
-            if (mergedData[date]) {
-              mergedData[date] = [...mergedData[date], ...dataUx[date]];
-            } else {
-              mergedData[date] = dataUx[date];
-            }
-          }
-          setLeaveData(mergedData);
-
-        } else if (isCreativeTeam) {
-          const [resGraphic, resContent] = await Promise.all([
-            fetch(`${N8N_URL}/webhook/get-team-calendar?department=Graphic&year=${year}&month=${month +1}`, { headers: { "ngrok-skip-browser-warning": "true" } }),
-            fetch(`${N8N_URL}/webhook/get-team-calendar?department=Content&year=${year}&month=${month +1}`, { headers: { "ngrok-skip-browser-warning": "true" } })
-          ]);
-          const dataGraphic = await resGraphic.json();
-          const dataContent = await resContent.json();
-
-          const mergedData = { ...dataGraphic };
-          for (const date in dataContent) {
-            if (mergedData[date]) {
-              mergedData[date] = [...mergedData[date], ...dataContent[date]];
-            } else {
-              mergedData[date] = dataContent[date];
-            }
-          }
-          setLeaveData(mergedData);
-        } else {
-          const res = await fetch(`${N8N_URL}/webhook/get-team-calendar?department=${department}&year=${year}&month=${month +1}`, {
-            headers: { "ngrok-skip-browser-warning": "true" }
-          });
-          const data = await res.json();
-          setLeaveData(data);
-        }
-      } catch (err) {
-        console.error("Error fetching team calendar:", err);
-      } finally {
-        setIsLoading(false);
-        setSelectedDay(null);
-      }
-    };
-
-    fetchCalendarData();
+    const controller=new AbortController();
+    setIsLoading(true);setError(false);setLeaveData({});setSelectedDay(null);
+    const departments=isTechTeam?['Web Developer','UX/UI Designer']:isCreativeTeam?['Graphic','Content']:[department];
+    Promise.all(departments.map(dept=>employeeData('get-team-calendar',{department:dept,year:String(year),month:String(month+1)},controller.signal)))
+      .then(results=>{
+        if(controller.signal.aborted)return;
+        const merged:Record<string,any[]>={};
+        for(const data of results)for(const [date,leaves] of Object.entries(data))if(Array.isArray(leaves))merged[date]=[...(merged[date]||[]),...leaves];
+        setLeaveData(merged);
+      })
+      .catch(()=>{if(!controller.signal.aborted)setError(true);})
+      .finally(()=>{if(!controller.signal.aborted)setIsLoading(false);});
+    return ()=>controller.abort();
   }, [department, year, month, isTechTeam, isCreativeTeam]);
 
   const getDaysInMonth = (year: number, month: number) => {
@@ -132,6 +89,7 @@ export default function TeamCalendar({ department, userId }: CalendarProps) {
             </div>
         )}
 
+        {error && <p role="alert" className="mb-3 text-sm text-rose-600">Unable to load team leave. Please reopen the app in LINE.</p>}
         {/* หัวตาราง จ-อา */}
         <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-slate-400 mb-3">
           <div className="text-rose-400">Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div className="text-rose-400">Sa</div>
@@ -198,7 +156,7 @@ export default function TeamCalendar({ department, userId }: CalendarProps) {
                       <span className="text-sm text-slate-700 font-semibold">{l.name}</span> 
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="text-[10px] px-2 py-1 bg-slate-100 text-slate-500 rounded-md font-medium">{l.type === 'sick' ? 'Sick' : 'Annual'}</span>
+                        <span className="text-[10px] px-2 py-1 bg-slate-100 text-slate-500 rounded-md font-medium">{{sick:'Sick',annual:'Annual',vacation:'Annual',personal:'Personal',university:'University'}[l.type as string]||l.type}</span>
                         <span className={`text-[10px] px-2 py-1 rounded-md font-bold ${l.status === 'Approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                             {l.status === 'Approved' ? 'Approved' : 'Pending'}
                         </span>

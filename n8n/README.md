@@ -1,8 +1,10 @@
 # TBS HR fixes — deployment sequence
 
-All repository changes are uncommitted. On 2026-09-21 the additive database migration was applied successfully through the PostgreSQL node in maintenance workflow `Ln3BwcSN2e2GHZWa` (execution `582013`). The three HR tables were backed up inside database schema `tbs_release_backup_20260921`; all 924 existing leave requests were preserved.
+Current release uses database-backed Admin/CEO/HR accounts and verified LINE employee APIs. Admin and CEO have full management access; HR is restricted to interns. Intern leave requests notify both configured approvers. See numbered migrations through 039 for the incremental schema and policy changes.
 
-Nine SQL/history fixes are saved as an unpublished draft in workflow `pcJFDAUvfT2LYIwT`. The published workflow is unchanged. Header Auth, the matching server environment variables, and app deployment remain outstanding. The user does not have access to the owning Vercel account; hosting must be resolved before release.
+Deploy the employee-data API and frontend before applying `scripts/patch-employee-read-auth.mjs` to the live workflow. It reuses the existing server Header Auth credential on profile, quota, history and team-calendar webhooks. Browser callers must never receive that secret. After publishing, verify anonymous calls return 403 and signed-in employee reads succeed. Older open LINE app pages need reopening.
+
+The sequence below documents the original migration; do not rerun the legacy destructive root schema.
 
 ## Files
 
@@ -17,7 +19,7 @@ The original export and generated inactive patch are in the user's Downloads fol
 
 1. Back up the database and export the current workflow. Confirm that `leave_requests`, `leave_quotas`, and `tbs_employees` are the existing production tables. Run **only** `sql/001_request_safety.sql` against that database. Do **not** run the legacy root `postgres_schema.sql`, which contains table truncation statements.
 2. In n8n, create/select an **HTTP Header Auth** credential named `TBS dashboard server`, with header name `x-ceo-webhook-secret`. The account owner must enter the secret in the credential UI. Put the same value in the app server's **`CEO_WEBHOOK_SECRET`** environment variable. Never expose it through a `VITE_` variable or browser bundle.
-3. Dashboard password authentication is temporarily disabled at the owner's request. `/ceo` and its app API allow public access, including writes; `CEO_PASSWORD`, `CEO_SESSION_SECRET`, and `CEO_API_TOKEN` do not restrict access in this mode. The server-to-n8n `CEO_WEBHOOK_SECRET` is still required. Restore `authRequired()` and the authentication tests before re-enabling password protection.
+3. Keep dashboard session authentication enabled. Accounts and roles are stored in the database. The server-to-n8n `CEO_WEBHOOK_SECRET` is separately required; it is not a user login password.
 4. Generate the private workflow patch using the real credential ID:
    ```sh
    node scripts/patch-n8n-workflow.mjs /path/to/export.json /path/to/fixed.local.json HEADER_CREDENTIAL_ID

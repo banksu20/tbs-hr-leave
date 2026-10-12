@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 
-const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefugeeroute.org";
-const QUOTA_API_URL = `${N8N_URL}/webhook/get-quota`;
+import {employeeData} from "@/lib/employeeData";
 
 interface UseLeaveQuotaResult {
   unlimitedLeave: boolean;
@@ -43,19 +42,7 @@ export const useLeaveQuota = (userId: string | null): UseLeaveQuotaResult => {
     setError(null);
 
     try {
-      // Fetch PostgreSQL quota via n8n / Backend API
-      const response = await fetch(`${QUOTA_API_URL}?userId=${userId}`, {
-        method: "GET",
-        headers: {
-          "ngrok-skip-browser-warning": "true",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch quota");
-      }
-
-      const data = await response.json();
+      const data = await employeeData('get-quota');
 
       setUnlimitedLeave(data.unlimitedLeave === true);
       setPolicyConfigured(data.policyConfigured !== false);

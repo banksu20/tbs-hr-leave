@@ -1,3 +1,4 @@
+import {employeeData} from "@/lib/employeeData";
 import EmployeeCancellations from "./EmployeeCancellations";
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -62,13 +63,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
 
   const fetchRegisteredName = async (id: string) => {
   try {
-    const res = await fetch(`${N8N_URL}/webhook/check-user?userId=${id}`);
-    
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
-    }
-    
-    const data = await res.json();
+    const data = await employeeData('check-user');
     if(data.found) {
       setRegisteredName(data.name);
       if (data.department) {

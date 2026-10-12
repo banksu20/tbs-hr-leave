@@ -5,10 +5,11 @@ import internDecision from './_handlers/intern-decision.js';
 import internTerms from './_handlers/intern-terms.js';
 import leaveEvidence from './_handlers/leave-evidence.js';
 import leavePolicy from './_handlers/leave-policy.js';
+import employeeData from './_handlers/employee-data.js';
 import registration from './_handlers/registration.js';
 import {json} from './_lib/http.js';
 const handlers:Record<string,(req:VercelRequest,res:VercelResponse)=>Promise<unknown>>={
- 'company-holidays':companyHolidays,'employee-request':employeeRequest,
+ 'employee-data':employeeData,'company-holidays':companyHolidays,'employee-request':employeeRequest,
  'intern-decision':internDecision,'intern-terms':internTerms,
  'leave-evidence':leaveEvidence,'leave-policy':leavePolicy,registration,
 };
