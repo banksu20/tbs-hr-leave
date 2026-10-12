@@ -53,6 +53,9 @@ const App = () => {
           const res = await fetch('/api/registration', {
             headers: { Authorization: `Bearer ${liff.getAccessToken()}` }
           });
+          if (!res.headers.get("content-type")?.includes("application/json")) {
+            throw Error("The profile service is temporarily unavailable. Please try again shortly.");
+          }
           const data = await res.json();
           if(!res.ok)throw Error(data.error);
           setPendingRegistration(Boolean(data.pending));

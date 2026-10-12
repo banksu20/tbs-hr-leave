@@ -1,12 +1,19 @@
 {
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "src": "/api/(company-holidays|employee-request|intern-decision|intern-terms|leave-evidence|leave-policy|registration)/?",
+      "dest": "/api/[policy]"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "handle": "filesystem"
+    },
+    {
+      "src": "/api/.*",
+      "status": 404
+    },
+    {
+      "src": "/.*",
+      "dest": "/index.html"
     }
   ]
 }
