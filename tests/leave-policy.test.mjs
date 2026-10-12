@@ -6,7 +6,7 @@ import loadTS from './load-ts.cjs';
 
 const db=new PGlite();
 await db.exec(readFileSync('tests/employee-cancellation.test.mjs','utf8').match(/await db.exec\(`([\s\S]*?)`\);/)[1]);
-const files=['001_request_safety','002_history_and_conflicts','003_year_rollover','004_line_decisions','005_sync_outbox','006_employee_submission','007_sheet_employee_links','008_quota_safety','009_linked_employee_accounts','011_employee_cancellation','012_line_cancellation','013_leave_result_flex','014_cancellation_result_cards','015_delivery_reliability','016_sick_notifications','017_paid_sick_rollover','018_sick_acknowledgements','019_ceo_sick_notices','020_retire_sheet_sync','023_dashboard_accounts','021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels','033_medical_document_types','034_intern_deletion','035_fulltime_registration','036_confirm_2027_holidays','037_ceo_account_management'];
+const files=['001_request_safety','002_history_and_conflicts','003_year_rollover','004_line_decisions','005_sync_outbox','006_employee_submission','007_sheet_employee_links','008_quota_safety','009_linked_employee_accounts','011_employee_cancellation','012_line_cancellation','013_leave_result_flex','014_cancellation_result_cards','015_delivery_reliability','016_sick_notifications','017_paid_sick_rollover','018_sick_acknowledgements','019_ceo_sick_notices','020_retire_sheet_sync','023_dashboard_accounts','021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels','033_medical_document_types','034_intern_deletion','035_fulltime_registration','036_confirm_2027_holidays','037_ceo_account_management','038_intern_dual_approval'];
 for(const f of files)await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
 const query=async(sql,args=[]) => (await db.query(sql,args)).rows;
 const submit=async(body)=> (await query('SELECT tbs_employee_request($1::jsonb) r',[JSON.stringify({userId:'employee',leaveType:'personal',selectedDates:['2099-10-01'],leaveDays:1,reason:'Appointment',approverIds:['boss'],...body})]))[0].r;
@@ -20,7 +20,7 @@ test.beforeEach(async()=>{
  INSERT INTO leave_quotas(user_id,year,annual_total,sick_total,personal_total,carried_over) VALUES('employee',2099,10,30,3,0),('employee',2100,10,30,3,0);`);
 });
 test('migration can be reapplied without replacing originals or enabling notices',async()=>{
- for(const f of ['021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels','033_medical_document_types','034_intern_deletion','035_fulltime_registration'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
+ for(const f of ['021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels','033_medical_document_types','034_intern_deletion','035_fulltime_registration','037_ceo_account_management','038_intern_dual_approval'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
  assert.equal((await query('SELECT personal_notifications_enabled e FROM tbs_leave_policy_settings'))[0].e,false);
 });
 test('all employee leave types reject blank/space-only reasons before inserts or messages',async()=>{
@@ -165,13 +165,13 @@ test('late sick and personal require emergency explanation; annual has no except
  assert.equal((await submit({leaveType:'sick',selectedDates:['2001-02-05'],emergencyReason:'Unexpected illness'})).ok,true);
  assert.equal((await submit({leaveType:'annual',selectedDates:['2001-02-06'],emergencyReason:'Late'})).statusCode,422);
 });
-test('intern reservations span years and route only to Nam',async()=>{
+test('intern reservations span years and route to Dan and Nam',async()=>{
  await query("INSERT INTO tbs_employees(user_id,tbs_id,status,employment_type) VALUES('intern',90,'active','intern') ON CONFLICT(user_id) DO UPDATE SET employment_type='intern'");
  await query("INSERT INTO tbs_intern_terms VALUES('intern','2099-10-01','2100-01-31',4) ON CONFLICT(user_id) DO UPDATE SET start_date=excluded.start_date,end_date=excluded.end_date,months=4");
  const r=await submit({userId:'intern',leaveType:'annual',selectedDates:['2099-12-31','2100-01-01'],leaveDays:2});assert.equal(r.ok,true,JSON.stringify(r));
  assert.equal((await submit({userId:'intern',leaveType:'annual',selectedDates:['2100-01-02']})).statusCode,409);
  const jobs=await query("SELECT payload FROM tbs_sync_jobs WHERE user_id='intern' AND kind='line'");
- assert.deepEqual(jobs[0].payload.to,['U437d78a035fce09cd623650fb6c3fc97']);
+ assert.deepEqual([...jobs[0].payload.to].sort(),['U437d78a035fce09cd623650fb6c3fc97','U715bf0a842fd10bebdeb446c45c3ba38'].sort());
  assert.equal((await decide(r)).ok,true);
 });
 test('intern university activity requires owned evidence and survives normalization',async()=>{
@@ -225,14 +225,14 @@ test('full-time automatic registration is idempotent and handles older pending r
  const annual=(await query("SELECT tbs_leave_balance('pending-staff',$1,'annual',ARRAY[make_date($1,12,1)],1,NULL) b",[year]))[0].b;
  assert.equal(annual.known,false);assert.equal(annual.allowed,false);
 });
-test('Nam alone can use intern LINE decision; dashboard HR retains scoped approval',async()=>{
+test('Dan and Nam can review intern leave; first decision prevents a second decision',async()=>{
  await query("INSERT INTO tbs_employees(user_id,tbs_id,status,employment_type) VALUES('intern',90,'active','intern') ON CONFLICT(user_id) DO UPDATE SET employment_type='intern'");
  await query("INSERT INTO tbs_intern_terms VALUES('intern','2099-10-01','2100-01-31',4) ON CONFLICT DO NOTHING");
  const r=await submit({userId:'intern',leaveType:'personal'});assert.equal(r.ok,true);
  const body={id:r.id,token:r.decision_token,revision:r.revision,action:'review'};
  assert.equal((await rpc('tbs_intern_decision',{...body,accountId:'not-Nam'})).statusCode,403);
  assert.equal((await rpc('tbs_intern_decision',{...body,accountId:'U437d78a035fce09cd623650fb6c3fc97'})).ok,true);
- assert.equal((await rpc('tbs_intern_decision',{...body,action:'approve',accountId:'U437d78a035fce09cd623650fb6c3fc97'})).ok,true);
+ assert.equal((await rpc('tbs_intern_decision',{...body,action:'approve',accountId:'U715bf0a842fd10bebdeb446c45c3ba38'})).ok,true);
  assert.equal((await rpc('tbs_intern_decision',{...body,action:'approve',accountId:'U437d78a035fce09cd623650fb6c3fc97'})).statusCode,409);
 });
 test('evidence is private to its employee and scoped reviewers; HR cannot download full-time evidence',async()=>{
