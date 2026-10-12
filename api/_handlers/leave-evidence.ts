@@ -14,9 +14,10 @@ export default async function handler(req:VercelRequest,res:VercelResponse){
  if(req.method==='POST'){
   const b=req.body??{};if(b.requestId!==undefined&&(!Number.isInteger(b.requestId)||b.requestId<=0))return json(res,422,{error:'Invalid request identifier'});if(!accountId)return json(res,403,{error:'Employee sign-in required'});
   if(typeof b.content!=='string'||b.content.length>2800000||typeof b.filename!=='string')return json(res,422,{error:'Use a PDF, PNG or JPEG up to 2 MB.'});
+  if(b.documentType!==undefined&&!['certificate','bill','activity','other'].includes(b.documentType))return json(res,422,{error:'Invalid document type'});
   const file=Buffer.from(b.content,'base64');const valid=b.mime==='application/pdf'?file.subarray(0,5).toString()==='%PDF-':b.mime==='image/png'?file.subarray(0,8).toString('hex')==='89504e470d0a1a0a':b.mime==='image/jpeg'&&file.subarray(0,3).toString('hex')==='ffd8ff';
   if(!valid||file.length>2097152||file.length===0)return json(res,422,{error:'Use a valid PDF, PNG or JPEG up to 2 MB.'});
-  payload={...payload,action:'upload',filename:b.filename.replace(/[\r\n"\\/]/g,'_'),mime:b.mime,content:file.toString('base64'),requestId:b.requestId};
+  payload={...payload,action:'upload',filename:b.filename.replace(/[\r\n"\\/]/g,'_'),mime:b.mime,content:file.toString('base64'),requestId:b.requestId,documentType:b.documentType??'other'};
  }else if(req.method==='DELETE'){if(!accountId||!req.query.id)return json(res,403,{error:'Employee sign-in required'});payload={accountId,action:'remove',id:req.query.id};}
  else if(req.method==='GET')payload={...payload,action:req.query.id?'download':'list',id:req.query.id,requestId:req.query.requestId};
  else return json(res,405,{error:'Method not allowed'});

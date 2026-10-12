@@ -6,7 +6,7 @@ import loadTS from './load-ts.cjs';
 
 const db=new PGlite();
 await db.exec(readFileSync('tests/employee-cancellation.test.mjs','utf8').match(/await db.exec\(`([\s\S]*?)`\);/)[1]);
-const files=['001_request_safety','002_history_and_conflicts','003_year_rollover','004_line_decisions','005_sync_outbox','006_employee_submission','007_sheet_employee_links','008_quota_safety','009_linked_employee_accounts','011_employee_cancellation','012_line_cancellation','013_leave_result_flex','014_cancellation_result_cards','015_delivery_reliability','016_sick_notifications','017_paid_sick_rollover','018_sick_acknowledgements','019_ceo_sick_notices','020_retire_sheet_sync','023_dashboard_accounts','021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels'];
+const files=['001_request_safety','002_history_and_conflicts','003_year_rollover','004_line_decisions','005_sync_outbox','006_employee_submission','007_sheet_employee_links','008_quota_safety','009_linked_employee_accounts','011_employee_cancellation','012_line_cancellation','013_leave_result_flex','014_cancellation_result_cards','015_delivery_reliability','016_sick_notifications','017_paid_sick_rollover','018_sick_acknowledgements','019_ceo_sick_notices','020_retire_sheet_sync','023_dashboard_accounts','021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels','033_medical_document_types'];
 for(const f of files)await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
 const query=async(sql,args=[]) => (await db.query(sql,args)).rows;
 const submit=async(body)=> (await query('SELECT tbs_employee_request($1::jsonb) r',[JSON.stringify({userId:'employee',leaveType:'personal',selectedDates:['2099-10-01'],leaveDays:1,reason:'Appointment',approverIds:['boss'],...body})]))[0].r;
@@ -20,7 +20,7 @@ test.beforeEach(async()=>{
  INSERT INTO leave_quotas(user_id,year,annual_total,sick_total,personal_total,carried_over) VALUES('employee',2099,10,30,3,0),('employee',2100,10,30,3,0);`);
 });
 test('migration can be reapplied without replacing originals or enabling notices',async()=>{
- for(const f of ['021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
+ for(const f of ['021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels','033_medical_document_types'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
  assert.equal((await query('SELECT personal_notifications_enabled e FROM tbs_leave_policy_settings'))[0].e,false);
 });
 test('all employee leave types reject blank/space-only reasons before inserts or messages',async()=>{
@@ -284,12 +284,12 @@ test('university evidence guard covers dashboard creation, edits and approval',a
  assert.equal((await query('SELECT leave_type FROM leave_requests WHERE id=$1',[r.id]))[0].leave_type,'sick');
 });
 test('attached medical certificate prevents redundant reminder; later upload removes unsent reminder',async()=>{
- const f=(await query("INSERT INTO tbs_leave_evidence(user_id,filename,mime,content) VALUES('employee','medical.pdf','application/pdf',decode('JVBERi0=','base64')) RETURNING id"))[0];
+ const f=(await query("INSERT INTO tbs_leave_evidence(user_id,filename,mime,content,document_type) VALUES('employee','medical.pdf','application/pdf',decode('JVBERi0=','base64'),'certificate') RETURNING id"))[0];
  const r=await submit({leaveType:'sick',selectedDates:['2099-10-05','2099-10-06','2099-10-07'],leaveDays:3,evidenceIds:[f.id]});
  assert.equal(r.ok,true,JSON.stringify(r));assert.equal((await query("SELECT count(*)::int n FROM tbs_sync_jobs WHERE payload->'messages'->0->>'altText'='Medical certificate reminder'"))[0].n,0);
  const r2=await submit({leaveType:'sick',selectedDates:['2099-10-12','2099-10-13','2099-10-14'],leaveDays:3});assert.equal(r2.ok,true);
  assert.equal((await query("SELECT count(*)::int n FROM tbs_sync_jobs WHERE payload->>'medicalRequestId'=$1",[String(r2.id)]))[0].n,1);
- await query("INSERT INTO tbs_leave_evidence(user_id,request_id,filename,mime,content) VALUES('employee',$1,'medical.pdf','application/pdf',decode('JVBERi0=','base64'))",[r2.id]);
+ await query("INSERT INTO tbs_leave_evidence(user_id,request_id,filename,mime,content,document_type) VALUES('employee',$1,'medical.pdf','application/pdf',decode('JVBERi0=','base64'),'certificate')",[r2.id]);
  assert.equal((await query("SELECT count(*)::int n FROM tbs_sync_jobs WHERE payload->>'medicalRequestId'=$1",[String(r2.id)]))[0].n,0);
 });
 
@@ -313,4 +313,14 @@ test('calendar keeps English and Thai names and includes only the approved natio
  await query('DELETE FROM tbs_calendar_years WHERE year=2026');await query("DELETE FROM tbs_work_calendar WHERE extract(year FROM day)=2026");
  await db.exec(readFileSync('n8n/sql/031_confirm_2026_holidays.sql','utf8'));
  const seeded=await rpc('tbs_company_calendar',{action:'read',year:2026});assert.equal(seeded.confirmed,true);assert.equal(seeded.holidays.length,20);assert.equal(seeded.holidays.some(h=>h.date==='2026-10-16'),false);
+});
+
+test('medical bills do not suppress certificate reminders before or after submission',async()=>{
+ const f=(await query("INSERT INTO tbs_leave_evidence(user_id,filename,mime,content,document_type) VALUES('employee','bill.pdf','application/pdf',decode('JVBERi0=','base64'),'bill') RETURNING id"))[0];
+ const r=await submit({leaveType:'sick',selectedDates:['2099-10-05','2099-10-06','2099-10-07'],leaveDays:3,evidenceIds:[f.id]});assert.equal(r.ok,true);
+ const count=async()=> (await query("SELECT count(*)::int n FROM tbs_sync_jobs WHERE payload->>'medicalRequestId'=$1",[String(r.id)]))[0].n;
+ assert.equal(await count(),1);
+ const uploaded=(await query("SELECT tbs_evidence($1::jsonb) r",[JSON.stringify({accountId:'employee',action:'upload',requestId:r.id,filename:'bill2.pdf',mime:'application/pdf',content:'JVBERi0=',documentType:'bill'})]))[0].r;
+ assert.equal(uploaded.ok,true);assert.equal(uploaded.documentType,'bill');assert.equal(await count(),1);
+ await query("SELECT tbs_evidence($1::jsonb)",[JSON.stringify({accountId:'employee',action:'upload',requestId:r.id,filename:'certificate.pdf',mime:'application/pdf',content:'JVBERi0=',documentType:'certificate'})]);assert.equal(await count(),0);
 });
