@@ -1,3 +1,4 @@
+import {halfDayLabel} from '@/lib/halfDayLabel';
 import { useEffect, useMemo, useState } from "react";
 import { Edit, Trash2 } from "lucide-react";
 import { Employee, LeaveRecord } from "@/data/mockEmployees";
@@ -205,6 +206,7 @@ export default function EmployeeSheetBlock({
                       inputClassName={LEAVE_META[type].text}
                       onCommit={(raw) => updateDays(leave, type, raw)}
                     />
+                    {leave.type === type && (leave.days === 0.5 || leave.halfDayPeriod) && <span className="block pb-1 text-center text-[11px] text-slate-600">{halfDayLabel(leave.halfDayPeriod)}</span>}
                   </td>
                 ))}
 

@@ -1,0 +1,140 @@
+{
+  "en": {
+    "type": "flex",
+    "altText": "Personal leave usage notice",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "text": "PERSONAL LEAVE NOTICE",
+            "type": "text",
+            "wrap": true,
+            "color": "#B91C1C",
+            "weight": "bold"
+          },
+          {
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "text": "You have used 2 of 3 personal leave days in 2026.",
+            "type": "text",
+            "wrap": true
+          },
+          {
+            "text": "Available to request: 1 day(s). Pending: 0 day(s).",
+            "type": "text",
+            "wrap": true
+          },
+          {
+            "size": "xs",
+            "text": "Availability includes future approved leave and pending reservations.",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          }
+        ]
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "size": "xs",
+            "text": "Please acknowledge that you have read this notice.",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "button",
+            "color": "#B91C1C",
+            "style": "primary",
+            "action": {
+              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
+              "type": "uri",
+              "label": "Acknowledge"
+            }
+          }
+        ],
+        "paddingAll": "20px"
+      }
+    }
+  },
+  "th": {
+    "type": "flex",
+    "altText": "Personal leave usage notice",
+    "contents": {
+      "body": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "md",
+        "contents": [
+          {
+            "text": "แจ้งเตือนการใช้วันลากิจ",
+            "type": "text",
+            "wrap": true,
+            "color": "#B91C1C",
+            "weight": "bold"
+          },
+          {
+            "text": "Demo Employee",
+            "type": "text",
+            "wrap": true,
+            "weight": "bold"
+          },
+          {
+            "text": "ใช้ลากิจแล้ว 2 จาก 3 วัน ในปี 2026",
+            "type": "text",
+            "wrap": true
+          },
+          {
+            "text": "ยอดคงเหลือที่ขอได้: 1 วัน · รออนุมัติ: 0 วัน",
+            "type": "text",
+            "wrap": true
+          },
+          {
+            "size": "xs",
+            "text": "ยอดคงเหลือหักวันลาที่อนุมัติล่วงหน้าและคำขอรออนุมัติแล้ว",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          }
+        ]
+      },
+      "type": "bubble",
+      "footer": {
+        "type": "box",
+        "layout": "vertical",
+        "spacing": "sm",
+        "contents": [
+          {
+            "size": "xs",
+            "text": "กดรับทราบเพื่อยืนยันว่าได้อ่านแล้ว",
+            "type": "text",
+            "wrap": true,
+            "color": "#64748B"
+          },
+          {
+            "type": "button",
+            "color": "#B91C1C",
+            "style": "primary",
+            "action": {
+              "uri": "https://liff.line.me/2008617589-89gR1Y3Y/sick-acknowledge?id=00000000-0000-4000-8000-000000000001&token=00000000-0000-4000-8000-000000000002",
+              "type": "uri",
+              "label": "รับทราบ"
+            }
+          }
+        ],
+        "paddingAll": "20px"
+      }
+    }
+  }
+}

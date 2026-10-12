@@ -6,7 +6,7 @@ import loadTS from './load-ts.cjs';
 
 const db=new PGlite();
 await db.exec(readFileSync('tests/employee-cancellation.test.mjs','utf8').match(/await db.exec\(`([\s\S]*?)`\);/)[1]);
-const files=['001_request_safety','002_history_and_conflicts','003_year_rollover','004_line_decisions','005_sync_outbox','006_employee_submission','007_sheet_employee_links','008_quota_safety','009_linked_employee_accounts','011_employee_cancellation','012_line_cancellation','013_leave_result_flex','014_cancellation_result_cards','015_delivery_reliability','016_sick_notifications','017_paid_sick_rollover','018_sick_acknowledgements','019_ceo_sick_notices','020_retire_sheet_sync','023_dashboard_accounts','021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels','033_medical_document_types'];
+const files=['001_request_safety','002_history_and_conflicts','003_year_rollover','004_line_decisions','005_sync_outbox','006_employee_submission','007_sheet_employee_links','008_quota_safety','009_linked_employee_accounts','011_employee_cancellation','012_line_cancellation','013_leave_result_flex','014_cancellation_result_cards','015_delivery_reliability','016_sick_notifications','017_paid_sick_rollover','018_sick_acknowledgements','019_ceo_sick_notices','020_retire_sheet_sync','023_dashboard_accounts','021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels','033_medical_document_types','034_intern_deletion','035_fulltime_registration','036_confirm_2027_holidays'];
 for(const f of files)await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
 const query=async(sql,args=[]) => (await db.query(sql,args)).rows;
 const submit=async(body)=> (await query('SELECT tbs_employee_request($1::jsonb) r',[JSON.stringify({userId:'employee',leaveType:'personal',selectedDates:['2099-10-01'],leaveDays:1,reason:'Appointment',approverIds:['boss'],...body})]))[0].r;
@@ -20,7 +20,7 @@ test.beforeEach(async()=>{
  INSERT INTO leave_quotas(user_id,year,annual_total,sick_total,personal_total,carried_over) VALUES('employee',2099,10,30,3,0),('employee',2100,10,30,3,0);`);
 });
 test('migration can be reapplied without replacing originals or enabling notices',async()=>{
- for(const f of ['021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels','033_medical_document_types'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
+ for(const f of ['021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels','033_medical_document_types','034_intern_deletion','035_fulltime_registration'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
  assert.equal((await query('SELECT personal_notifications_enabled e FROM tbs_leave_policy_settings'))[0].e,false);
 });
 test('all employee leave types reject blank/space-only reasons before inserts or messages',async()=>{
@@ -192,23 +192,38 @@ async function session(role){
  await query("SELECT tbs_dashboard_auth($1::jsonb)",[JSON.stringify({operation:'login-finish',id:account.id,version:account.version,sessionHash})]);return sessionHash;
 }
 const rpc=async(fn,payload)=>(await query(`SELECT ${fn}($1::jsonb) r`,[JSON.stringify(payload)]))[0].r;
-test('registration stays pending; HR can activate interns but not full-time; codes are unique',async()=>{
+test('full-time registration is immediate; only interns require activation; codes are unique',async()=>{
  const hr=await session('hr'),admin=await session('admin');
  for(const [accountId,employmentType] of [['reg-intern','intern'],['reg-staff','employee']]){
   await query('DELETE FROM tbs_registrations WHERE user_id=$1',[accountId]);
-  const r=await rpc('tbs_registration',{action:'submit',accountId,firstName:'Sample',lastName:'Person',nickname:'Demo',department:'AI',employmentType});assert.equal(r.pending,true);
-  assert.equal((await query('SELECT count(*)::int n FROM tbs_employees WHERE user_id=$1',[accountId]))[0].n,0);
+  const r=await rpc('tbs_registration',{action:'submit',accountId,firstName:'Sample',lastName:'Person',nickname:'Demo',department:'AI',employmentType});assert.equal(r.pending,employmentType==='intern');
+  assert.equal((await query('SELECT count(*)::int n FROM tbs_employees WHERE user_id=$1',[accountId]))[0].n,employmentType==='intern'?0:1);
  }
  assert.deepEqual((await rpc('tbs_registration',{action:'list',sessionHash:hr})).registrations.map(r=>r.user_id),['reg-intern']);
  assert.equal((await rpc('tbs_registration',{action:'activate',sessionHash:hr,userId:'reg-staff',annualTotal:7})).statusCode,403);
  assert.equal((await rpc('tbs_registration',{action:'activate',sessionHash:hr,userId:'reg-intern',months:6,startDate:'2099-10-01',endDate:'2100-03-31'})).ok,true);
- assert.equal((await rpc('tbs_registration',{action:'activate',sessionHash:admin,userId:'reg-staff',annualTotal:7})).ok,true);
+ assert.equal((await rpc('tbs_registration',{action:'activate',sessionHash:admin,userId:'reg-staff',annualTotal:7})).statusCode,403);
+ const q=(await query("SELECT annual_total,sick_total,personal_total FROM leave_quotas WHERE user_id='reg-staff'"))[0];
+ assert.equal(q.annual_total,null);assert.equal(Number(q.sick_total),30);assert.equal(Number(q.personal_total),3);
+ assert.equal((await rpc('tbs_registration',{action:'status',accountId:'reg-staff'})).found,true);
+ assert.deepEqual((await rpc('tbs_registration',{action:'list',sessionHash:admin})).registrations,[]);
  assert.equal((await rpc('tbs_registration',{action:'status',accountId:'reg-intern'})).found,true);
  assert.equal((await rpc('tbs_registration',{action:'submit',accountId:'reg-intern',employmentType:'employee'})).found,true);
  assert.equal((await query("SELECT employment_type FROM tbs_employees WHERE user_id='reg-intern'"))[0].employment_type,'intern');
  const n=(await query("SELECT intern_number FROM tbs_employees WHERE user_id='reg-intern'"))[0].intern_number;assert.ok(n>0);
  assert.equal((await rpc('tbs_registration',{action:'activate',sessionHash:hr,userId:'reg-intern',months:4,startDate:'2001-01-01',endDate:'2001-05-01'})).ok,true);
  assert.equal((await query("SELECT months FROM tbs_intern_terms WHERE user_id='reg-intern'"))[0].months,6);
+});
+test('full-time automatic registration is idempotent and handles older pending registrations',async()=>{
+ await query("INSERT INTO tbs_registrations(user_id,first_name,last_name,department,employment_type) VALUES('pending-staff','Pending','Employee','AI','employee')");
+ assert.equal((await rpc('tbs_registration',{action:'status',accountId:'pending-staff'})).found,true);
+ const before=(await query("SELECT tbs_id FROM tbs_employees WHERE user_id='pending-staff'"))[0].tbs_id;
+ assert.equal((await rpc('tbs_registration',{action:'submit',accountId:'pending-staff',employmentType:'intern'})).found,true);
+ const after=(await query("SELECT tbs_id,employment_type FROM tbs_employees WHERE user_id='pending-staff'"))[0];
+ assert.equal(after.tbs_id,before);assert.equal(after.employment_type,'employee');
+ const year=new Date().getFullYear();
+ const annual=(await query("SELECT tbs_leave_balance('pending-staff',$1,'annual',ARRAY[make_date($1,12,1)],1,NULL) b",[year]))[0].b;
+ assert.equal(annual.known,false);assert.equal(annual.allowed,false);
 });
 test('Nam alone can use intern LINE decision; dashboard HR retains scoped approval',async()=>{
  await query("INSERT INTO tbs_employees(user_id,tbs_id,status,employment_type) VALUES('intern',90,'active','intern') ON CONFLICT(user_id) DO UPDATE SET employment_type='intern'");
@@ -323,4 +338,21 @@ test('medical bills do not suppress certificate reminders before or after submis
  const uploaded=(await query("SELECT tbs_evidence($1::jsonb) r",[JSON.stringify({accountId:'employee',action:'upload',requestId:r.id,filename:'bill2.pdf',mime:'application/pdf',content:'JVBERi0=',documentType:'bill'})]))[0].r;
  assert.equal(uploaded.ok,true);assert.equal(uploaded.documentType,'bill');assert.equal(await count(),1);
  await query("SELECT tbs_evidence($1::jsonb)",[JSON.stringify({accountId:'employee',action:'upload',requestId:r.id,filename:'certificate.pdf',mime:'application/pdf',content:'JVBERi0=',documentType:'certificate'})]);assert.equal(await count(),0);
+});
+
+test('permanent intern deletion requires ended archived intern and exact code, purges records, reserves code',async()=>{
+ const hr=await session('hr');
+ const del=(userId,confirmation='TBSInterns-900')=>rpc('tbs_dashboard_auth',{operation:'intern-delete',sessionHash:hr,body:{userId,confirmation}});
+ assert.equal((await del('employee')).statusCode,403);
+ await query("INSERT INTO tbs_employees(user_id,employment_type,intern_number,status) VALUES('finished','intern',900,'active')");
+ await query("INSERT INTO tbs_intern_terms(user_id,start_date,end_date,months) VALUES('finished','2020-01-01','2020-04-30',4)");
+ assert.equal((await del('finished')).statusCode,409);
+ await query("UPDATE tbs_employees SET status='inactive' WHERE user_id='finished'");
+ assert.equal((await del('finished','wrong')).statusCode,422);
+ const r=await add({uid:'finished',type:'sick',dates:'2020-03-01'});
+ await query("INSERT INTO tbs_leave_evidence(user_id,request_id,filename,mime,content) VALUES('finished',$1,'file.pdf','application/pdf',decode('JVBERi0=','base64'))",[r.id]);
+ assert.equal((await del('finished')).ok,true);
+ for(const table of ['tbs_employees','leave_requests','tbs_leave_evidence','tbs_change_history','tbs_sync_jobs'])assert.equal((await query(`SELECT count(*)::int n FROM ${table} WHERE user_id='finished'`))[0].n,0);
+ assert.equal((await query('SELECT intern_number FROM tbs_retired_intern_codes WHERE intern_number=900'))[0].intern_number,900);
+ assert.equal((await rpc('tbs_dashboard_auth',{operation:'employee-type',sessionHash:await session('admin'),userId:'employee',type:'intern'})).statusCode,403);
 });

@@ -86,6 +86,11 @@ const App = () => {
       const response=await fetch('/api/registration',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${liff.getAccessToken()}`},body:JSON.stringify({firstName,lastName,nickname,department:data.department,employmentType:data.employmentType})});
       const result=await response.json();if(!response.ok)throw Error(result.error);
       setPendingRegistration(Boolean(result.pending));
+      if(result.found){
+        const profile={name:result.name,department:result.department};
+        setLocalUser(profile);
+        localStorage.setItem("tbs_user_profile",JSON.stringify(profile));
+      }
     } catch (error) {
       alert("Failed to save profile. / ไม่สามารถบันทึกข้อมูลได้");
       console.error(error);

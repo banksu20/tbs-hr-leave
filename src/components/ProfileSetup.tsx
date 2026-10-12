@@ -171,6 +171,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
                 <option value="SEM">SEM</option>
                 <option value="Sale">Sale</option>
                 <option value="Account">Account</option>
+                <option value="AI">AI</option>
               </select>
             </div>
 

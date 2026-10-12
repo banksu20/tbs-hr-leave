@@ -37,7 +37,7 @@ import { LeaveType } from "@/components/ceo/leaveSheetUtils";
 const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefugeeroute.org";
 
 
-const KNOWN_DEPARTMENTS = ["SEO", "Web Developer", "UX/UI Designer", "Graphic", "Content", "PBN", "SEM", "Account", "Sale"];
+const KNOWN_DEPARTMENTS = ["SEO", "Web Developer", "UX/UI Designer", "Graphic", "Content", "PBN", "SEM", "Account", "Sale", "AI"];
 
 export default function CeoDashboard({navigation, account}: {navigation?: ReactNode; account?: ReactNode} = {}) {
   // Selected Year & Department Filters

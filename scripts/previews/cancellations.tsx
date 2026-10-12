@@ -20,8 +20,9 @@ function FlexBlock({block}:{block:any}) {
  return <div style={{display:'flex',flexDirection:'column',gap:block.spacing==='sm'?8:16,padding:block.paddingAll?20:0,background:block.backgroundColor,borderRadius:block.cornerRadius?12:0}}>{block.contents?.map((child:any,i:number)=><FlexBlock key={i} block={child}/>)}</div>;
 }
 const year=new Date().getFullYear()+1;
-const leaves=[{id:101,status:'Pending',type:'personal',days:1,period:null,dates:[`${year}-01-10`],revision:'a'.repeat(32),cancellation:null as any},
+const leaves=[{id:101,status:'Pending',type:'personal',days:0.5,period:'afternoon',dates:[`${year}-01-10`],revision:'a'.repeat(32),cancellation:null as any},
 {id:102,status:'Approved',type:'annual',days:2,period:null,dates:[`${year}-01-15`,`${year}-01-16`],revision:'b'.repeat(32),cancellation:null as any}];
+leaves.push({id:103,status:'Approved',type:'sick',days:0.5,period:'morning',dates:[`${year}-01-20`],revision:'c'.repeat(32),cancellation:null});
 let requests:any[]=[];let nextId=1;
 // Every fetch is intercepted; this page cannot call the real API.
 liff.getAccessToken=()=> 'local-preview-only';
@@ -33,6 +34,7 @@ const cardsOnly=new URLSearchParams(location.search).has('cards');
 window.fetch=async(input,init)=>{
  const url=String(input);
  const json=(value:unknown)=>new Response(JSON.stringify(value),{status:200});
+ if(url.includes('/api/notification-preferences'))return json({ok:true});
  if(url.includes('/api/company-holidays'))return json({confirmed:true,holidays:[{date:'2026-10-13',name:'King Bhumibol Memorial Day',localName:'วันนวมินทรมหาราช'},{date:'2026-10-23',name:'Chulalongkorn Day',localName:'วันปิยมหาราช'}]});
  if(url.includes('delivery=1'))return json({pending:0,failed:0,jobs:[]});
  if(url.includes('/webhook/check-user'))return json({found:true,name:'Demo Employee',department:'Web Developer'});
