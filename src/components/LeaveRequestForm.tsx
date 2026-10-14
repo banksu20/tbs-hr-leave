@@ -288,8 +288,8 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
     const today = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date());
     if(localDates.some(date=>date<today)){await Swal.fire({icon:'warning',text:language==='th'?'ไม่สามารถขอลาย้อนหลังได้':'Leave cannot be requested for past dates.',confirmButtonColor:'#00B5E2'});return;}
-    setReasonError(!formData.reason.trim());
-    if (!formData.department || !formData.leaveType || selectedDates.length === 0 || !formData.reason.trim()) {
+    setReasonError(formData.leaveType !== 'personal' && !formData.reason.trim());
+    if (!formData.department || !formData.leaveType || selectedDates.length === 0 || (formData.leaveType !== 'personal' && !formData.reason.trim())) {
       Swal.fire({
         icon: "warning",
         title: language === 'th' ? "ข้อมูลไม่ครบถ้วน" : "Incomplete Form",
@@ -623,11 +623,11 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
               {(
                 <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
                   <Label className="flex items-center gap-2 text-slate-700 font-semibold text-xs uppercase tracking-wider">
-                    <FileText className="h-4 w-4" /> {t('reason')} *
+                    <FileText className="h-4 w-4" /> {t('reason')} {formData.leaveType === 'personal' ? (language === 'th' ? '(ไม่บังคับ)' : '(optional)') : '*'}
                   </Label>
                   <Textarea
                     aria-label={t('reason')}
-                    aria-required="true"
+                    aria-required={formData.leaveType !== 'personal'}
                     aria-invalid={reasonError}
                     maxLength={2000}
                     placeholder={t('reason_placeholder')}
@@ -635,7 +635,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                     onChange={(e) => {setFormData({ ...formData, reason: e.target.value });setReasonError(false);}}
                     className={`min-h-[80px] resize-none rounded-xl bg-white shadow-xs text-sm border-white ${formData.leaveType === 'sick' ? 'ring-1 ring-rose-100 focus-visible:ring-rose-400' : 'border-slate-200 focus-visible:ring-sky-400'}`}
                   />
-                  {reasonError && <p role="alert" className="text-xs text-red-700">{language==='th'?'กรุณากรอกเหตุผลในการลา':'Please enter a reason for your leave.'}</p>}
+                  {reasonError && formData.leaveType !== 'personal' && <p role="alert" className="text-xs text-red-700">{language==='th'?'กรุณากรอกเหตุผลในการลา':'Please enter a reason for your leave.'}</p>}
                 </div>
               )}
               {late && <p role="alert" className="rounded-xl bg-amber-100 p-3 text-sm text-amber-900">{language==='th'?'เลยเวลาขอลาแล้ว กรุณาติดต่อหัวหน้างาน':'The request deadline has passed. Please contact your manager.'}</p>}

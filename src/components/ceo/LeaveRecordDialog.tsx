@@ -61,7 +61,7 @@ export default function LeaveRecordDialog({ requestId, initial, employeeName, cr
             <option value="" disabled>Choose a period</option><option value="morning">Morning</option><option value="afternoon">Afternoon</option>
           </select>
         </label>}
-        <label className="block text-sm">Reason / notes<Input required value={form.note} disabled={busy} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
+        <label className="block text-sm">Reason / notes{form.type === "personal" ? " (optional)" : " *"}<Input required={form.type !== "personal"} value={form.note} disabled={busy} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={busy} onClick={onClose}>Cancel</Button><Button disabled={busy}>{busy ? "Saving…" : "Save request"}</Button></div>
       </form>
