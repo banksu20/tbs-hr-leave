@@ -1,5 +1,5 @@
 import {leaveTypeLabel} from '@/lib/leaveTypeLabel';
-import {useEffect,useState} from 'react';
+import {useCallback,useEffect,useState} from 'react';
 import liff from '@line/liff';
 import {Button} from '@/components/ui/button';
 import {useLanguage} from '@/hooks/useLanguage';
@@ -8,14 +8,14 @@ export default function CancelDecision(){
  const {language}=useLanguage();const text=(en:string,th:string)=>language==='th'?th:en;
  const [request,setRequest]=useState<Request|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[done,setDone]=useState(false),[reason,setReason]=useState(''),[attempt,setAttempt]=useState(0);
  const [link,setLink]=useState<{id:number;token:string;action:'approve'|'reject'}|null>(null);
- async function call(url:string,body?:unknown){const token=liff.getAccessToken();if(!token)throw Error(text('Please reopen this link in LINE.','กรุณาเปิดลิงก์นี้ใน LINE อีกครั้ง'));const response=await fetch(url,{method:body?'POST':'GET',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const data=await response.json();if(!response.ok)throw Error(data.error||'Decision service unavailable');return data;}
+ const call=useCallback(async(url:string,body?:unknown)=>{const token=liff.getAccessToken();if(!token)throw Error(language==='th'?'กรุณาเปิดลิงก์นี้ใน LINE อีกครั้ง':'Please reopen this link in LINE.');const response=await fetch(url,{method:body?'POST':'GET',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const data=await response.json();if(!response.ok)throw Error(data.error||'Decision service unavailable');return data;},[language]);
  useEffect(()=>{let active=true;setError('');setRequest(null);void(async()=>{try{
   await liff.init({liffId:'2008617589-89gR1Y3Y'});if(!liff.isLoggedIn()){liff.login({redirectUri:window.location.href});return;}
   const params=new URLSearchParams(window.location.search);const action=params.get('action');const id=Number(params.get('id'));const token=params.get('token');
   if(!Number.isSafeInteger(id)||id<1||!token||!['approve','reject'].includes(action??''))throw Error('Invalid cancellation link');
   const detail={id,token,action:action as 'approve'|'reject'};
   const data=await call(`/api/cancellations?view=line&id=${id}&token=${encodeURIComponent(token)}`);if(active){setLink(detail);setRequest(data.request);}
- }catch(e){if(active)setError((e as Error).message);}})();return()=>{active=false;};},[attempt]);
+ }catch(e){if(active)setError((e as Error).message);}})();return()=>{active=false;};},[attempt,call]);
  return <main className="min-h-screen bg-amber-50 p-5 flex items-center justify-center"><section className="w-full max-w-md rounded-3xl bg-white border border-amber-200 p-6 shadow-xs space-y-4">
  <h1 className="font-bold text-xl text-amber-900">{text('Leave cancellation','คำขอยกเลิกวันลา')}</h1>
  {error&&<div role="alert"><p className="text-red-700">{error}</p><Button variant="outline" disabled={busy} onClick={()=>setAttempt(n=>n+1)}>{text('Refresh status and retry','ตรวจสอบสถานะและลองอีกครั้ง')}</Button></div>}

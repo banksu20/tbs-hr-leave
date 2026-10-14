@@ -97,14 +97,14 @@ function StatTile({
   );
 }
 
-function ChartTooltip({ active, payload, label, labelFormatter }: any) {
+function ChartTooltip({ active, payload, label, labelFormatter }: {active?:boolean;payload?:{value?:number|string;dataKey?:string|number;name?:string|number;color?:string}[];label?:string|number;labelFormatter?:(label:string|number)=>React.ReactNode}) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2">
       <p className="text-[11px] font-extrabold text-slate-900 mb-1">{labelFormatter ? labelFormatter(label) : label}</p>
       {payload
-        .filter((entry: any) => entry.value > 0)
-        .map((entry: any) => (
+        .filter((entry) => Number(entry.value) > 0)
+        .map((entry) => (
           <p key={entry.dataKey} className="text-[11px] font-semibold text-slate-600 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-sm" style={{ background: entry.color }} />
             {entry.name}
@@ -132,7 +132,7 @@ export default function OverviewDashboard({
   const employees = useMemo(()=>availableEmployees.filter(e=>!activeEmployeeId||e.id===activeEmployeeId),[availableEmployees,activeEmployeeId]);
   const period = month==='all' ? year : `${MONTH_LABELS[Number(month)-1]} ${year}`;
   const [exportOpen, setExportOpen] = useState(false);
-  const availableTypes:LeaveType[]=exportScope==='Interns'?[...LEAVE_TYPES,'university']:LEAVE_TYPES;
+  const availableTypes = useMemo<LeaveType[]>(()=>exportScope==='Interns'?[...LEAVE_TYPES,'university']:LEAVE_TYPES,[exportScope]);
   const [selectedTypes, setSelectedTypes] = useState<LeaveType[]>(availableTypes);
   const periodEmployees = useMemo(()=>employees.map(e=>({...e,leaves:e.leaves.filter(l=>(month==='all'||Number(l.date.slice(5,7))===Number(month))&&selectedTypes.includes(l.type))})),[employees,month,selectedTypes]);
   const months = useMemo(() => month === 'all' ? monthlyTotals(periodEmployees, year, selectedTypes) : dailyTotals(periodEmployees, year, Number(month), selectedTypes), [periodEmployees, year, selectedTypes,month]);
@@ -162,7 +162,7 @@ export default function OverviewDashboard({
       byType,
       all: Math.round(byType.reduce((sum, t) => sum + t.days, 0) * 100) / 100,
     };
-  }, [periodEmployees, year]);
+  }, [periodEmployees, year, availableTypes]);
 
   const maxSickDays = sickEmployees[0]?.days ?? 0;
 
@@ -289,7 +289,7 @@ export default function OverviewDashboard({
               />
               <Tooltip
                 cursor={{ fill: "rgba(148,163,184,0.12)" }}
-                content={({ active, payload }: any) =>
+                content={({ active, payload }) =>
                   active && payload?.length ? (
                     <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2">
                       <p className="text-[11px] font-extrabold text-slate-900">{payload[0].payload.employee.name} · {payload[0].payload.employee.empCode}</p>

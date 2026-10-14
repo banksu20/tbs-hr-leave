@@ -2,12 +2,18 @@ import {halfDayLabel} from '@/lib/halfDayLabel';
 import LeaveEvidence from './LeaveEvidence';
 import {useNotificationLanguage} from '@/hooks/useNotificationLanguage';
 import {leaveTypeLabel} from '@/lib/leaveTypeLabel';
-import {useEffect,useState} from 'react';
+import {useCallback,useEffect,useState} from 'react';
 import liff from '@line/liff';
 import {RefreshCw, CalendarDays, CalendarX2, Clock3} from 'lucide-react';
 import {useLanguage} from '@/hooks/useLanguage';
 import {Button} from '@/components/ui/button';
 interface Leave {id:number;status:string;type:string;days:number;period:string|null;dates:string[];revision:string;cancellation:null|{status:string;dates:string[];decision_reason:string|null};}
+ async function call(body?:unknown) {
+  const token=liff.getAccessToken(); if(!token)throw new Error('Please reopen this app in LINE and sign in.');
+  const response=await fetch('/api/cancellations',{method:body?'POST':'GET',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
+  const result=await response.json();if(!response.ok)throw new Error(result.error||'Could not load cancellations');return result;
+ }
+
 export default function EmployeeCancellations({userId,onChanged}:{userId:string|null;onChanged:()=>void}) {
  const [rows,setRows]=useState<Leave[]>([]),[error,setError]=useState(''),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false);
  const [expanded,setExpanded]=useState(false);
@@ -18,13 +24,8 @@ export default function EmployeeCancellations({userId,onChanged}:{userId:string|
  const text=(en:string,thai:string)=>th?thai:en;
  const formatDate=(date:string)=>new Date(date+'T12:00:00+07:00').toLocaleDateString(th?'th-TH':'en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Bangkok'});
  const leaveName=(type:string)=>leaveTypeLabel(type,language);
- async function call(body?:unknown) {
-  const token=liff.getAccessToken(); if(!token)throw new Error('Please reopen this app in LINE and sign in.');
-  const response=await fetch('/api/cancellations',{method:body?'POST':'GET',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
-  const result=await response.json();if(!response.ok)throw new Error(result.error||'Could not load cancellations');return result;
- }
- async function refresh(){setLoading(true);setError('');try{const data=await call();setRows(data.requests);}catch(e){setError((e as Error).message);}finally{setLoading(false);}}
- useEffect(()=>{if(userId)void refresh();},[userId]);
+ const refresh=useCallback(async()=>{setLoading(true);setError('');try{const data=await call();setRows(data.requests);}catch(e){setError((e as Error).message);}finally{setLoading(false);}},[]);
+ useEffect(()=>{if(userId)void refresh();},[userId,refresh]);
  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const latestDate=(row:Leave)=>[...row.dates].sort().at(-1)??'';
  const relevant=[...rows].sort((a,b)=>latestDate(b).localeCompare(latestDate(a))||b.id-a.id);

@@ -6,7 +6,7 @@ import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {LanguageProvider} from '../../src/hooks/useLanguage';
 import DashboardAccess from '../../src/components/ceo/DashboardAccess';
 import '../../src/index.css';
-let session:any=null;
+let session:{id:string;username:string;role:string;active:boolean}|null=null;
 let internStatus='active';
 let internDeleted=false;
 const accounts=[{id:'demo-admin',username:'admin',role:'admin',active:true},{id:'demo-ceo',username:'ceo',role:'ceo',active:true},{id:'demo-hr',username:'hr',role:'hr',active:true}];

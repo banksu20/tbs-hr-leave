@@ -7,7 +7,7 @@ import RegistrationReview from '../../src/components/ceo/RegistrationReview';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import '../../src/index.css';
 liff.init=async()=>{};liff.isLoggedIn=()=>true;liff.getAccessToken=()=> 'demo';
-let registrations:any[]=[],role='hr',currentId='';
+let registrations:{user_id:string;first_name:string;last_name:string;nickname:string;department:string;employment_type:string;active:boolean}[]=[],role='hr',currentId='';
 let activationNotice=(text:string)=>{};
 const sample=(type:string)=>({user_id:crypto.randomUUID(),first_name:'Sample',last_name:type==='intern'?'Intern':'Employee',nickname:'',department:'AI',employment_type:type,active:false});
 window.fetch=async(input,init)=>{
@@ -19,13 +19,12 @@ window.fetch=async(input,init)=>{
   if(!r)return json({error:'Registration not found'},404);
   if(r.employment_type!=='intern')return json({error:'HR only manages interns'},403);
   if(r.employment_type==='intern'&&(![4,6].includes(b.months)||!b.startDate||!b.endDate||b.endDate<=b.startDate))return json({error:'Choose a programme and an end date after the start date.'},422);
-  if(r.employment_type==='employee'&&(!Number.isFinite(b.annualTotal)||b.annualTotal<0))return json({error:'Enter a valid annual allowance.'},422);
   Object.assign(r,b,{active:true});activationNotice(`${r.first_name} ${r.last_name} activated · ${r.employment_type==='intern'?'TBSInterns-001':'TBS-001'} (sample)`);
   return json({ok:true});
  }
  return json({ok:true,registrations:registrations.filter(r=>!r.active&&r.employment_type==='intern')});
 };
-function Demo(){
+export function Demo(){
  const [view,setView]=useState('employee'),[version,setVersion]=useState(0),[notice,setNotice]=useState('');
  activationNotice=setNotice;
  const current=registrations.find(r=>r.user_id===currentId);

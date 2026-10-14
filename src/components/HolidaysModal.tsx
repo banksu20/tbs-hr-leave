@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -28,13 +28,7 @@ const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
   const currentYear = Number(new Intl.DateTimeFormat('en',{year:'numeric',timeZone:'Asia/Bangkok'}).format(new Date()));
   const holidayDate = (value:string) => new Date(value+'T12:00:00+07:00');
 
-  useEffect(() => {
-    if (open) {
-      fetchHolidays();
-    }
-  }, [open]);
-
-  const fetchHolidays = async () => {
+  const fetchHolidays = useCallback(async () => {
     setLoading(true);
     setError(false);
     
@@ -48,7 +42,9 @@ const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentYear]);
+
+  useEffect(() => { if (open) void fetchHolidays(); }, [open, fetchHolidays]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

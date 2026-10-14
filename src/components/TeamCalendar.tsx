@@ -3,6 +3,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2, X } from "lucide-react";
 import {employeeData} from "@/lib/employeeData";
 
+interface TeamLeave {name:string;status:string;type:string;}
+
 interface CalendarProps {
   department: string;
   userId?: string;
@@ -10,7 +12,7 @@ interface CalendarProps {
 
 export default function TeamCalendar({ department, userId }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [leaveData, setLeaveData] = useState<any>({});
+  const [leaveData, setLeaveData] = useState<Record<string,TeamLeave[]>>({});
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error,setError] = useState(false);
@@ -39,7 +41,7 @@ export default function TeamCalendar({ department, userId }: CalendarProps) {
     Promise.all(departments.map(dept=>employeeData('get-team-calendar',{department:dept,year:String(year),month:String(month+1)},controller.signal)))
       .then(results=>{
         if(controller.signal.aborted)return;
-        const merged:Record<string,any[]>={};
+        const merged:Record<string,TeamLeave[]>={};
         for(const data of results)for(const [date,leaves] of Object.entries(data))if(Array.isArray(leaves))merged[date]=[...(merged[date]||[]),...leaves];
         setLeaveData(merged);
       })
@@ -149,7 +151,7 @@ export default function TeamCalendar({ department, userId }: CalendarProps) {
             
             {leaveData[selectedDay] && leaveData[selectedDay].length > 0 ? (
               <ul className="space-y-2.5">
-                {leaveData[selectedDay].map((l: any, idx: number) => (
+                {leaveData[selectedDay].map((l, idx) => (
                   <li key={idx} className="flex items-center justify-between group">
                     <div className="flex items-center gap-2.5">
                       <div className={`w-2 h-2 rounded-full ${l.status === 'Approved' ? 'bg-emerald-500' : 'bg-amber-400'}`}></div>

@@ -1,4 +1,4 @@
-import {useEffect,useState,useRef} from 'react';
+import {useCallback,useEffect,useState,useRef} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 import CeoDashboard from '@/pages/CeoDashboard';
 import InternDashboard from './InternDashboard';
@@ -16,8 +16,8 @@ function clearLegacyRecords(){try{for(const key of Object.keys(localStorage))if(
 export default function DashboardAccess(){
  const client=useQueryClient(),[session,setSession]=useState<Session|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState(false),[username,setUsername]=useState(''),[password,setPassword]=useState(''),[view,setView]=useState('leave');
  const checkVersion=useRef(0);
- async function check(){const version=++checkVersion.current;try{const r=await fetch('/api/auth',{cache:'no-store'}),b=await r.json();if(version!==checkVersion.current)return;if(!r.ok)throw Error(b.error);setSession(old=>{if(old?.id!==b.session?.id||old?.role!==b.session?.role){client.clear();setView('leave');}return b.session??null;});setError('');}catch(e){if(version!==checkVersion.current)return;client.clear();setSession(null);setError((e as Error).message);}finally{if(version===checkVersion.current)setLoading(false);}}
- useEffect(()=>{clearLegacyRecords();void check();const id=setInterval(check,60000);window.addEventListener('focus',check);return()=>{clearInterval(id);window.removeEventListener('focus',check);checkVersion.current++;};},[]);
+ const check=useCallback(async()=>{const version=++checkVersion.current;try{const r=await fetch('/api/auth',{cache:'no-store'}),b=await r.json();if(version!==checkVersion.current)return;if(!r.ok)throw Error(b.error);setSession(old=>{if(old?.id!==b.session?.id||old?.role!==b.session?.role){client.clear();setView('leave');}return b.session??null;});setError('');}catch(e){if(version!==checkVersion.current)return;client.clear();setSession(null);setError((e as Error).message);}finally{if(version===checkVersion.current)setLoading(false);}},[client]);
+ useEffect(()=>{const versionRef=checkVersion;clearLegacyRecords();void check();const id=setInterval(check,60000);window.addEventListener('focus',check);return()=>{clearInterval(id);window.removeEventListener('focus',check);versionRef.current++;};},[check]);
  if(loading)return <main className="p-12 text-center">Checking dashboard access…</main>;
  if(!session)return <main className="relative isolate min-h-screen overflow-hidden bg-slate-950 flex items-center justify-center p-5">
  <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_left,#155e75,#0f172a,#020617)]"/>

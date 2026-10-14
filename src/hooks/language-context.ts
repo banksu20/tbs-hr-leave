@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-
-type Language = 'th' | 'en';
+import {createContext,useContext} from "react";
+export type Language = 'th' | 'en';
 
 interface LanguageContextType {
   language: Language;
@@ -9,7 +8,7 @@ interface LanguageContextType {
   t: (key: keyof typeof translations['th']) => string; // ฟังก์ชันสำหรับแปลคำ
 }
 
-const translations = {
+export const translations = {
   th: {
     // Dashboard
     'leave_history': 'ประวัติการลาล่าสุด',
@@ -130,33 +129,7 @@ const translations = {
   }
 };
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
-
-export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>(() => {
-    const savedLang = localStorage.getItem('app_language');
-    return (savedLang === 'en' || savedLang === 'th') ? savedLang : 'th';
-  });
-
-  const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
-    localStorage.setItem('app_language', lang);
-  };
-
-  const toggleLanguage = () => {
-    setLanguage(language === 'th' ? 'en' : 'th');
-  };
-
-  const t = (key: keyof typeof translations['th']) => {
-    return translations[language][key] || key;
-  };
-
-  return (
-    <LanguageContext.Provider value={{ language, setLanguage, toggleLanguage, t }}>
-      {children}
-    </LanguageContext.Provider>
-  );
-};
+export const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const useLanguage = () => {
   const context = useContext(LanguageContext);

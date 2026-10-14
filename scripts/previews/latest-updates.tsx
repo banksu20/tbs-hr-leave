@@ -1,3 +1,4 @@
+import type {FlexBlockData} from "./flex-types";
 import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import liff from '@line/liff';
@@ -5,7 +6,7 @@ import LeaveEvidence from '../../src/components/LeaveEvidence';
 import {LanguageProvider,useLanguage} from '../../src/hooks/useLanguage';
 import cards from './personal-fixtures.json';
 import '../../src/index.css';
-let attachments:any[]=[];let updateReminder=(received:boolean)=>{};
+let attachments:{id:string;filename:string;documentType:string;content:string;mime:string}[]=[];let updateReminder=(received:boolean)=>{};
 liff.getAccessToken=()=> 'isolated-demo';
 window.fetch=async(input,init)=>{
  const url=new URL(String(input),location.origin);
@@ -19,13 +20,13 @@ window.fetch=async(input,init)=>{
  if(url.searchParams.has('id')){const f=attachments.find(f=>f.id===url.searchParams.get('id'));return new Response(Uint8Array.from(atob(f.content),c=>c.charCodeAt(0)),{headers:{'Content-Type':f.mime}});}
  return json({files:attachments.map(({id,filename,documentType})=>({id,filename,documentType}))});
 };
-function Block({block,ack,onAck}:{block:any;ack:boolean;onAck:()=>void}){
+export function Block({block,ack,onAck}:{block:FlexBlockData;ack:boolean;onAck:()=>void}){
  if(!block)return null;
  if(block.type==='button')return <button disabled={ack} onClick={onAck} className="mt-3 w-full rounded-xl bg-rose-700 px-4 py-3 font-semibold text-white disabled:bg-slate-300">{ack?'Acknowledged ✓':block.action.label}</button>;
  if(block.type==='text')return <p style={{color:block.color,fontWeight:block.weight==='bold'?700:400,fontSize:block.size==='xs'?12:16}}>{block.text}</p>;
- return <div className="space-y-3">{block.contents?.map((b:any,i:number)=><Block key={i} block={b} ack={ack} onAck={onAck}/>)}</div>;
+ return <div className="space-y-3">{block.contents?.map((b,i)=><Block key={i} block={b} ack={ack} onAck={onAck}/>)}</div>;
 }
-function Demo(){
+export function Demo(){
  const {language,toggleLanguage}=useLanguage();const [certificate,setCertificate]=useState(false),[ack,setAck]=useState(false),[key,setKey]=useState(0);
  updateReminder=setCertificate;
  const [tab,setTab]=useState('uploads');

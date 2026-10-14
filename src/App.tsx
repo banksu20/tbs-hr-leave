@@ -29,7 +29,7 @@ const WEBHOOK_CHECK_USER = "https://n8n.womenrefugeeroute.org/webhook/check-user
 const WEBHOOK_REGISTER_USER = "https://n8n.womenrefugeeroute.org/webhook/register-user";
 
 const App = () => {
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<Awaited<ReturnType<typeof liff.getProfile>> | null>(null);
   const [localUser, setLocalUser] = useState<{name: string, department: string} | null>(null);
   const [pendingRegistration,setPendingRegistration] = useState(false);
   const [profileError,setProfileError] = useState('');

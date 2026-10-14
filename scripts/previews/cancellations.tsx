@@ -1,3 +1,4 @@
+import type {FlexBlockData} from "./flex-types";
 // Standalone Vite preview; not imported by the production app.
 import React from 'react';
 import {MemoryRouter} from 'react-router-dom';
@@ -12,18 +13,20 @@ import CancellationRequests from '../../src/components/ceo/CancellationRequests'
 import '../../src/index.css';
 import {LanguageProvider} from '../../src/hooks/useLanguage';
 // A browser approximation of LINE Flex layout, rendered from actual generated message JSON.
-function FlexBlock({block}:{block:any}) {
+export function FlexBlock({block}:{block:FlexBlockData}) {
  const sizes:Record<string,string>={xs:'12px',sm:'14px',md:'16px',xl:'22px'};
  if(block.type==='button')return <button disabled className="w-full rounded-lg border px-4 py-3 font-semibold" style={{background:block.style==='primary'?(block.color??'#06C755'):undefined,color:block.style==='primary'?'white':'#334155'}}>{block.action.label}</button>;
  if(block.type==='separator')return <hr className="border-slate-200"/>;
  if(block.type==='text')return <p style={{fontSize:sizes[block.size]??'16px',color:block.color??'#111827',fontWeight:block.weight==='bold'?700:400,overflowWrap:'anywhere'}}>{block.text}</p>;
- return <div style={{display:'flex',flexDirection:'column',gap:block.spacing==='sm'?8:16,padding:block.paddingAll?20:0,background:block.backgroundColor,borderRadius:block.cornerRadius?12:0}}>{block.contents?.map((child:any,i:number)=><FlexBlock key={i} block={child}/>)}</div>;
+ return <div style={{display:'flex',flexDirection:'column',gap:block.spacing==='sm'?8:16,padding:block.paddingAll?20:0,background:block.backgroundColor,borderRadius:block.cornerRadius?12:0}}>{block.contents?.map((child,i)=><FlexBlock key={i} block={child}/>)}</div>;
 }
 const year=new Date().getFullYear()+1;
-const leaves=[{id:101,status:'Pending',type:'personal',days:0.5,period:'afternoon',dates:[`${year}-01-10`],revision:'a'.repeat(32),cancellation:null as any},
-{id:102,status:'Approved',type:'annual',days:2,period:null,dates:[`${year}-01-15`,`${year}-01-16`],revision:'b'.repeat(32),cancellation:null as any}];
+interface DemoCancellation {id:number;request_id:number;name:string;code:number;type:string;dates:string[];daysPerDate:number;period:string|null;reason:string;status:string;created_at:string;decision_reason?:string}
+interface DemoLeave {id:number;status:string;type:string;days:number;period:string|null;dates:string[];revision:string;cancellation:DemoCancellation|null}
+const leaves:DemoLeave[]=[{id:101,status:'Pending',type:'personal',days:0.5,period:'afternoon',dates:[`${year}-01-10`],revision:'a'.repeat(32),cancellation:null},
+{id:102,status:'Approved',type:'annual',days:2,period:null,dates:[`${year}-01-15`,`${year}-01-16`],revision:'b'.repeat(32),cancellation:null}];
 leaves.push({id:103,status:'Approved',type:'sick',days:0.5,period:'morning',dates:[`${year}-01-20`],revision:'c'.repeat(32),cancellation:null});
-let requests:any[]=[];let nextId=1;
+let requests:DemoCancellation[]=[];let nextId=1;
 // Every fetch is intercepted; this page cannot call the real API.
 liff.getAccessToken=()=> 'local-preview-only';
 liff.init=async()=>{};

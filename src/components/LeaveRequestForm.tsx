@@ -1,6 +1,6 @@
 import {employeeData} from "@/lib/employeeData";
 import {useNotificationLanguage} from '@/hooks/useNotificationLanguage';
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import liff from "@line/liff";
 import Swal from "sweetalert2";
@@ -129,7 +129,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       finally {window.clearTimeout(timeout);if(active)setQuotaLoading(false);}
     }, 200);
     return () => {active=false;controller.abort();window.clearTimeout(timer);window.clearTimeout(timeout);};
-  }, [policyKey, policyAttempt, language]);
+  }, [policyKey, policyAttempt, language, currentUserId, formData.leaveType, localDates, isHalfDay]);
 
   useEffect(() => {
     if (department) setIsDepartmentLocked(true);
@@ -183,7 +183,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       .then(data => {
         if (Array.isArray(data)) {
           const leaves: TakenLeaveRecord[] = [];
-          data.forEach((item: any) => {
+          data.forEach((item: {status?:string;leave_days?:number|string;leaveDays?:number|string;is_half_day?:boolean|string;isHalfDay?:boolean|string;half_day_period?:string;halfDayPeriod?:string;period?:string;selected_dates?:string;date?:string}) => {
             if (item.status && (item.status.includes('Rejected') || item.status.includes('ปฏิเสธ'))) return;
             
             const leaveDays = Number(item.leave_days ?? item.leaveDays ?? (item.is_half_day || item.isHalfDay ? 0.5 : 1));
@@ -217,7 +217,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
             else if (item.date && !item.date.includes('ถึง')) {
                 const p = item.date.trim().split('-');
                 if (p.length === 3) {
-                    const mMap: any = { jan:'01', feb:'02', mar:'03', apr:'04', may:'05', jun:'06', jul:'07', aug:'08', sep:'09', oct:'10', nov:'11', dec:'12' };
+                    const mMap: Record<string,string> = { jan:'01', feb:'02', mar:'03', apr:'04', may:'05', jun:'06', jul:'07', aug:'08', sep:'09', oct:'10', nov:'11', dec:'12' };
                     let y = parseInt(p[2], 10);
                     if (y < 100) y += 2000;
                     const m = mMap[p[1].toLowerCase().substring(0, 3)];
@@ -235,7 +235,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     }
   }, [currentUserId]);
 
-  const getDateLeaveStatus = (date: Date) => {
+  const getDateLeaveStatus = useCallback((date: Date) => {
     const formattedDate = format(date, "yyyy-MM-dd");
     const records = takenLeaves.filter(l => l.dateStr === formattedDate);
 
@@ -251,12 +251,12 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     const isFullyTaken = hasFullDay || (hasMorning && hasAfternoon) || (hasUnspecifiedHalf && (hasMorning || hasAfternoon));
 
     return { isFullyTaken, hasMorning, hasAfternoon };
-  };
+  }, [takenLeaves]);
 
   const selectedDateStatus = useMemo(() => {
     if (selectedDates.length !== 1) return { hasMorning: false, hasAfternoon: false, isFullyTaken: false };
     return getDateLeaveStatus(selectedDates[0]);
-  }, [selectedDates, takenLeaves]);
+  }, [selectedDates, getDateLeaveStatus]);
 
   useEffect(() => {
     if (selectedDates.length === 1) {
@@ -347,11 +347,11 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       if (liff.isInClient()) {
         liff.closeWindow();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       await Swal.fire({
         icon: "error",
         title: language === 'th' ? "เกิดข้อผิดพลาด" : "Submission Failed",
-        text: err.message || (language === 'th' ? "ไม่สามารถส่งคำขอได้" : "Failed to submit your request."),
+        text: (err instanceof Error ? err.message : "") || (language === 'th' ? "ไม่สามารถส่งคำขอได้" : "Failed to submit your request."),
         confirmButtonColor: "#00B5E2",
       });
       setPolicyAttempt(n=>n+1);
@@ -514,7 +514,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 border-slate-200 shadow-2xl rounded-2xl" align="center">
-                    {/* @ts-ignore */}
                     <CalendarComponent
                       mode="multiple"
                       selected={selectedDates}
