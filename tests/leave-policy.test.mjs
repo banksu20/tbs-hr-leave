@@ -6,7 +6,7 @@ import loadTS from './load-ts.cjs';
 
 const db=new PGlite();
 await db.exec(readFileSync('tests/employee-cancellation.test.mjs','utf8').match(/await db.exec\(`([\s\S]*?)`\);/)[1]);
-const files=['001_request_safety','002_history_and_conflicts','003_year_rollover','004_line_decisions','005_sync_outbox','006_employee_submission','007_sheet_employee_links','008_quota_safety','009_linked_employee_accounts','011_employee_cancellation','012_line_cancellation','013_leave_result_flex','014_cancellation_result_cards','015_delivery_reliability','016_sick_notifications','017_paid_sick_rollover','018_sick_acknowledgements','019_ceo_sick_notices','020_retire_sheet_sync','023_dashboard_accounts','021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels','033_medical_document_types','034_intern_deletion','035_fulltime_registration','036_confirm_2027_holidays','037_ceo_account_management','038_intern_dual_approval','039_review_evidence_guards'];
+const files=['001_request_safety','002_history_and_conflicts','003_year_rollover','004_line_decisions','005_sync_outbox','006_employee_submission','007_sheet_employee_links','008_quota_safety','009_linked_employee_accounts','011_employee_cancellation','012_line_cancellation','013_leave_result_flex','014_cancellation_result_cards','015_delivery_reliability','016_sick_notifications','017_paid_sick_rollover','018_sick_acknowledgements','019_ceo_sick_notices','020_retire_sheet_sync','023_dashboard_accounts','021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels','033_medical_document_types','034_intern_deletion','035_fulltime_registration','036_confirm_2027_holidays','037_ceo_account_management','038_intern_dual_approval','039_review_evidence_guards','040_intern_actions_and_registration'];
 for(const f of files)await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
 const query=async(sql,args=[]) => (await db.query(sql,args)).rows;
 const submit=async(body)=> (await query('SELECT tbs_employee_request($1::jsonb) r',[JSON.stringify({userId:'employee',leaveType:'personal',selectedDates:['2099-10-01'],leaveDays:1,reason:'Appointment',approverIds:['boss'],...body})]))[0].r;
@@ -21,7 +21,7 @@ test.beforeEach(async()=>{
  INSERT INTO leave_quotas(user_id,year,annual_total,sick_total,personal_total,carried_over) VALUES('employee',2099,10,30,3,0),('employee',2100,10,30,3,0);`);
 });
 test('migration can be reapplied without replacing originals or enabling notices',async()=>{
- for(const f of ['021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels','033_medical_document_types','034_intern_deletion','035_fulltime_registration','037_ceo_account_management','038_intern_dual_approval','039_review_evidence_guards'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
+ for(const f of ['021_leave_policy','022_personal_notifications','024_intern_policy','025_registration','026_policy_delivery','027_company_calendar','028_intern_personal_notices','029_evidence_guards','030_bilingual_calendar','031_confirm_2026_holidays','032_review_labels','033_medical_document_types','034_intern_deletion','035_fulltime_registration','037_ceo_account_management','038_intern_dual_approval','039_review_evidence_guards','040_intern_actions_and_registration'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
  assert.equal((await query('SELECT personal_notifications_enabled e FROM tbs_leave_policy_settings'))[0].e,false);
 });
 test('all employee leave types reject blank/space-only reasons before inserts or messages',async()=>{
@@ -63,9 +63,9 @@ test('carryover cannot fund dates after expiry',async()=>{
  assert.equal((await submit({leaveType:'annual'})).ok,false);
  assert.equal((await submit({leaveType:'annual',selectedDates:['2099-03-01']})).ok,true);
 });
-test('16:30 Bangkok annual cutoff is strict and late sick needs an emergency',async()=>{
+test('16:30 Bangkok annual cutoff is strict and emergency cannot backdate sick leave',async()=>{
  assert.equal((await submit({selectedDates:['2020-01-01']})).statusCode,422);
- assert.equal((await submit({leaveType:'sick',selectedDates:['2020-01-01'],emergencyReason:'Unexpected illness'})).ok,true);
+ assert.equal((await submit({leaveType:'sick',selectedDates:['2020-01-01'],emergencyReason:'Unexpected illness'})).statusCode,422);
  const cutoff=(await query("SELECT tbs_leave_deadline('2026-10-12') d"))[0].d;assert.equal(new Date(cutoff).toISOString(),'2026-10-11T09:30:00.000Z');
 });
 test('unlimited employees need no quota row and sick remains requestable above thirty',async()=>{
@@ -82,7 +82,7 @@ test('medical reminder joins separate half-day requests across weekends/holiday 
  assert.equal((await query("SELECT tbs_medical_certificate('employee',ARRAY['2026-10-13'::date],0.5) r"))[0].r,false);
  await query("INSERT INTO tbs_work_calendar VALUES('2026-10-12',false,'Company holiday')");
  await add({type:'sick',days:.5,period:'morning',dates:'2026-10-13'});
- assert.equal((await submit({leaveType:'sick',selectedDates:['2026-10-14'],leaveDays:.5,halfDayPeriod:'afternoon',emergencyReason:'Historical test fixture for a medical reminder'})).medicalCertificateRequired,true);
+ assert.equal((await query("SELECT tbs_medical_certificate('employee',ARRAY['2026-10-14'::date],0.5) r"))[0].r,true);
 });
 test('personal notice crosses two days once, waits for 08:30, shows live balance and supports safe acknowledgement',async()=>{
  await add({days:1.5,dates:'2099-01-01,2099-01-02,2099-01-03',period:'morning'});
@@ -163,7 +163,8 @@ test('late sick and personal require emergency explanation; annual has no except
  for(const leaveType of ['sick','personal']){
   assert.equal((await submit({leaveType,selectedDates:['2001-02-05']})).statusCode,422);
  }
- assert.equal((await submit({leaveType:'sick',selectedDates:['2001-02-05'],emergencyReason:'Unexpected illness'})).ok,true);
+ const today=(await query("SELECT to_char(now() AT TIME ZONE 'Asia/Bangkok','YYYY-MM-DD') d"))[0].d;
+ for(const leaveType of ['sick','personal']){const r=await submit({userId:'unlimited',leaveType,selectedDates:[today],emergencyReason:'Unexpected illness'});assert.equal(r.ok,true,JSON.stringify(r));await query("UPDATE leave_requests SET status='Rejected' WHERE id=$1",[r.id]);}
  assert.equal((await submit({leaveType:'annual',selectedDates:['2001-02-06'],emergencyReason:'Late'})).statusCode,422);
 });
 test('intern reservations span years and route to Dan and Nam',async()=>{
@@ -281,7 +282,7 @@ test('server handlers join registration, HR activation, verified intern submissi
  assert.equal((await api('api/_handlers/intern-decision.ts','POST',body,'someone-else')).status,403);
  assert.equal((await api('api/_handlers/intern-decision.ts','POST',body,'U437d78a035fce09cd623650fb6c3fc97')).status,200);
  assert.equal((await query('SELECT status FROM leave_requests WHERE id=$1',[row.id]))[0].status,'Approved');
- const jobs=await query("SELECT payload FROM tbs_sync_jobs WHERE user_id=$1 AND kind='line'",[id]);assert.ok(jobs.length>=2);assert.ok(jobs.every(j=>j.payload.messages.every(m=>m.type==='flex')));
+ const jobs=await query("SELECT payload FROM tbs_sync_jobs WHERE user_id=$1 AND kind='line'",[id]);assert.ok(jobs.length>=2);assert.ok(jobs.filter(j=>j.payload.messages.some(m=>m.type==='flex')).length>=2);assert.equal(jobs.filter(j=>j.payload.messages.some(m=>m.type==='text')).length,1);
 });
 test('intern quota endpoint reports whole-term usage instead of full-time annual quotas',async()=>{
  await query("INSERT INTO tbs_employees(user_id,tbs_id,status,employment_type) VALUES('intern',90,'active','intern') ON CONFLICT(user_id) DO UPDATE SET employment_type='intern'");
@@ -371,4 +372,35 @@ test('missing evidence returns not found instead of an empty download response',
  const id='00000000-0000-4000-8000-000000000099';
  assert.equal((await rpc('tbs_evidence',{action:'download',accountId:'employee',id})).statusCode,404);
  assert.equal((await rpc('tbs_evidence',{action:'download',accountId:'unregistered',id})).statusCode,401);
+});
+
+test('past dates are blocked for both cohorts even with emergency explanations',async()=>{
+ await query("INSERT INTO tbs_employees(user_id,tbs_id,first_name,status,employment_type,intern_number) VALUES('past-intern',986,'Past','active','intern',986) ON CONFLICT DO NOTHING");
+ for(const userId of ['employee','unlimited','past-intern'])for(const leaveType of ['personal','sick','annual','university']){
+  const r=await submit({userId,leaveType,selectedDates:['2001-01-01'],emergencyReason:'An emergency'});
+  assert.equal(r.statusCode,422);assert.match(r.error,/past dates/);
+ }
+ assert.equal((await query('SELECT count(*)::int n FROM leave_requests'))[0].n,0);
+ assert.equal((await query('SELECT count(*)::int n FROM tbs_sync_jobs'))[0].n,0);
+});
+test('new intern registration alerts only HR once, with a registration link',async()=>{
+ const intern={action:'submit',accountId:'alert-intern',firstName:'New',lastName:'Intern',nickname:'Test',department:'AI',employmentType:'intern'};
+ await query("DELETE FROM tbs_registrations WHERE user_id IN ('alert-intern','alert-staff')");
+ assert.equal((await rpc('tbs_registration',intern)).pending,true);
+ await rpc('tbs_registration',intern);await rpc('tbs_registration',{action:'status',accountId:intern.accountId});
+ await rpc('tbs_registration',{...intern,accountId:'alert-staff',employmentType:'employee'});
+ const jobs=await query("SELECT payload FROM tbs_sync_jobs WHERE kind='line'");assert.equal(jobs.length,1);
+ assert.equal(jobs[0].payload.to,(await query('SELECT hr_line_id FROM tbs_policy_routing WHERE singleton'))[0].hr_line_id);
+ assert.match(jobs[0].payload.messages[0].text,/New Intern/);
+ assert.match(jobs[0].payload.messages[0].text,/view=interns&tab=registrations/);
+ await query("DELETE FROM tbs_registrations WHERE user_id='alert-intern'");
+});
+test('intern approval card offers both actions and retains recipients and authenticated revision',async()=>{
+ await query("INSERT INTO tbs_employees(user_id,tbs_id,first_name,status,employment_type,intern_number) VALUES('card-intern',987,'Card','active','intern',987) ON CONFLICT DO NOTHING");
+ await query("INSERT INTO tbs_intern_terms VALUES('card-intern','2099-01-01','2099-12-31',6) ON CONFLICT DO NOTHING");
+ const r=await submit({userId:'card-intern'});assert.equal(r.ok,true);
+ const card=(await query("SELECT tbs_approval_message(r,tbs_intern_approvers()) card FROM leave_requests r WHERE id=$1",[r.id]))[0].card;
+ const buttons=card.messages[0].contents.footer.contents;
+ assert.deepEqual(buttons.map(b=>b.action.label),['Approve','Reject']);
+ for(const [i,action] of ['approve','reject'].entries()){assert.match(buttons[i].action.uri,new RegExp('action='+action));assert.match(buttons[i].action.uri,/token=.+&revision=.+/);}
 });

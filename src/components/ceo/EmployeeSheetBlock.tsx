@@ -28,7 +28,7 @@ export interface EmployeeSheetBlockProps {
   onRemoveEmployee?: (emp: Employee) => void;
 }
 
-const EMPTY_DRAFT = { date: "", sick: "", annual: "", personal: "", note: "" };
+const EMPTY_DRAFT = { date: "", sick: "", annual: "", personal: "", note: "", university: "" };
 
 export default function EmployeeSheetBlock({
   employee,
@@ -41,6 +41,8 @@ export default function EmployeeSheetBlock({
   onQuotaNoteChange,
   onRemoveEmployee,
 }: EmployeeSheetBlockProps) {
+  const intern = employee.employmentType === "intern";
+  const types: LeaveType[] = intern ? [...LEAVE_TYPES, "university"] : LEAVE_TYPES;
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [noteDraft, setNoteDraft] = useState(employee.quotaNote ?? "");
 
@@ -51,22 +53,22 @@ export default function EmployeeSheetBlock({
   const rows = useMemo(() => leavesForYear(employee.leaves, year), [employee.leaves, year]);
 
   const quotasKnown = employee.quotasKnown !== false;
-  const quotaReview = needsQuotaReview(employee);
-  const totals = LEAVE_TYPES.map((type) => {
+  const quotaReview = !intern && needsQuotaReview(employee);
+  const totals = types.map((type) => {
     const unlimited = isUnlimited(employee, type);
     const granted = grantedFor(employee, type);
     const taken = sumLeavesByType(employee.leaves, type, year);
     return { type, granted, taken, remain: granted - taken, unlimited };
   });
 
-  const overQuota = quotasKnown && !quotaReview && totals.some((t) => !t.unlimited && t.remain < 0);
+  const overQuota = !intern && quotasKnown && !quotaReview && totals.some((t) => !t.unlimited && t.remain < 0);
   const rowPad = compact ? "py-0.5" : "py-1.5";
 
   const commitDraft = async (next: typeof EMPTY_DRAFT) => {
     setDraft(next);
     const date = normalizeDateInput(next.date, year);
     if (!date) return;
-    const entered = LEAVE_TYPES.map((t) => ({ type: t, days: parseFloat(next[t]) || 0 })).filter((e) => e.days > 0);
+    const entered = types.map((t) => ({ type: t, days: parseFloat(next[t]) || 0 })).filter((e) => e.days > 0);
     if (entered.length === 0) return;
     try {
       for (const entry of entered) {
@@ -153,7 +155,7 @@ export default function EmployeeSheetBlock({
               <th className="sticky left-0 z-10 bg-slate-50 text-left font-extrabold text-slate-600 uppercase tracking-wide text-[10px] px-2 py-2 border-r border-slate-200 w-24">
                 Date
               </th>
-              {LEAVE_TYPES.map((type) => (
+              {types.map((type) => (
                 <th key={type} className={`px-2 py-2 border-r border-slate-200 w-[56px] ${LEAVE_META[type].band}`}>
                   <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold ${LEAVE_META[type].chip}`}>
                     {LEAVE_META[type].short}
@@ -170,7 +172,7 @@ export default function EmployeeSheetBlock({
           <tbody className="divide-y divide-slate-100">
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-slate-400 italic font-medium">
+                <td colSpan={types.length+3} className="px-3 py-6 text-center text-slate-400 italic font-medium">
                   No leave records in {year}
                 </td>
               </tr>
@@ -194,7 +196,7 @@ export default function EmployeeSheetBlock({
                   />
                 </td>
 
-                {LEAVE_TYPES.map((type, colIdx) => (
+                {types.map((type, colIdx) => (
                   <td key={type} className={`border-r border-slate-200 px-1 ${rowPad} ${LEAVE_META[type].band}`}>
                     <EditableCell
                       gridId={gridId}
@@ -213,7 +215,7 @@ export default function EmployeeSheetBlock({
                 <td className={`px-1 ${rowPad}`}>
                   <EditableCell
                     gridId={gridId}
-                    cellId={`c:${rowIdx}:4`}
+                    cellId={`c:${rowIdx}:${types.length+1}`}
                     value={leave.note || ""}
                     placeholder="Add a note"
                     title={leave.note}
@@ -246,9 +248,9 @@ export default function EmployeeSheetBlock({
                   onCommit={(v) => commitDraft({ ...draft, date: v })}
                 />
               </td>
-              {LEAVE_TYPES.map((type, colIdx) => (
+              {types.map((type, colIdx) => (
                 <td key={type} className={`border-r border-slate-200 px-1 py-1.5 ${LEAVE_META[type].band}`}>
-                  <EditableCell
+                  {type==='university'?<span title="University activities must be submitted with supporting evidence" className="block text-center text-slate-400">—</span>:<EditableCell
                     gridId={gridId}
                     cellId={`c:${rows.length}:${colIdx + 1}`}
                     align="center"
@@ -256,13 +258,13 @@ export default function EmployeeSheetBlock({
                     displayClassName={`font-extrabold ${LEAVE_META[type].text}`}
                     inputClassName={LEAVE_META[type].text}
                     onCommit={(v) => commitDraft({ ...draft, [type]: v })}
-                  />
+                  />}
                 </td>
               ))}
               <td className="px-1 py-1.5" colSpan={2}>
                 <EditableCell
                   gridId={gridId}
-                  cellId={`c:${rows.length}:4`}
+                  cellId={`c:${rows.length}:${types.length+1}`}
                   value={draft.note}
                   placeholder="Reason / notes"
                   displayClassName="text-rose-600 font-medium italic"
@@ -277,7 +279,7 @@ export default function EmployeeSheetBlock({
       <footer className="border-t border-slate-200 bg-slate-50">
         <table className="w-full border-collapse text-xs">
           <tbody>
-            {(["granted", "taken", "remain"] as const).map((key) => (
+            {(intern ? ["taken"] as const : ["granted", "taken", "remain"] as const).map((key) => (
               <tr key={key} className={key === "remain" ? "bg-slate-100 border-t border-slate-200" : ""}>
                 <td className="px-2 py-1.5 w-24 border-r border-slate-200 font-extrabold text-slate-500 uppercase tracking-wide text-[10px]">
                   {key === "granted" ? "Quota" : key === "taken" ? `Taken ${year}` : "Remain"}

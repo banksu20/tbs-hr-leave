@@ -24,7 +24,7 @@ export default function SheetView({ employees, year, compact, ...handlers }: She
   }
 
   return (
-    <section><p className="text-sm text-slate-500 mb-3">This is a table view of your saved HR records. Changes here also appear in Overview and Roster. Excel and PDF exports are copies for reporting.</p><div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 items-start">
+    <section><p className="text-sm text-slate-500 mb-3">This is a table view of your saved HR records. Changes here also appear in Overview and Roster. Excel and PDF exports are copies for reporting.</p><div className={`grid grid-cols-1 md:grid-cols-2 ${employees.some(e=>e.employmentType==="intern")?"":"xl:grid-cols-3"} gap-5 items-start`}>
       {employees.map((emp) => (
         <EmployeeSheetBlock key={emp.id} employee={emp} year={year} compact={compact} {...handlers} />
       ))}

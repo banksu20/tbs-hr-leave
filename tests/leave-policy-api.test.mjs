@@ -31,3 +31,12 @@ test('bundled policy router uses the URL path and preserves query parameters wit
  for(const name of names){const res=response();await handler({url:'/api/'+name+'?year=2026',query:{year:'2026',policy:'different'}},res);assert.equal(called,name);assert.equal(res.body.query.year,'2026');}
  const res=response();await handler({url:'/api/unknown',query:{policy:'registration'}},res);assert.equal(res.statusCode,404);
 });
+test('employee submission rejects backdating before workflow calls and uses Bangkok day boundaries',async()=>{
+ let forwarded=0;
+ const handler=loadTS({'../_lib/lineIdentity.js':{verifyLineIdentity:async()=> 'verified'},'../_lib/n8nClient.js':{n8nPost:async()=>{forwarded++;return {ok:true};}}})('api/_handlers/employee-request.ts').default;
+ const response=()=>({statusCode:200,setHeader(){},status(n){this.statusCode=n;return this;},send(v){this.body=JSON.parse(v);return this;}});
+ for(const type of ['sick','personal','annual','university']){const res=response();await handler({method:'POST',headers:{authorization:'Bearer valid'},body:{leaveType:type,selectedDates:['2001-01-01'],leaveDays:1,reason:'Test',emergencyReason:'Emergency'}},res);assert.equal(res.statusCode,422);assert.match(res.body.error,/past dates/);}
+ assert.equal(forwarded,0);
+ const res=response();await handler({method:'POST',headers:{authorization:'Bearer valid'},body:{leaveType:'personal',selectedDates:['2099-10-01'],leaveDays:1,reason:'Test'}},res);assert.equal(res.statusCode,200);assert.equal(forwarded,1);
+ const {todayInBangkok}=loadTS()('api/_lib/date.ts');assert.equal(todayInBangkok(new Date('2026-10-13T16:59:59Z')),'2026-10-13');assert.equal(todayInBangkok(new Date('2026-10-13T17:00:00Z')),'2026-10-14');
+});

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import liff from "@line/liff";
 import Swal from "sweetalert2";
-import { buildLeaveDateRange } from "@/lib/localDate";
+import { buildLeaveDateRange, toLocalDateString } from "@/lib/localDate";
 import { format } from "date-fns";
 import { th, enUS } from "date-fns/locale"; 
 import { Button } from "@/components/ui/button";
@@ -286,6 +286,8 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const today = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date());
+    if(localDates.some(date=>date<today)){await Swal.fire({icon:'warning',text:language==='th'?'ไม่สามารถขอลาย้อนหลังได้':'Leave cannot be requested for past dates.',confirmButtonColor:'#00B5E2'});return;}
     setReasonError(!formData.reason.trim());
     if (!formData.department || !formData.leaveType || selectedDates.length === 0 || !formData.reason.trim()) {
       Swal.fire({
@@ -519,13 +521,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                       selected={selectedDates}
                       onSelect={handleDateSelect}
                       disabled={(date) => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        
-                        const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                        const isPast = checkDate < today;
-                        
-                        const isPastDisabled = formData.leaveType === 'sick' ? false : isPast;
+                        const isPastDisabled = toLocalDateString(date) < new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date(clock));
                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                         
                         const { isFullyTaken } = getDateLeaveStatus(date);

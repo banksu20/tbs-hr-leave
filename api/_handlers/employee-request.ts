@@ -1,7 +1,8 @@
 import type {VercelRequest,VercelResponse} from '../_lib/platform.js';import {z} from 'zod';
-import {headerValue,json} from '../_lib/http.js';import {verifyLineIdentity} from '../_lib/lineIdentity.js';import {n8nPost} from '../_lib/n8nClient.js';import {isPlainDate} from '../_lib/date.js';
+import {headerValue,json} from '../_lib/http.js';import {verifyLineIdentity} from '../_lib/lineIdentity.js';import {n8nPost} from '../_lib/n8nClient.js';import {isPlainDate,todayInBangkok} from '../_lib/date.js';
 const schema=z.object({leaveType:z.enum(['sick','annual','vacation','personal','university']),selectedDates:z.array(z.string().refine(isPlainDate)).min(1).max(366),leaveDays:z.number().positive().max(366),reason:z.string().trim().min(1).max(2000),emergencyReason:z.string().trim().max(2000).default(''),evidenceIds:z.array(z.string().uuid()).max(3).default([]),halfDayPeriod:z.enum(['morning','afternoon']).nullable().optional()});
 export default async function handler(req:VercelRequest,res:VercelResponse){res.setHeader('Cache-Control','no-store');if(req.method!=='POST')return json(res,405,{error:'Method not allowed'});try{
  let accountId:string;try{accountId=await verifyLineIdentity(headerValue(req,'authorization'));}catch{return json(res,401,{error:'Please sign in through LINE.'});}const p=schema.safeParse(req.body);if(!p.success)return json(res,422,{error:'Check your leave dates, duration and reason.'});
+ if(p.data.selectedDates.some(date=>date<todayInBangkok()))return json(res,422,{error:'Leave cannot be requested for past dates.'});
  const r=await n8nPost('employee-cancellations',{operation:'employee-submit',payload:{...p.data,userId:accountId,submittedBy:accountId}});return json(res,200,Array.isArray(r)?r[0]:r);
 }catch(e){return json(res,Number((e as {status?:number}).status)||503,{error:(e as Error).message});}}

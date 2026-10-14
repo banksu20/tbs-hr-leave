@@ -18,6 +18,7 @@ export interface ManageRosterProps {
   onQuotaChange: (employee: Employee, patch: QuotaEdit) => void;
   onSetStatus: (employee: Employee, status: "active" | "inactive") => void;
   onOpenSheet: (employee: Employee) => void;
+  onManageIntern?: (employee: Employee) => void;
 }
 
 const HEAD = "py-2.5 px-3 text-left font-extrabold text-slate-600 uppercase tracking-wide text-[10px] border-b border-slate-200";
@@ -28,6 +29,7 @@ export default function ManageRoster({
   onQuotaChange,
   onSetStatus,
   onOpenSheet,
+  onManageIntern,
 }: ManageRosterProps) {
   const [query, setQuery] = useState("");
 
@@ -54,7 +56,7 @@ export default function ManageRoster({
           <p className="text-[11px] font-semibold text-slate-400">
             {variant === "removed"
               ? "They keep their leave history. Restore to bring them back."
-              : "Click a quota number or note to edit it"}
+              : onManageIntern ? "Open an intern’s sheet or manage their internship" : "Click a quota number or note to edit it"}
           </p>
         </div>
 
@@ -80,8 +82,8 @@ export default function ManageRoster({
                 <th className={`${HEAD} w-24`}>Started</th>
                 <th className={`${HEAD} w-20 text-center`}>Annual</th>
                 <th className={`${HEAD} w-20 text-center`}>Personal</th>
-                <th className={`${HEAD} w-20 text-center`}>Carried</th>
-                <th className={`${HEAD} min-w-[150px]`}>Quota note</th>
+                <th className={`${HEAD} w-20 text-center`}>{onManageIntern ? "Sick" : "Carried"}</th>
+                <th className={`${HEAD} min-w-[150px]`}>{onManageIntern ? "Internship" : "Quota note"}</th>
                 <th className={`${HEAD} w-28 text-center`}>Action</th>
               </tr>
             </thead>
@@ -96,7 +98,7 @@ export default function ManageRoster({
 
               {rows.map((emp) => {
                 const inactive = emp.status === "inactive";
-                const needsQuota = emp.quotas.annualTotal === 0;
+                const needsQuota = !onManageIntern && emp.quotas.annualTotal === 0;
 
                 return (
                   <tr key={emp.id} className={`hover:bg-slate-50/70 ${inactive ? "bg-rose-50/40" : ""}`}>
@@ -131,9 +133,9 @@ export default function ManageRoster({
                       {emp.startDate ? formatSheetDate(emp.startDate) : "—"}
                     </td>
 
-                    {(["annualTotal", "personalTotal", "carriedOver"] as const).map((field) => (
+                    {(["annualTotal", "personalTotal", onManageIntern ? "sickTotal" : "carriedOver"] as const).map((field) => (
                       <td key={field} className="py-1 px-1">
-                        <EditableCell
+                        {onManageIntern ? <span className="block text-center font-extrabold text-slate-800">{emp.quotasKnown===false ? "—" : emp.quotas[field] ?? "—"}</span> : <EditableCell
                           gridId={`roster-${emp.id}`}
                           cellId={`c:0:${field === "annualTotal" ? 0 : field === "personalTotal" ? 1 : 2}`}
                           align="center"
@@ -148,12 +150,12 @@ export default function ManageRoster({
                             if (parsed === (emp.quotas[field] ?? 0)) return;
                             onQuotaChange(emp, { [field]: parsed });
                           }}
-                        />
+                        />}
                       </td>
                     ))}
 
                     <td className="py-1 px-1">
-                      <EditableCell
+                      {onManageIntern ? <button className="text-cyan-700 underline font-semibold" onClick={()=>onManageIntern(emp)}>Dates & allowances</button> : <EditableCell
                         gridId={`roster-note-${emp.id}`}
                         cellId="c:0:0"
                         value={emp.quotaNote ?? ""}
@@ -163,7 +165,7 @@ export default function ManageRoster({
                         onCommit={(note) => {
                           if (note !== (emp.quotaNote ?? "")) onQuotaChange(emp, { note });
                         }}
-                      />
+                      />}
                     </td>
 
                     <td className="py-2 px-3">
