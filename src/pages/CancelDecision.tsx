@@ -16,7 +16,7 @@ export default function CancelDecision(){
   const detail={id,token,action:action as 'approve'|'reject'};
   const data=await call(`/api/cancellations?view=line&id=${id}&token=${encodeURIComponent(token)}`);if(active){setLink(detail);setRequest(data.request);}
  }catch(e){if(active)setError((e as Error).message);}})();return()=>{active=false;};},[attempt]);
- return <main className="min-h-screen bg-amber-50 p-5 flex items-center justify-center"><section className="w-full max-w-md rounded-3xl bg-white border border-amber-200 p-6 shadow-sm space-y-4">
+ return <main className="min-h-screen bg-amber-50 p-5 flex items-center justify-center"><section className="w-full max-w-md rounded-3xl bg-white border border-amber-200 p-6 shadow-xs space-y-4">
  <h1 className="font-bold text-xl text-amber-900">{text('Leave cancellation','คำขอยกเลิกวันลา')}</h1>
  {error&&<div role="alert"><p className="text-red-700">{error}</p><Button variant="outline" disabled={busy} onClick={()=>setAttempt(n=>n+1)}>{text('Refresh status and retry','ตรวจสอบสถานะและลองอีกครั้ง')}</Button></div>}
  {done?<><p className="text-emerald-800 font-semibold">{link?.action==='approve'?text('Cancellation approved.','อนุมัติการยกเลิกแล้ว'):text('Cancellation rejected. Original leave stays approved.','ไม่อนุมัติการยกเลิก วันลายังคงเดิม')}</p><Button variant="outline" onClick={()=>liff.isInClient()?liff.closeWindow():window.location.assign('/ceo')}>{text('Close','ปิด')}</Button></>:request&&link?<>

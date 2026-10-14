@@ -1,4 +1,4 @@
-import type {VercelRequest,VercelResponse} from '@vercel/node';
+import type {VercelRequest,VercelResponse} from './_lib/platform.js';
 import companyHolidays from './_handlers/company-holidays.js';
 import employeeRequest from './_handlers/employee-request.js';
 import internDecision from './_handlers/intern-decision.js';

@@ -30,7 +30,7 @@ export default function EmployeeCancellations({userId,onChanged}:{userId:string|
  const relevant=[...rows].sort((a,b)=>latestDate(b).localeCompare(latestDate(a))||b.id-a.id);
  const eligibleDates=(row:Leave)=>row.dates.filter(d=>row.status==='Approved'?d>today:row.status==='Pending'&&d>=today);
  const latestEligible=relevant.find(row=>eligibleDates(row).length>0);
- return <section className="mx-4 mt-6 rounded-3xl bg-white border border-amber-200 p-4 space-y-3 shadow-sm">
+ return <section className="mx-4 mt-6 rounded-3xl bg-white border border-amber-200 p-4 space-y-3 shadow-xs">
   <div className="flex items-center justify-between gap-2"><div className="flex items-center gap-3"><span className="rounded-2xl bg-amber-100 p-3 text-amber-600"><CalendarX2 className="h-6 w-6"/></span><h2 className="font-bold text-amber-900">{text('Recent leave history','ประวัติการลาล่าสุด')}</h2></div><Button variant="ghost" size="icon" aria-label={text('Refresh requests','รีเฟรชรายการ')} disabled={!userId||busy||loading} onClick={refresh}><RefreshCw className={`h-4 w-4 text-slate-500 ${loading?'animate-spin':''}`}/></Button></div>
   {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
   {loading?<p className="text-sm text-slate-500">{text('Loading…','กำลังโหลด…')}</p>:!relevant.length&&!error?<p className="text-sm text-slate-500 py-2">{text('No leave history yet','ยังไม่มีประวัติการลา')}</p>:(expanded?relevant:relevant.slice(0,1)).map((row)=><article key={row.id} className="rounded-2xl bg-amber-50/60 border border-amber-100 p-3 space-y-3">

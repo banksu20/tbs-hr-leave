@@ -123,7 +123,7 @@ export default function TeamCalendar({ department, userId }: CalendarProps) {
               <div 
                 key={day} 
                 onClick={() => setSelectedDay(dateStr)}
-                className={`p-1.5 h-12 rounded-xl border flex flex-col items-center justify-center cursor-pointer transition-all shadow-sm ${bgClass} ${isSelected ? 'ring-2 ring-blue-500 shadow-md scale-105' : ''}`}
+                className={`p-1.5 h-12 rounded-xl border flex flex-col items-center justify-center cursor-pointer transition-all shadow-xs ${bgClass} ${isSelected ? 'ring-2 ring-blue-500 shadow-md scale-105' : ''}`}
               >
                 <span className="text-sm">{day}</span>
                 
@@ -141,7 +141,7 @@ export default function TeamCalendar({ department, userId }: CalendarProps) {
         </div>
 
         {selectedDay && (
-          <div className="mt-5 p-4 bg-white rounded-xl border border-slate-200 shadow-sm animate-in fade-in slide-in-from-bottom-2">
+          <div className="mt-5 p-4 bg-white rounded-xl border border-slate-200 shadow-xs animate-in fade-in slide-in-from-bottom-2">
             <h4 className="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2 flex items-center gap-2">
               <span className="bg-slate-100 p-1.5 rounded-md text-slate-600">📅</span> 
               วันที่ {new Date(selectedDay).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}

@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { VercelRequest, VercelResponse } from "./platform.js";
 import { dashboardSession, sameOrigin } from "./dashboardAuth.js";
 import { webhookSecret } from "./webhookSecret.js";
 

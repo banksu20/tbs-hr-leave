@@ -1,4 +1,4 @@
-import type {VercelRequest,VercelResponse} from '@vercel/node';
+import type {VercelRequest,VercelResponse} from './_lib/platform.js';
 import {headerValue,json} from './_lib/http.js';
 import {verifyLineIdentity} from './_lib/lineIdentity.js';
 import {n8nPost} from './_lib/n8nClient.js';

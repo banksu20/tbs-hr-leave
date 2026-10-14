@@ -1,5 +1,5 @@
 import {dashboardCall} from './_lib/dashboardAuth.js';
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { VercelRequest, VercelResponse } from "./_lib/platform.js";
 import { requestTargetSchema, requestUpdateSchema } from "./_lib/requestMutation.js";
 import { isWithinWindow } from "./_lib/date.js";
 import { ceoAuthorised, json, queryParam, writesAllowed } from "./_lib/http.js";

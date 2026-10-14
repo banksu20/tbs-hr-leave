@@ -1,7 +1,7 @@
 import {dashboardSession} from './_lib/dashboardAuth.js';
 import { z } from "zod";
 import { isPlainDate } from "./_lib/date.js";
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { VercelRequest, VercelResponse } from "./_lib/platform.js";
 import { ceoAuthorised, currentYear, json, queryParam, writesAllowed } from "./_lib/http.js";
 import { N8nMutationError, N8nNotRegisteredError, N8nUnavailableError, n8nGet, n8nPost } from "./_lib/n8nClient.js";
 import { cleanString, normalizeDays } from "./_lib/normalize.js";

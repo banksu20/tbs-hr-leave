@@ -16,11 +16,11 @@ export default function TeamCalendar({employees, year}: {employees: Employee[]; 
   const selected=entries.filter(({l})=>day===null||Number(l.date.slice(8))===day).sort((a,b)=>a.l.date.localeCompare(b.l.date)||a.e.name.localeCompare(b.e.name));
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date());
   const changeMonth=(m:number)=>{setMonth(m);setDay(null);};
-  return <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+  return <section className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
     <div className="p-5 border-b space-y-4">
       <div className="flex flex-wrap gap-3 justify-between items-center"><div><h2 className="font-bold text-xl flex gap-2 items-center"><CalendarDays className="text-sky-500"/>Team calendar</h2><p className="text-sm text-slate-500 mt-1">{new Set(entries.map(x=>x.e.id)).size} people with leave in {MONTH_LABELS[month]} · Click a day for details</p></div>
         <div className="flex flex-wrap gap-2 items-center">
-        <a href="https://calendar.google.com/calendar/embed?src=50cpt8b361qli1poevjsqrt5vo%40group.calendar.google.com&ctz=Asia%2FBangkok" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500" aria-label="Open Google Calendar (opens in a new tab)">Open Google Calendar<ExternalLink size={16} aria-hidden="true"/></a>
+        <a href="https://calendar.google.com/calendar/embed?src=50cpt8b361qli1poevjsqrt5vo%40group.calendar.google.com&ctz=Asia%2FBangkok" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-sky-500" aria-label="Open Google Calendar (opens in a new tab)">Open Google Calendar<ExternalLink size={16} aria-hidden="true"/></a>
         <button aria-label="Previous month" disabled={month===0} onClick={()=>changeMonth(month-1)} className="border rounded-lg p-2 disabled:opacity-30"><ChevronLeft size={18}/></button>
         <select aria-label="Calendar month" className="border rounded-lg p-2" value={month} onChange={e=>changeMonth(Number(e.target.value))}>{MONTH_LABELS.map((m,i)=><option key={m} value={i}>{m} {year}</option>)}</select>
         <button aria-label="Next month" disabled={month===11} onClick={()=>changeMonth(month+1)} className="border rounded-lg p-2 disabled:opacity-30"><ChevronRight size={18}/></button></div>

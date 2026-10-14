@@ -78,8 +78,8 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header Profile */}
-      <div className="bg-white py-6 px-5 shadow-sm relative rounded-b-3xl">
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-500 via-amber-400 to-emerald-500"></div>
+      <div className="bg-white py-6 px-5 shadow-xs relative rounded-b-3xl">
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-linear-to-r/srgb from-sky-500 via-amber-400 to-emerald-500"></div>
         
         <div className="flex items-start justify-between">
           <div className="flex flex-col">
@@ -113,7 +113,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
               </span>
             </p>
             <div className="inline-flex items-center gap-2 bg-slate-100 px-2.5 py-1 rounded-lg w-fit">
-              <div className="bg-[#06C755] p-1 rounded-md shadow-sm">
+              <div className="bg-[#06C755] p-1 rounded-md shadow-xs">
                 <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 fill-white" xmlns="http://www.w3.org/2000/svg">
                   <path d="M24 10.304c0-4.579-4.82-8.304-10.741-8.304-5.922 0-10.74 3.725-10.74 8.304 0 4.104 3.821 7.535 8.985 8.196.349.075.824.23.943.528.108.272.071.699.035 1.047l-.151 1.043c-.046.323-.211 1.263 1.053.69 1.263-.574 6.817-4.014 9.303-6.87 1.83-2.107 2.313-3.816 2.313-5.634z" />
                 </svg>
@@ -131,7 +131,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
         {isCeo && (
           <button
             onClick={() => navigate("/ceo")}
-            className="w-full bg-slate-900 text-amber-400 p-4 rounded-2xl shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform border border-slate-800"
+            className="w-full bg-slate-900 text-amber-400 p-4 rounded-2xl shadow-xs flex items-center justify-between active:scale-[0.98] transition-transform border border-slate-800"
           >
             <div className="flex items-center gap-3">
               <div className="bg-amber-400/20 p-2.5 rounded-xl text-amber-400 border border-amber-400/30">
@@ -150,7 +150,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
         <div className="grid grid-cols-2 gap-3">
           
           {/* Sick Quota Card */}
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100 relative overflow-hidden flex flex-col justify-between">
+          <div className="bg-white p-4 rounded-2xl shadow-xs border border-rose-100 relative overflow-hidden flex flex-col justify-between">
             <div className="absolute -right-4 -top-4 opacity-[0.03]">
               <Thermometer className="w-24 h-24 text-rose-500" />
             </div>
@@ -169,7 +169,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
           </div>
 
           {/* Annual Quota Card  */}
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-sky-100 relative overflow-hidden flex flex-col justify-between">
+          <div className="bg-white p-4 rounded-2xl shadow-xs border border-sky-100 relative overflow-hidden flex flex-col justify-between">
             <div className="absolute -right-4 -top-4 opacity-[0.03]">
               <Palmtree className="w-24 h-24 text-sky-500" />
             </div>
@@ -195,7 +195,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
         </div>
 
         {/* Personal Quota Card */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100 relative overflow-hidden flex items-center justify-between">
+        <div className="bg-white p-4 rounded-2xl shadow-xs border border-amber-100 relative overflow-hidden flex items-center justify-between">
           <div className="absolute -right-2 -top-8 opacity-[0.03]">
             <CalendarDays className="w-32 h-32 text-amber-500" />
           </div>
@@ -219,7 +219,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
         {/* Full width Company Holiday Button */}
         <button 
           onClick={() => setShowHolidaysModal(true)}
-          className="col-span-2 bg-gradient-to-r from-emerald-500 to-teal-400 p-4 rounded-2xl shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform"
+          className="col-span-2 bg-linear-to-r/srgb from-emerald-500 to-teal-400 p-4 rounded-2xl shadow-xs flex items-center justify-between active:scale-[0.98] transition-transform"
         >
           <div className="flex items-center gap-3">
             <div className="bg-white/20 p-2.5 rounded-xl">
@@ -239,7 +239,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
         <Dialog>
           <DialogTrigger asChild>
             <button 
-              className="col-span-2 bg-gradient-to-r from-blue-500 to-indigo-500 p-4 rounded-2xl shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform mt-[-4px]"
+              className="col-span-2 bg-linear-to-r/srgb from-blue-500 to-indigo-500 p-4 rounded-2xl shadow-xs flex items-center justify-between active:scale-[0.98] transition-transform mt-[-4px]"
             >
               <div className="flex items-center gap-3">
                 <div className="bg-white/20 p-2.5 rounded-xl">

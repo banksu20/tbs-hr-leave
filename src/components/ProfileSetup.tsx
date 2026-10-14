@@ -68,7 +68,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,#eff6ff,#f8fafc,#f1f5f9)] flex items-center justify-center p-4">
         <Card className="w-full max-w-md shadow-xl border-0 ring-1 ring-slate-200">
           <CardHeader className="text-center space-y-3 pb-6">
             <div className="flex justify-center mb-2">
@@ -96,7 +96,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-slate-50 to-slate-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,#eff6ff,#f8fafc,#f1f5f9)] flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-xl border-0 ring-1 ring-slate-200">
         <CardHeader className="text-center space-y-3 pb-6">
           <div className="flex justify-center mb-2">
@@ -159,7 +159,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
               <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-hidden"
               >
                 <option value="" disabled>-- เลือกแผนก --</option>
                 <option value="Web Developer">Web Developer</option>
@@ -175,7 +175,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
               </select>
             </div>
 
-            <Button type="submit" className="w-full mt-8 h-12 text-md font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white shadow-md">
+            <Button type="submit" className="w-full mt-8 h-12 text-md font-semibold bg-linear-to-r/srgb from-blue-600 to-indigo-600 hover:from-blue-700 text-white shadow-md">
               Submit registration
             </Button>
           </form>

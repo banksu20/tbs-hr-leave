@@ -1,4 +1,4 @@
-import type {VercelRequest,VercelResponse} from '@vercel/node';
+import type {VercelRequest,VercelResponse} from './_lib/platform.js';
 import {json} from './_lib/http.js';
 import {dashboardCall,dashboardSession,sameOrigin} from './_lib/dashboardAuth.js';
 export default async function handler(req:VercelRequest,res:VercelResponse){

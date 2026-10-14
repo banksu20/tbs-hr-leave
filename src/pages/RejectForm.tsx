@@ -118,7 +118,7 @@ export default function RejectForm() {
       <button
         type="button"
         onClick={toggleLanguage}
-        className="absolute top-4 right-4 z-50 bg-white/80 backdrop-blur-md shadow-sm border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full text-[11px] font-bold hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+        className="absolute top-4 right-4 z-50 bg-white/80 backdrop-blur-md shadow-xs border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full text-[11px] font-bold hover:bg-slate-100 transition-colors flex items-center gap-1.5"
       >
         {language === 'th' ? 'TH' : 'EN'}
       </button>

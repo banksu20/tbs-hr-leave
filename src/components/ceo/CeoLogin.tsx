@@ -40,7 +40,7 @@ export default function CeoLogin({ onSuccess }: CeoLoginProps) {
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center px-4">
-      <form onSubmit={submit} className="w-full max-w-sm bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+      <form onSubmit={submit} className="w-full max-w-sm bg-white rounded-xl border border-slate-200 shadow-xs p-6">
         <div className="flex items-center gap-3 mb-5">
           <div className="bg-slate-900 p-1.5 rounded">
             <img src={tbsLogo} alt="TBS" className="h-6 w-auto object-contain" />

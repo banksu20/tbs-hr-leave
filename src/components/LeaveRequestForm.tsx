@@ -385,11 +385,11 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   }
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50 flex flex-col font-sans relative">
+    <div className="min-h-dvh bg-slate-50 flex flex-col font-sans relative">
       
       {/* Header */}
-      <div className="bg-white text-slate-800 py-6 px-4 md:px-6 shadow-sm relative overflow-hidden rounded-b-3xl z-10 shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-500 via-amber-400 to-emerald-500"></div>
+      <div className="bg-white text-slate-800 py-6 px-4 md:px-6 shadow-xs relative overflow-hidden rounded-b-3xl z-10 shrink-0">
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-linear-to-r/srgb from-sky-500 via-amber-400 to-emerald-500"></div>
         <div className="flex items-center gap-3">
           <button 
             type="button"
@@ -412,7 +412,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
         <form id="leave-form" onSubmit={handleSubmit} className="space-y-4">
           
           {/* ข้อมูลส่วนตัวพนักงาน */}
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+          <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 space-y-4">
             
             <div className="space-y-1.5">
               <Label className="flex items-center gap-2 text-slate-500 font-semibold text-xs uppercase tracking-wider">
@@ -451,7 +451,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
           </div>
 
           {/* รายละเอียดการลา */}
-          <div className={`p-4 rounded-2xl shadow-sm border transition-colors duration-300 ${
+          <div className={`p-4 rounded-2xl shadow-xs border transition-colors duration-300 ${
             formData.leaveType === 'sick' ? 'bg-rose-50/60 border-rose-100' : 
             formData.leaveType === 'vacation' ? 'bg-sky-50/60 border-sky-100' : 
             formData.leaveType === 'personal' ? 'bg-amber-50/60 border-amber-100' : 
@@ -465,7 +465,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   <FileText className="h-4 w-4" /> {t('leave_type')}
                 </Label>
                 <Select value={formData.leaveType} onValueChange={(val) => setFormData({ ...formData, leaveType: val })}>
-                  <SelectTrigger className={`h-12 rounded-xl font-bold border-white bg-white shadow-sm text-sm ${
+                  <SelectTrigger className={`h-12 rounded-xl font-bold border-white bg-white shadow-xs text-sm ${
                     formData.leaveType === 'sick' ? 'text-rose-600 ring-1 ring-rose-100' : 
                     formData.leaveType === 'vacation' ? 'text-sky-600 ring-1 ring-sky-100' : 
                     formData.leaveType === 'personal' ? 'text-amber-600 ring-1 ring-amber-100' : // 🌟 เพิ่มบรรทัดนี้
@@ -492,7 +492,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                     <Button
                       variant={"outline"}
                       className={cn(
-                        "w-full justify-start text-left font-normal h-12 rounded-xl bg-white border-white shadow-sm text-sm hover:bg-slate-50 transition-colors",
+                        "w-full justify-start text-left font-normal h-12 rounded-xl bg-white border-white shadow-xs text-sm hover:bg-slate-50 transition-colors",
                         !selectedDates?.length && "text-slate-400",
                         formData.leaveType === 'sick' ? 'ring-1 ring-rose-100' : formData.leaveType === 'vacation' ? 'ring-1 ring-sky-100' : 'border-slate-200'
                       )}
@@ -582,7 +582,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                         type="button"
                         variant={!isHalfDay ? "default" : "outline"}
                         disabled={selectedDateStatus.hasMorning || selectedDateStatus.hasAfternoon}
-                        className={cn("flex-1 h-10 rounded-xl shadow-sm text-xs font-bold transition-all", !isHalfDay ? (formData.leaveType === 'sick' ? "bg-rose-500 hover:bg-rose-600 text-white" : "bg-sky-500 hover:bg-sky-600 text-white") : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
+                        className={cn("flex-1 h-10 rounded-xl shadow-xs text-xs font-bold transition-all", !isHalfDay ? (formData.leaveType === 'sick' ? "bg-rose-500 hover:bg-rose-600 text-white" : "bg-sky-500 hover:bg-sky-600 text-white") : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
                         onClick={() => setIsHalfDay(false)}
                       >
                         {t('full_day')}
@@ -590,7 +590,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                       <Button
                         type="button"
                         variant={isHalfDay ? "default" : "outline"}
-                        className={cn("flex-1 h-10 rounded-xl shadow-sm text-xs font-bold transition-all", isHalfDay ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent" : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
+                        className={cn("flex-1 h-10 rounded-xl shadow-xs text-xs font-bold transition-all", isHalfDay ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent" : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
                         onClick={() => setIsHalfDay(true)}
                       >
                         {t('half_day')}
@@ -638,7 +638,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                     placeholder={t('reason_placeholder')}
                     value={formData.reason}
                     onChange={(e) => {setFormData({ ...formData, reason: e.target.value });setReasonError(false);}}
-                    className={`min-h-[80px] resize-none rounded-xl bg-white shadow-sm text-sm border-white ${formData.leaveType === 'sick' ? 'ring-1 ring-rose-100 focus-visible:ring-rose-400' : 'border-slate-200 focus-visible:ring-sky-400'}`}
+                    className={`min-h-[80px] resize-none rounded-xl bg-white shadow-xs text-sm border-white ${formData.leaveType === 'sick' ? 'ring-1 ring-rose-100 focus-visible:ring-rose-400' : 'border-slate-200 focus-visible:ring-sky-400'}`}
                   />
                   {reasonError && <p role="alert" className="text-xs text-red-700">{language==='th'?'กรุณากรอกเหตุผลในการลา':'Please enter a reason for your leave.'}</p>}
                 </div>
@@ -675,10 +675,10 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 ${isSubmitting || uploading || !policyReady || isOverQuota || late || (formData.leaveType==='university'&&!evidence.length) || selectedDates.length === 0
                   ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed" 
                   : formData.leaveType === 'sick' 
-                    ? "bg-gradient-to-r from-rose-500 to-pink-600 hover:shadow-rose-500/30"
+                    ? "bg-linear-to-r/srgb from-rose-500 to-pink-600 hover:shadow-rose-500/30"
                     : formData.leaveType === 'personal'
-                      ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-amber-500/30"
-                      : "bg-gradient-to-r from-sky-500 to-blue-600 hover:shadow-sky-500/30"
+                      ? "bg-linear-to-r/srgb from-amber-500 to-orange-500 hover:shadow-amber-500/30"
+                      : "bg-linear-to-r/srgb from-sky-500 to-blue-600 hover:shadow-sky-500/30"
                 }`}
           >
             {isSubmitting ? (

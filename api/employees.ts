@@ -1,5 +1,5 @@
 import {dashboardSession,dashboardCall} from './_lib/dashboardAuth.js';
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { VercelRequest, VercelResponse } from "./_lib/platform.js";
 import { ceoAuthorised, currentYear, json, queryParam, writesAllowed } from "./_lib/http.js";
 import { N8nMutationError, N8nNotRegisteredError, N8nUnavailableError, n8nGet, n8nPost, normalizeEmployeeList } from "./_lib/n8nClient.js";
 import { cleanString, parseEmpNo } from "./_lib/normalize.js";

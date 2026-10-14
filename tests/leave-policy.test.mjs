@@ -82,7 +82,7 @@ test('medical reminder joins separate half-day requests across weekends/holiday 
  assert.equal((await query("SELECT tbs_medical_certificate('employee',ARRAY['2026-10-13'::date],0.5) r"))[0].r,false);
  await query("INSERT INTO tbs_work_calendar VALUES('2026-10-12',false,'Company holiday')");
  await add({type:'sick',days:.5,period:'morning',dates:'2026-10-13'});
- assert.equal((await submit({leaveType:'sick',selectedDates:['2026-10-14'],leaveDays:.5,halfDayPeriod:'afternoon'})).medicalCertificateRequired,true);
+ assert.equal((await submit({leaveType:'sick',selectedDates:['2026-10-14'],leaveDays:.5,halfDayPeriod:'afternoon',emergencyReason:'Historical test fixture for a medical reminder'})).medicalCertificateRequired,true);
 });
 test('personal notice crosses two days once, waits for 08:30, shows live balance and supports safe acknowledgement',async()=>{
  await add({days:1.5,dates:'2099-01-01,2099-01-02,2099-01-03',period:'morning'});

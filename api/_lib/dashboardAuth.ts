@@ -1,5 +1,5 @@
 import {randomBytes,createHash,scryptSync,timingSafeEqual} from 'node:crypto';
-import type {VercelRequest} from '@vercel/node';
+import type {VercelRequest} from './platform.js';
 import {n8nPost} from './n8nClient.js';
 export type DashboardRole='admin'|'ceo'|'hr';
 export interface DashboardSession {id:string;username:string;role:DashboardRole}

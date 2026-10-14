@@ -29,8 +29,8 @@ export default function PendingRequests({employees,ready,cohort="employee"}: {em
     {requests.map(({employee,leave})=><article key={`${employee.id}-${leave.requestId??leave.id}`} className="border rounded-lg p-3 space-y-2">
       <h3 className="font-semibold">{employee.name} · {employee.empCode}</h3>
       <p className="text-sm">{employee.department} · {leave.type} · {leave.days} day(s) per date{leave.halfDayPeriod?` · ${leave.halfDayPeriod}`:''}</p>
-      <p className="text-sm break-words">{(leave.requestDates??[leave.date]).join(', ')}</p>
-      <p className="text-sm whitespace-pre-wrap break-words">{leave.note||'No reason provided'}</p>
+      <p className="text-sm wrap-break-word">{(leave.requestDates??[leave.date]).join(', ')}</p>
+      <p className="text-sm whitespace-pre-wrap wrap-break-word">{leave.note||'No reason provided'}</p>
       {leave.requestId&&['sick','university'].includes(leave.type)&&<LeaveEvidence requestId={leave.requestId}/>}
       {!leave.requestRevision&&<p className="text-sm text-amber-800">Refresh after the approval workflow is deployed to approve this request.</p>}
       <label className="block text-sm text-slate-600">Rejection reason (optional)

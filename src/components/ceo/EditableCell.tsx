@@ -98,7 +98,7 @@ export default function EditableCell({
           focusCell(gridId, row + (e.key === "ArrowDown" ? 1 : -1), col);
         }
       }}
-      className={`w-full h-7 px-2 rounded-sm text-xs bg-transparent border border-transparent truncate transition-colors hover:border-slate-300 hover:bg-white/70 focus:bg-white focus:border-[#00B5E2] focus:ring-2 focus:ring-[#00B5E2]/25 focus:outline-none ${
+      className={`w-full h-7 px-2 rounded-sm text-xs bg-transparent border border-transparent truncate transition-colors hover:border-slate-300 hover:bg-white/70 focus:bg-white focus:border-[#00B5E2] focus:ring-2 focus:ring-[#00B5E2]/25 focus:outline-hidden ${
         align === "center" ? "text-center" : "text-left"
       } ${focused ? inputClassName : displayClassName}`}
     />

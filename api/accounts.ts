@@ -1,4 +1,4 @@
-import type {VercelRequest,VercelResponse} from '@vercel/node';
+import type {VercelRequest,VercelResponse} from './_lib/platform.js';
 import {z} from 'zod';
 import {json} from './_lib/http.js';
 import {dashboardCall,dashboardSession,hashPassword,passwordValid,sameOrigin} from './_lib/dashboardAuth.js';

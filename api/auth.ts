@@ -1,4 +1,4 @@
-import type {VercelRequest,VercelResponse} from '@vercel/node';
+import type {VercelRequest,VercelResponse} from './_lib/platform.js';
 import {createHash,timingSafeEqual} from 'node:crypto';
 import {json} from './_lib/http.js';
 import {authCall,cookie,dashboardSession,hashPassword,newSession,passwordValid,sameOrigin,tokenHash,verifyHash} from './_lib/dashboardAuth.js';

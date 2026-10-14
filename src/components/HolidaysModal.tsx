@@ -75,7 +75,7 @@ const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
                     className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 hover:bg-green-50/50 border border-slate-100 transition-colors group"
                   >
                     {/* วันที่ */}
-                    <div className="min-w-[70px] flex flex-col items-center justify-center bg-white rounded-lg py-1 px-2 border border-slate-100 shadow-sm group-hover:border-green-200">
+                    <div className="min-w-[70px] flex flex-col items-center justify-center bg-white rounded-lg py-1 px-2 border border-slate-100 shadow-xs group-hover:border-green-200">
                        <span className="text-xs text-slate-400 font-medium">
                           {holidayDate(holiday.date).toLocaleDateString(locale, { weekday: 'short', timeZone:'Asia/Bangkok' })}
                        </span>

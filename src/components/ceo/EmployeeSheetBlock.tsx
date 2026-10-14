@@ -319,7 +319,7 @@ export default function EmployeeSheetBlock({
                       }}
                       placeholder="Quota note"
                       title={noteDraft}
-                      className="w-full h-6 px-1.5 rounded-sm bg-transparent border border-transparent text-[10px] font-semibold text-rose-600 truncate hover:border-slate-300 hover:bg-white focus:bg-white focus:border-[#00B5E2] focus:outline-none"
+                      className="w-full h-6 px-1.5 rounded-sm bg-transparent border border-transparent text-[10px] font-semibold text-rose-600 truncate hover:border-slate-300 hover:bg-white focus:bg-white focus:border-[#00B5E2] focus:outline-hidden"
                     />
                   )}
                   {key === "taken" && employee.quotas.carriedOver > 0 ? `+${employee.quotas.carriedOver} carried over` : ""}

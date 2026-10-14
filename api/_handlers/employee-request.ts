@@ -1,4 +1,4 @@
-import type {VercelRequest,VercelResponse} from '@vercel/node';import {z} from 'zod';
+import type {VercelRequest,VercelResponse} from '../_lib/platform.js';import {z} from 'zod';
 import {headerValue,json} from '../_lib/http.js';import {verifyLineIdentity} from '../_lib/lineIdentity.js';import {n8nPost} from '../_lib/n8nClient.js';import {isPlainDate} from '../_lib/date.js';
 const schema=z.object({leaveType:z.enum(['sick','annual','vacation','personal','university']),selectedDates:z.array(z.string().refine(isPlainDate)).min(1).max(366),leaveDays:z.number().positive().max(366),reason:z.string().trim().min(1).max(2000),emergencyReason:z.string().trim().max(2000).default(''),evidenceIds:z.array(z.string().uuid()).max(3).default([]),halfDayPeriod:z.enum(['morning','afternoon']).nullable().optional()});
 export default async function handler(req:VercelRequest,res:VercelResponse){res.setHeader('Cache-Control','no-store');if(req.method!=='POST')return json(res,405,{error:'Method not allowed'});try{

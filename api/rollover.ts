@@ -1,5 +1,5 @@
 import {dashboardSession} from './_lib/dashboardAuth.js';
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './_lib/platform.js';
 import { z } from 'zod';
 import { isPlainDate } from './_lib/date.js';
 import { ceoAuthorised, writesAllowed, json } from './_lib/http.js';
