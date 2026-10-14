@@ -55,8 +55,11 @@ INSERT INTO tbs_delivery_admin VALUES(true,'U102590590d02874df5cac949938eb141') 
 CREATE OR REPLACE FUNCTION tbs_open_delivery_alert(source_key text,channel text) RETURNS void LANGUAGE plpgsql AS $$
 DECLARE incident bigint; job uuid; recipient text;
 BEGIN
+ PERFORM pg_advisory_xact_lock(hashtext('tbs_admin_delivery_alert'));
  INSERT INTO tbs_delivery_incidents(source) VALUES(source_key) ON CONFLICT(source) WHERE resolved_at IS NULL DO NOTHING RETURNING id INTO incident;
  IF incident IS NULL THEN RETURN; END IF;
+ -- A provider outage must not send Dale one alert per employee.
+ IF source_key<>'calendar' AND EXISTS(SELECT 1 FROM tbs_delivery_incidents WHERE source<>'calendar' AND alert_job IS NOT NULL AND opened_at>now()-interval '5 minutes') THEN RETURN;END IF;
  SELECT line_id INTO recipient FROM tbs_delivery_admin WHERE singleton;
  INSERT INTO tbs_sync_jobs(kind,user_id,payload) VALUES('line',recipient,jsonb_build_object('to',recipient,'messages',jsonb_build_array(jsonb_build_object('type','text','text',
  'TBS HR · Delivery alert for Dale'||chr(10)||channel||' needs attention. Open Delivery alerts to review and retry. Leave decisions are saved independently.'||chr(10)||'https://tbs-hr-leave.vercel.app/ceo?view=delivery')))) RETURNING id INTO job;
@@ -171,5 +174,15 @@ BEGIN
  IF COALESCE(payload->>'accountId','')='' THEN RETURN jsonb_build_object('ok',false,'statusCode',401,'error','Sign in through LINE'); END IF;
  SELECT user_id INTO uid FROM leave_requests WHERE id=(payload->>'id')::int;
  RETURN tbs_line_decision('reject',payload||jsonb_build_object('userId',uid,'expectedRevision',payload->>'revision','decisionToken',payload->>'token','rejectionReason',payload->>'reason'));
+END $$;
+
+-- Cancellation decisions are written explicitly rather than by the leave trigger.
+DO $$ DECLARE definition text; BEGIN
+ SELECT pg_get_functiondef('tbs_cancellation(text,jsonb)'::regprocedure) INTO definition;
+ IF strpos(definition,'app.tbs_actor_label')=0 THEN definition:=replace(definition,'''Dashboard — user not identified''','COALESCE(NULLIF(current_setting(''app.tbs_actor_label'',true),''''),''Dashboard — user not identified'')'); END IF;
+ EXECUTE definition;
+ SELECT pg_get_functiondef('tbs_line_cancellation(text,jsonb)'::regprocedure) INTO definition;
+ definition:=replace(definition,'actor=''CEO via verified LINE''','actor=COALESCE((SELECT COALESCE(NULLIF(e.nickname,''''),NULLIF(concat_ws('' '',e.first_name,e.last_name),''''))||'' · LINE'' FROM tbs_employees e WHERE e.user_id=tbs_resolve_employee(payload->>''accountId'')),''LINE — user not identified'')');
+ EXECUTE definition;
 END $$;
 COMMIT;

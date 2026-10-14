@@ -25,3 +25,12 @@ export function calendarMonitoringOperations(workflow){
  ops.push({type:'setWorkflowSettings',settings:{executionTimeout:480}});
  return ops;
 }
+export function lineMonitoringOperations(workflow){
+ const bridge=workflow.nodes.find(n=>n.name==='Employee cancellations');
+ const finish=workflow.nodes.find(n=>n.name==='Finish LINE delivery');
+ const parameters=JSON.parse(JSON.stringify(bridge.parameters));
+ if(!parameters.query.includes("'verified-rejection'"))parameters.query=parameters.query.replace('SELECT CASE WHEN',"SELECT CASE WHEN $1::text='verified-rejection' THEN tbs_verified_rejection($2::jsonb) WHEN");
+ const completion=JSON.parse(JSON.stringify(finish.parameters));
+ completion.options.queryReplacement=completion.options.queryReplacement.replace("'LINE delivery failed; check the workflow execution'","'LINE delivery failed ('+String($json.statusCode||'network error')+'). Execution '+$execution.id");
+ return [{type:'updateNodeParameters',nodeName:bridge.name,parameters},{type:'updateNodeParameters',nodeName:finish.name,parameters:completion}];
+}

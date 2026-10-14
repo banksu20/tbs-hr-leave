@@ -36,6 +36,17 @@ test('LINE failure alerts Dale once, never recursively alerts on its own failure
  await q('UPDATE tbs_sync_jobs SET completed_generation=generation WHERE id=$1',[j.id]);assert.equal((await call('delivery-retry',{body:{kind:'line',id:j.id}})).statusCode,409);
  assert.ok((await q('SELECT resolved_at FROM tbs_delivery_incidents WHERE source=$1',[j.id]))[0].resolved_at);
 });
+test('an outage groups LINE failure alerts instead of sending one per employee',async()=>{
+ const before=(await q('SELECT count(*)::int n FROM tbs_delivery_incidents WHERE alert_job IS NOT NULL'))[0].n;
+ for(let i=0;i<10;i++){const j=(await q("INSERT INTO tbs_sync_jobs(kind,user_id,payload) VALUES('line','staff','{}') RETURNING id"))[0];await q("UPDATE tbs_sync_jobs SET last_error='Outage' WHERE id=$1",[j.id]);}
+ assert.equal((await q('SELECT count(*)::int n FROM tbs_delivery_incidents WHERE alert_job IS NOT NULL'))[0].n,before);
+});
+test('cancellation rejection records the actual dashboard actor and note',async()=>{
+ const r=(await q("INSERT INTO leave_requests(user_id,user_name,leave_type,leave_days,start_date,end_date,selected_dates,reason,status) VALUES('staff','Staff','sick',1,'2099-01-01','2099-01-01','2099-01-01','Ill','Approved') RETURNING *,md5(to_jsonb(leave_requests)::text) revision"))[0];
+ const c=(await q("SELECT tbs_cancellation('request',$1) r",[{accountId:'staff',id:r.id,revision:r.revision,dates:['2099-01-01'],reason:'Change of plan'}]))[0].r;assert.equal(c.ok,true);
+ assert.equal((await call('cancel-reject',{body:{id:c.id,reason:'Still needed'}})).ok,true);
+ const h=(await call('history')).events.find(e=>e.action==='reject cancellation');assert.equal(h.actor,'Dale (admin) · Dashboard');assert.equal(h.after.decision_reason,'Still needed');
+});
 test('expired LINE retry requires explicit duplicate confirmation and does not replay completed jobs',async()=>{
  const j=(await q("INSERT INTO tbs_sync_jobs(kind,user_id,payload,first_attempt_at,last_error) VALUES('line','staff','{\"to\":\"staff\",\"messages\":[]}',now()-interval '25 hours','Failure') RETURNING *"))[0];
  assert.equal((await call('delivery-retry',{body:{kind:'line',id:j.id}})).statusCode,409);
