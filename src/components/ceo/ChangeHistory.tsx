@@ -17,11 +17,11 @@ function activity(event:ChangeEvent) {
 }
 const show=(value:unknown)=>value===null||value===undefined?'—':Array.isArray(value)?value.join(', '):typeof value==='object'?'Updated details':String(value);
 const showField=(key:string,value:unknown)=>value===null&&['annual_total','sick_total'].includes(key)?'Unlimited':show(value);
-export default function ChangeHistory({employees}: {employees: Employee[]}) {
+export default function ChangeHistory({employees,cohort='employee'}: {employees: Employee[];cohort?:'employee'|'intern'}) {
   const [userId,setUserId]=useState('');
   const client=useQueryClient();
-  const history=useInfiniteQuery({queryKey:['history',userId],initialPageParam:undefined as string|undefined,
-    queryFn:({pageParam})=>fetchHistory(userId||undefined,pageParam),getNextPageParam:page=>page.nextCursor??undefined});
+  const history=useInfiniteQuery({queryKey:['history',cohort,userId],initialPageParam:undefined as string|undefined,
+    queryFn:({pageParam})=>fetchHistory(userId||undefined,pageParam,cohort),getNextPageParam:page=>page.nextCursor??undefined});
   const undo=useMutation({mutationFn:(event:ChangeEvent)=>restoreLeave(event.recordId,event.id),onSuccess:async()=>{
     toast.success('Cancellation undone'); await Promise.all([client.invalidateQueries({queryKey:['history']}),client.invalidateQueries({queryKey:['employees']})]);
   },onError:(error)=>toast.error(error.message)});
@@ -30,11 +30,12 @@ export default function ChangeHistory({employees}: {employees: Employee[]}) {
       <label>Employee <select className="border rounded p-2" value={userId} onChange={e=>setUserId(e.target.value)}><option value="">All employees</option>{employees.map(e=><option key={e.id} value={e.id}>{e.name} · {e.empCode}</option>)}</select></label>
       <Button variant="outline" disabled={history.isFetching} onClick={()=>history.refetch()}>Refresh</Button>
     </div>
-    <p className="text-sm text-slate-500">See what changed and when. Open “View changes” for the previous and new values. History starts from when tracking was enabled. The person making each change is not recorded while sign-in is off.</p>
+    <p className="text-sm text-slate-500">See what changed and when. Open “View changes” for the previous and new values. Times use Bangkok time. Older records may not identify the person who made the change.</p>
     {history.isPending&&<p>Loading history…</p>}
     {history.error&&<p role="alert" className="text-red-700">{history.error.message}</p>}
     {history.data?.pages.flatMap(p=>p.events).map(event=><article key={event.id} className="border rounded-lg p-3 space-y-2">
       <div className="flex flex-wrap justify-between gap-2"><h3 className="font-semibold">{activity(event)}</h3><time className="text-sm">{new Date(event.changedAt).toLocaleString('en-GB',{timeZone:'Asia/Bangkok',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})} · Bangkok</time></div>
+      <p className="text-sm text-slate-600"><strong>By:</strong> {event.actor}{event.entity==='leave_requests'&&<> · Request #{event.recordId}</>}</p>
       <p className="font-medium text-slate-700">{event.employeeName||'Employee'}{event.department?` · ${event.department}`:''}</p>
       {event.entity==='leave_requests'&&(event.after??event.before)?.leave_type!=null&&<p className="text-sm text-slate-500">{show((event.after??event.before)?.leave_type)} leave · {show((event.after??event.before)?.leave_days)} day(s) · {show((event.after??event.before)?.selected_dates||(event.after??event.before)?.start_date)}</p>}
       {event.entity==='leave_quotas'&&<p className="text-sm text-slate-500">Allowance for {show((event.after??event.before)?.year)}</p>}

@@ -11,7 +11,7 @@ import liff from "@line/liff";
 import { useLanguage } from "@/hooks/useLanguage";
 
 
-const WEBHOOK_SUBMIT_REJECT = "https://n8n.womenrefugeeroute.org/webhook/submit-reject";
+
 
 // ฟังก์ชันแปลงประเภทการลาให้เป็น 2 ภาษา
 const formatLeaveType = (type: string | null, language: string) => {
@@ -67,24 +67,12 @@ export default function RejectForm() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(WEBHOOK_SUBMIT_REJECT, {
-        method: "POST",
-        headers: { 
-            "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true" 
-        },
-        body: JSON.stringify({
-          row: rowId,
-          reason: reason,
-          userId: userId,
-          col: col,
-          days: days,
-          type: type,
-          takenRow: takenRow,
-          remainRow: remainRow,
-          dbId: dbId,
-          expectedRevision, decisionToken,
-        }),
+      await liff.init({liffId:"2008617589-89gR1Y3Y"});
+      if(!liff.isLoggedIn()){liff.login();return;}
+      const res = await fetch('/api/intern-decision', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json',Authorization:`Bearer ${liff.getAccessToken()}`},
+        body: JSON.stringify({id:dbId,token:decisionToken,revision:expectedRevision,reason,action:'reject',scope:'employee'}),
       });
 
       const result = await res.json().catch(() => ({}));

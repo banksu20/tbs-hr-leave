@@ -11,6 +11,7 @@ const decisionSchema=z.object({id:z.number().int().positive(),action:z.enum(['ap
 export default async function handler(req:VercelRequest,res:VercelResponse) {
  res.setHeader('Cache-Control','no-store');
  if (!['GET','POST'].includes(req.method??'')) return json(res,405,{error:'Method not allowed'});
+ const delivery=queryParam(req,'delivery')==='1';
  const admin=queryParam(req,'view')==='boss';
  const line=queryParam(req,'view')==='line';
  let accountId:string|undefined;
@@ -27,6 +28,14 @@ export default async function handler(req:VercelRequest,res:VercelResponse) {
    const parsed=lineLinkSchema.safeParse({id:queryParam(req,'id'),token:queryParam(req,'token')});
    if(!parsed.success)return json(res,422,{error:'Invalid cancellation link'});
    operation='line-review';payload={...parsed.data,accountId};
+  }
+  if(admin&&delivery){
+   const session=await dashboardSession(req);
+   if(!session||!['admin','ceo'].includes(session.role))return json(res,403,{error:'Delivery administration is restricted'});
+   const schema=z.object({kind:z.enum(['line','calendar']),id:z.string().uuid().optional(),confirmResend:z.boolean().optional()}).refine(p=>p.kind==='calendar'||!!p.id);
+   const body=req.method==='POST'?schema.safeParse(req.body):null;
+   if(body&&!body.success)return json(res,422,{error:'Invalid retry request'});
+   return json(res,200,await dashboardCall(req,req.method==='POST'?'delivery-retry':'delivery-status',{body:body?.data}));
   }
   if(req.method==='POST') {
    const parsed=(line?lineDecisionSchema:admin?decisionSchema:requestSchema).safeParse(req.body);

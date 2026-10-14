@@ -255,8 +255,8 @@ export interface ChangeEvent {
   before: Record<string, unknown> | null; after: Record<string, unknown> | null;
   canRestore: boolean;
 }
-export function fetchHistory(userId?: string, cursor?: string) {
-  const query = new URLSearchParams();
+export function fetchHistory(userId?: string, cursor?: string, cohort: 'employee'|'intern'='employee') {
+  const query = new URLSearchParams({cohort});
   if (userId) query.set("userId", userId);
   if (cursor) query.set("cursor", cursor);
   return request<{events: ChangeEvent[]; nextCursor: string | null}>(`/api/history?${query}`);

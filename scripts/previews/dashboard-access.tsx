@@ -8,6 +8,7 @@ import DashboardAccess from '../../src/components/ceo/DashboardAccess';
 import '../../src/index.css';
 let session:{id:string;username:string;role:string;active:boolean}|null=null;
 let internStatus='active';
+let demoRetried=false;
 let internDeleted=false;
 const accounts=[{id:'demo-admin',username:'admin',role:'admin',active:true},{id:'demo-ceo',username:'ceo',role:'ceo',active:true},{id:'demo-hr',username:'hr',role:'hr',active:true}];
 const year=new Date().getFullYear();
@@ -27,8 +28,11 @@ window.fetch=async(input,init)=>{
  if(url.pathname==='/api/accounts')return ['admin','ceo'].includes(session.role)?json({accounts,ok:true}):json({error:'Access denied'},403);
  if(url.pathname==='/api/interns'&&init?.method==='POST'){const b=JSON.parse(String(init.body));if(b.action==='delete'){if(internStatus!=='inactive'||b.confirmation!=='TBSInterns-001')return json({error:'Archive the intern and enter TBSInterns-001 to confirm.'},422);internDeleted=true;return json({ok:true});}if(b.action==='archive')internStatus='inactive';if(b.action==='restore')internStatus='active';return json({ok:true});}
  if(url.pathname==='/api/interns')return json({employees:[{id:'demo-intern',name:'Sample Intern',type:'intern',internNumber:1}]});
- if(url.pathname==='/api/history')return json({events:[],nextCursor:null});
- if(url.pathname==='/api/cancellations')return json(url.searchParams.has('delivery')?{pending:0,failed:0,jobs:[]}:{requests:[]});
+ if(url.pathname==='/api/history')return json({events:[{id:'demo-decision',changedAt:new Date().toISOString(),entity:'leave_requests',recordId:'123',userId:'demo-intern',employeeName:url.searchParams.get('cohort')==='intern'?'Sample Intern':'Sample Employee',department:'AI',action:'reject',actor:'Nam · LINE',before:{status:'Pending'},after:{status:'Rejected',rejection_reason:'Please choose another day.',leave_type:'personal',leave_days:0.5,selected_dates:'2026-10-20'},canRestore:false}],nextCursor:null});
+ if(url.pathname==='/api/cancellations'){
+  if(init?.method==='POST'){demoRetried=true;return json({ok:true});}
+  return json(url.searchParams.has('delivery')?{pending:demoRetried?0:1,failed:demoRetried?0:1,calendar:{lastSuccess:new Date().toISOString(),error:demoRetried?null:'Sample connection failure',running:false,failures:demoRetried?0:1},jobs:demoRetried?[]:[{id:'sample',kind:'line',name:'Sample Employee',status:'Retry scheduled',attempts:1,blocked:false,running:false,needsResend:false,error:'Sample LINE delivery failure',updatedAt:new Date().toISOString()}]}:{requests:[]});
+ }
  throw Error('Live requests are disabled in this preview');
 };
 createRoot(document.getElementById('root')!).render(<LanguageProvider><QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><MemoryRouter><div className="bg-slate-800 px-4 py-1.5 text-center text-xs text-slate-300">Local preview · Sample data only · Sign in as admin, ceo or hr with any demo password.</div><DashboardAccess/></MemoryRouter></QueryClientProvider></LanguageProvider>);
