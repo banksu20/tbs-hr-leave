@@ -6,7 +6,7 @@ Release implementation and verification notes. Database migrations and private n
 
 All times use Asia/Bangkok. Sick: before 08:30 on the first leave date. Personal: before 16:30 on the preceding working day. Full-time annual: before 16:30 one calendar day before. Intern annual: before 16:30 three calendar days before. Exactly the cutoff is late. Sick/personal emergencies require an explanation; annual has no emergency override.
 
-Full-time personal allowance is 3 per calendar year; annual uses individual entitlements and eligible carryover. Sick has 30 paid days, without blocking further sick requests. Dan/Alex remain quota-exempt recordkeeping profiles. Intern allowances cover the whole term: 4 months = sick 2/personal 3/annual 2; 6 months = sick 3/personal 3/annual 3. University activity requires supporting evidence and HR review.
+Full-time personal allowance is 3 per calendar year; annual uses individual entitlements and eligible carryover. Sick has 30 paid days, without blocking further sick requests. Dan/Alex remain quota-exempt recordkeeping profiles. Intern allowances cover the whole term: 4 months = sick 10/personal 3/annual 2; 6 months = sick 15/personal 3/annual 3. University activity requires supporting evidence and HR review.
 
 New requests require reasons. Approved and pending days reserve allowance, using fractional days. Approval and amendments revalidate allowance under the employee row lock; stale revisions are refused. Pending cancellation releases the cancelled dates; requested cancellation of approved leave releases nothing until approval.
 
