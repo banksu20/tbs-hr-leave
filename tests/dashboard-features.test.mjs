@@ -11,7 +11,7 @@ async function fixture(){
   CREATE TABLE leave_quotas(user_id text,year int,annual_total numeric,sick_total numeric,personal_total numeric,carried_over numeric,note text,updated_at timestamptz,UNIQUE(user_id,year));
   CREATE TABLE leave_requests(id serial PRIMARY KEY,user_id text,user_name text,department text,leave_type text,leave_days numeric,start_date date,end_date date,selected_dates text,reason text,status text,source text);
   INSERT INTO tbs_employees VALUES('test',1,'Test','Person','','QA','active','2020-01-01');`);
-  for(const file of ['001_request_safety.sql','002_history_and_conflicts.sql','003_year_rollover.sql','004_line_decisions.sql','005_sync_outbox.sql','006_employee_submission.sql','007_sheet_employee_links.sql','008_quota_safety.sql'])await db.exec(sql(file));
+  for(const file of ['001_request_safety.sql','002_history_and_conflicts.sql','003_year_rollover.sql','004_line_decisions.sql','005_sync_outbox.sql','006_employee_submission.sql','007_sheet_employee_links.sql','008_quota_safety.sql','046_clear_stale_decision.sql'])await db.exec(sql(file));
   return db;
 }
 const requestRevision=async(db,id)=>(await db.query('SELECT md5(to_jsonb(r)::text) revision FROM leave_requests r WHERE id=$1',[id])).rows[0]?.revision;
@@ -334,5 +334,27 @@ test('changed source leave flags rollover for review; correction preserves manua
   assert.equal((await mutate(db,'delete',{id:leave.id,scope:'request',expectedDates:['2026-01-05']})).ok,true);
   const second=await run({reconcile:true});assert.equal(second.rows[0].carriedOver,5);
   assert.equal((await run({action:'apply',reconcile:true,token:review.token})).statusCode,409);
+ }finally{await db.close();}
+});
+
+
+test('old decision cards explain cancellation versus rejection without changing records or queuing messages',async()=>{
+ const db=await fixture();try{
+  await db.exec(sql('046_clear_stale_decision.sql'));
+  for(const [operation,state,date] of [['delete','cancelled','2026-02-02'],['reject','rejected','2026-02-03'],['approve','approved','2026-02-04']]){
+   const created=await mutate(db,'create',{...draft,leaveDate:date,status:'Pending'});
+   assert.equal(created.ok,true);
+   const revision=await requestRevision(db,created.id);
+   assert.equal((await mutate(db,operation,{id:created.id,expectedRevision:revision,scope:'request',expectedDates:[date]})).ok,true);
+   await db.query('UPDATE leave_requests SET reason=$1 WHERE id=$2',['Later edit',created.id]);
+   const before=(await db.query('SELECT to_jsonb(r) value FROM leave_requests r WHERE id=$1',[created.id])).rows;
+   const jobs=(await db.query('SELECT count(*) n FROM tbs_sync_jobs')).rows;
+   const result=await mutate(db,'approve',{id:created.id,expectedRevision:revision});
+   assert.equal(result.ok,false);assert.equal(result.statusCode,409);
+   assert.match(result.error,new RegExp('already '+state+' on'));
+   assert.match(result.error,/Bangkok time/);
+   assert.deepEqual((await db.query('SELECT to_jsonb(r) value FROM leave_requests r WHERE id=$1',[created.id])).rows,before);
+   assert.deepEqual((await db.query('SELECT count(*) n FROM tbs_sync_jobs')).rows,jobs);
+  }
  }finally{await db.close();}
 });
