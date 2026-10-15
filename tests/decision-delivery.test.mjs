@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {PGl
 const db=new PGlite();const q=async(s,p=[])=>(await db.query(s,p)).rows;
 await db.exec(readFileSync('tests/employee-cancellation.test.mjs','utf8').match(/await db.exec\(`([\s\S]*?)`\);/)[1]);
 const files=JSON.parse(readFileSync('tests/leave-policy.test.mjs','utf8').match(/const files=(\[.*?\]);/s)[1].replaceAll("'",'"'));
-for(const f of [...files,'043_decision_history_delivery'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
+for(const f of [...files,'043_decision_history_delivery','047_employee_cancellation_identity'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
 const call=async(operation,body={},token='a')=>(await q('SELECT tbs_dashboard_auth($1::jsonb) r',[JSON.stringify({operation,sessionHash:token.repeat(64),...body})]))[0].r;
 await q("INSERT INTO tbs_dashboard_accounts(username,password_hash,role) VALUES('admin','test','admin'),('hr','test','hr'),('ceo','test','ceo')");
 for(const [name,token] of [['admin','a'],['hr','b'],['ceo','c']])await q("INSERT INTO tbs_dashboard_sessions(token_hash,account_id,version) SELECT $1,id,version FROM tbs_dashboard_accounts WHERE username=$2",[token.repeat(64),name]);
@@ -65,3 +65,22 @@ test('calendar claims serialize, repeated failures alert once, recovery clears i
 });
 test('migration reapplies without changing alerts or actor wrapper targets',async()=>{await db.exec(readFileSync('n8n/sql/043_decision_history_delivery.sql','utf8'));assert.equal((await call('delivery-status')).ok,true);});
 test.after(()=>db.close());
+
+
+test('employee cancellation names the verified employee in both history records and restores actor context',async()=>{
+ await q("INSERT INTO tbs_employees(user_id,tbs_id,first_name,status,employment_type) VALUES('staff-alias',53,'Alias','inactive','employee')");
+ await q("INSERT INTO tbs_employee_accounts(account_user_id,employee_user_id) VALUES('staff-alias','staff') ON CONFLICT DO NOTHING");
+ const r=(await q("INSERT INTO leave_requests(user_id,user_name,leave_type,leave_days,start_date,end_date,selected_dates,reason,status) VALUES('staff','Staff','sick',1,'2099-12-01','2099-12-01','2099-12-01','Ill','Pending') RETURNING *,md5(to_jsonb(leave_requests)::text) revision"))[0];
+ const result=(await q("SELECT tbs_cancellation('request',$1) r",[{accountId:'staff-alias',id:r.id,revision:r.revision,dates:['2099-12-01']}]))[0].r;
+ assert.equal(result.ok,true);
+ const events=(await call('history')).events.filter(e=>e.recordId===String(r.id)&&e.action==='cancel');
+ assert.equal(events.length,2);assert.ok(events.every(e=>e.actor==='Staff · LINE'));
+ await q("UPDATE leave_requests SET reason='After cancellation' WHERE id=$1",[r.id]);
+ assert.match((await call('history')).events[0].actor,/not identified/);
+ // Simulate old generic labels, then verify a repeatable evidence-backed backfill.
+ await q("UPDATE tbs_change_history SET actor=CASE WHEN entity='employee_cancellation' THEN 'Verified LINE employee' ELSE 'Dashboard — user not identified' END WHERE record_id=$1 AND action='cancel'",[String(r.id)]);
+ await db.exec(readFileSync('n8n/sql/047_employee_cancellation_identity.sql','utf8'));
+ const restored=(await call('history')).events.filter(e=>e.recordId===String(r.id)&&e.action==='cancel');
+ assert.ok(restored.every(e=>e.actor==='Staff · LINE'));
+ assert.match((await call('history')).events[0].actor,/not identified/);
+});
