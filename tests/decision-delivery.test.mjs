@@ -84,3 +84,28 @@ test('employee cancellation names the verified employee in both history records 
  assert.ok(restored.every(e=>e.actor==='Staff · LINE'));
  assert.match((await call('history')).events[0].actor,/not identified/);
 });
+
+test('pending cancellation notifies CEO once for both cohorts, with correct partial dates and no decision buttons',async()=>{
+ await db.exec(readFileSync('n8n/sql/049_pending_cancellation_notice.sql','utf8'));
+ await db.exec(readFileSync('n8n/sql/049_pending_cancellation_notice.sql','utf8'));
+ await q("UPDATE tbs_cancellation_line_settings SET ceo_account_id='boss'");
+ await q("INSERT INTO tbs_intern_terms VALUES('intern','2099-01-01','2099-12-31',6) ON CONFLICT DO NOTHING");
+ for(const uid of ['staff','intern']){
+  const r=(await q("INSERT INTO leave_requests(user_id,user_name,leave_type,leave_days,start_date,end_date,selected_dates,reason,status,half_day_period) VALUES($1,'Test Person','sick',1,'2099-12-20','2099-12-21','2099-12-20,2099-12-21','Ill','Pending','morning') RETURNING *,md5(to_jsonb(leave_requests)::text) revision",[uid]))[0];
+  const p={accountId:uid,id:r.id,revision:r.revision,dates:['2099-12-20']};
+  const cancel=async payload=>(await q("SELECT tbs_cancellation('request',$1) r",[payload]))[0].r;
+  assert.equal((await cancel(p)).ok,true);assert.equal((await cancel(p)).ok,false);
+  let jobs=await q("SELECT payload FROM tbs_sync_jobs WHERE payload->>'pendingCancellationRequestId'=$1",[String(r.id)]);
+  assert.equal(jobs.length,1);assert.equal(jobs[0].payload.to,'boss');
+  let card=jobs[0].payload.messages[0];assert.equal(card.type,'flex');assert.equal(card.contents.footer,undefined);
+  assert.match(JSON.stringify(card),/Still pending/);assert.match(JSON.stringify(card),/21 Dec 2099/);assert.match(JSON.stringify(card),/Morning/);assert.match(JSON.stringify(card),/0.5 day/);
+  const current=(await q('SELECT *,md5(to_jsonb(leave_requests)::text) revision FROM leave_requests WHERE id=$1',[r.id]))[0];
+  assert.equal(current.status,'Pending');
+  assert.equal((await cancel({...p,revision:current.revision,dates:['2099-12-21']})).ok,true);
+  jobs=await q("SELECT payload FROM tbs_sync_jobs WHERE payload->>'pendingCancellationRequestId'=$1 ORDER BY created_at",[String(r.id)]);
+  assert.equal(jobs.length,2);assert.ok(jobs.some(j=>JSON.stringify(j.payload).includes('whole request is cancelled')));
+ }
+ const before=(await q("SELECT count(*)::int n FROM tbs_sync_jobs WHERE payload ? 'pendingCancellationRequestId'"))[0].n;
+ await q("SELECT tbs_queue_cancellation_result($1,'staff','approve',ARRAY['2099-12-20'::date])",[{id:1,user_id:'staff',user_name:'Test',status:'Approved',leave_type:'sick',leave_days:1,start_date:'2099-12-20',end_date:'2099-12-20',selected_dates:'2099-12-20'}]);
+ assert.equal((await q("SELECT count(*)::int n FROM tbs_sync_jobs WHERE payload ? 'pendingCancellationRequestId'"))[0].n,before);
+});
