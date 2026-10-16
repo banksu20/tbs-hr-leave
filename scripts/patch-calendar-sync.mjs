@@ -10,9 +10,9 @@ export function calendarSyncNodes(){
  return [
   {name:'Check calendar connection',type:'n8n-nodes-base.manualTrigger',typeVersion:1,position:[0,0],parameters:{}},
   {name:'Sync approved leave every five minutes',type:'n8n-nodes-base.scheduleTrigger',typeVersion:1.4,position:[0,240],parameters:{rule:{interval:[{field:'minutes',minutesInterval:5}]}}},
-  {name:'Read Staff Leave access',type:'n8n-nodes-base.httpRequest',typeVersion:4.5,position:[250,0],credentials,parameters:{url:'https://www.googleapis.com/calendar/v3/users/me/calendarList/'+encodeURIComponent(calendarId),authentication:'predefinedCredentialType',nodeCredentialType:'googleCalendarOAuth2Api',options:{timeout:30000}}},
+  {name:'Read Staff Leave access',retryOnFail:true,maxTries:3,waitBetweenTries:5000,type:'n8n-nodes-base.httpRequest',typeVersion:4.5,position:[250,0],credentials,parameters:{url:'https://www.googleapis.com/calendar/v3/users/me/calendarList/'+encodeURIComponent(calendarId),authentication:'predefinedCredentialType',nodeCredentialType:'googleCalendarOAuth2Api',options:{timeout:30000}}},
   {name:'Read approved leave',type:'n8n-nodes-base.postgres',typeVersion:2.7,position:[500,0],credentials:{postgres:{id:'lDRbc2zyWj5H544z',name:'Postgres account'}},parameters:{operation:'executeQuery',query:sql,options:{queryReplacement:"={{ ['2026-09-23'] }}"}}},
-  {name:'Read existing calendar events',type:'n8n-nodes-base.httpRequest',typeVersion:4.5,position:[750,0],credentials,parameters:{url:base,authentication:'predefinedCredentialType',nodeCredentialType:'googleCalendarOAuth2Api',sendQuery:true,queryParameters:{parameters:[
+  {name:'Read existing calendar events',retryOnFail:true,maxTries:3,waitBetweenTries:5000,type:'n8n-nodes-base.httpRequest',typeVersion:4.5,position:[750,0],credentials,parameters:{url:base,authentication:'predefinedCredentialType',nodeCredentialType:'googleCalendarOAuth2Api',sendQuery:true,queryParameters:{parameters:[
    {name:'timeMin',value:"={{ $('Read approved leave').first().json.startDate + 'T00:00:00+07:00' }}"},
    {name:'timeMax',value:"={{ $('Read approved leave').first().json.endDate + 'T00:00:00+07:00' }}"},
    {name:'timeZone',value:'Asia/Bangkok'},{name:'maxResults',value:'1000'},{name:'singleEvents',value:'true'},{name:'showDeleted',value:'true'}
