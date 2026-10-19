@@ -18,7 +18,12 @@ window.fetch=async(input,init)=>{
  if(url==='/api/leave-policy'){
   if(scenario==='error')return json({error:'Could not check leave allowance. Please try again.'},503);
   const body=JSON.parse(String(init?.body));
-  const balance=(type:string)=>({year:new Date().getFullYear(),type,total:type==='annual'?10:3,approved:type==='annual'?2:2.5,pending:0,available:type==='annual'?8:.5,requested:body.dates.length*body.daysPerDate,allowed:type==='annual'||body.dates.length*body.daysPerDate<=.5,known:true,unlimited:false});
+  const balance=(type:string)=>{
+   const total=scenario==='intern'?(type==='sick'?4:type==='annual'?2:type==='university'?null:3):(type==='annual'?10:3);
+   const approved=scenario==='intern'?(type==='sick'?4:0):(type==='annual'?2:2.5);
+   const available=total===null?null:total-approved,requested=body.dates.length*body.daysPerDate;
+   return {year:new Date().getFullYear(),type,total,approved,pending:0,available,requested,allowed:available===null||requested<=available,known:true,unlimited:type==='university'};
+  };
   const type=body.type==='vacation'?'annual':body.type;
   return json({ok:true,unlimited:scenario==='unlimited',balances:[balance(type)],annualBalances:[balance('annual')],isIntern:scenario==='intern',deadline:body.dates.length?new Date(Date.parse(body.dates[0]+'T'+(type==='sick'?'08:30':'16:30')+':00+07:00')-(type==='sick'?0:scenario==='intern'&&type==='annual'?3:1)*86400000).toISOString():null,medicalCertificateRequired:scenario==='medical'&&body.dates.length>0});
  }

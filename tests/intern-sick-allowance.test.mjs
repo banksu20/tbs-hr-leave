@@ -31,4 +31,22 @@ test('existing approved and pending sick days consume the revised allowance',asy
  assert.equal((await balance('intern','sick',2)).allowed,true);
  assert.equal((await balance('intern','sick',2.5)).allowed,false);
 });
+test('intern sick usage does not consume personal or annual allowance; overlapping types are blocked',async()=>{
+ assert.equal((await balance('intern','personal',1)).available,3);
+ assert.equal((await balance('intern','personal',1)).allowed,true);
+ assert.equal((await balance('intern','annual',1)).available,2);
+ assert.equal((await balance('intern','annual',1)).allowed,true);
+ await assert.rejects(q("INSERT INTO leave_requests(user_id,user_name,leave_type,leave_days,start_date,end_date,selected_dates,reason,status) VALUES('intern','Intern','personal',1,'2099-01-02','2099-01-02','2099-01-02','Appointment','Pending')"),/Overlapping leave/);
+});
+test('exhausted sick allowance still permits other leave on eligible different dates',async()=>{
+ await q("INSERT INTO leave_requests(user_id,user_name,leave_type,leave_days,start_date,end_date,selected_dates,reason,status) VALUES('intern','Intern','sick',2,'2099-01-05','2099-01-06','2099-01-05,2099-01-06','Ill','Approved')");
+ assert.equal((await balance('intern','sick')).available,0);
+ for(const [kind,date] of [['personal','2099-02-02'],['annual','2099-02-03']]){
+  const preview=(await q("SELECT tbs_leave_policy_preview($1::jsonb) r",[JSON.stringify({accountId:'intern',type:kind,dates:[date],daysPerDate:1})]))[0].r;
+  assert.equal(preview.balances[0].allowed,true);assert.equal(preview.late,false);
+  await q("INSERT INTO leave_requests(user_id,user_name,leave_type,leave_days,start_date,end_date,selected_dates,reason,status) VALUES('intern','Intern',$1,1,$2::date,$2::date,$2::text,'Appointment','Pending')",[kind,date]);
+ }
+ const outside=(await q("SELECT tbs_leave_balance('intern',2099,'annual',ARRAY['2099-07-01'::date],1) r"))[0].r;
+ assert.equal(outside.available,1);assert.equal(outside.allowed,false);
+});
 test.after(()=>db.close());
