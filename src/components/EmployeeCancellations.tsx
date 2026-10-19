@@ -1,3 +1,4 @@
+import {leaveErrorMessage} from '@/lib/leaveErrorMessage';
 import {halfDayLabel} from '@/lib/halfDayLabel';
 import LeaveEvidence from './LeaveEvidence';
 import {useNotificationLanguage} from '@/hooks/useNotificationLanguage';
@@ -33,7 +34,7 @@ export default function EmployeeCancellations({userId,onChanged}:{userId:string|
  const latestEligible=relevant.find(row=>eligibleDates(row).length>0);
  return <section className="mx-4 mt-6 rounded-3xl bg-white border border-amber-200 p-4 space-y-3 shadow-xs">
   <div className="flex items-center justify-between gap-2"><div className="flex items-center gap-3"><span className="rounded-2xl bg-amber-100 p-3 text-amber-600"><CalendarX2 className="h-6 w-6"/></span><h2 className="font-bold text-amber-900">{text('Recent leave history','ประวัติการลาล่าสุด')}</h2></div><Button variant="ghost" size="icon" aria-label={text('Refresh requests','รีเฟรชรายการ')} disabled={!userId||busy||loading} onClick={refresh}><RefreshCw className={`h-4 w-4 text-slate-500 ${loading?'animate-spin':''}`}/></Button></div>
-  {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}
+  {error&&<p role="alert" className="text-sm text-red-700">{leaveErrorMessage(error,language)}</p>}
   {loading?<p className="text-sm text-slate-500">{text('Loading…','กำลังโหลด…')}</p>:!relevant.length&&!error?<p className="text-sm text-slate-500 py-2">{text('No leave history yet','ยังไม่มีประวัติการลา')}</p>:(expanded?relevant:relevant.slice(0,1)).map((row)=><article key={row.id} className="rounded-2xl bg-amber-50/60 border border-amber-100 p-3 space-y-3">
    <div className="flex items-start justify-between gap-2"><div className="font-semibold text-sm">{leaveName(row.type)}<span className="block text-xs font-normal text-slate-500 mt-1">{row.days} {text('day(s)','วัน')}</span></div><span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${row.status==='Approved'?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}`}>{row.status==='Approved'?text('Approved','อนุมัติแล้ว'):row.status==='Rejected'?text('Rejected / cancelled','ไม่อนุมัติ / ยกเลิก'):text('Pending','รออนุมัติ')}</span></div>
    {(row.period||row.days/Math.max(row.dates.length,1)===0.5)&&<span className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-xs font-medium text-amber-900"><Clock3 className="h-3 w-3"/>{halfDayLabel(row.period,language)}</span>}
@@ -50,7 +51,7 @@ export default function EmployeeCancellations({userId,onChanged}:{userId:string|
    {eligibleDates(selected).map(date=><label key={date} className="flex gap-2"><input type="checkbox" disabled={busy} checked={dates.includes(date)} onChange={e=>setDates(current=>e.target.checked?[...current,date]:current.filter(d=>d!==date))}/>{formatDate(date)}</label>)}
    <label className="block text-sm">{text('Reason (optional)','เหตุผล (ไม่บังคับ)')}<textarea value={reason} disabled={busy} onChange={e=>setReason(e.target.value)} maxLength={1000} className="block border rounded p-2 w-full"/></label>
    <p className="text-sm">{selected.status==='Approved'?text('Leave stays approved until your boss agrees.','วันลายังคงเดิมจนกว่าหัวหน้าจะอนุมัติ'):text('Selected dates will be cancelled immediately.','วันที่เลือกจะถูกยกเลิกทันที')}</p>
-   {error&&<p role="alert" className="text-red-700">{error}</p>}
+   {error&&<p role="alert" className="text-red-700">{leaveErrorMessage(error,language)}</p>}
    <div className="flex gap-2"><Button variant="outline" disabled={busy} onClick={()=>setSelected(null)}>{text('Back','กลับ')}</Button><Button className="bg-amber-400 text-amber-950 hover:bg-amber-500 rounded-full" disabled={busy||!dates.length} onClick={async()=>{setBusy(true);setError('');try{await call({id:selected.id,revision:selected.revision,dates,reason});setSelected(null);await refresh();onChanged();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}>{busy?text('Saving…','กำลังบันทึก…'):selected.status==='Approved'?text('Send to boss','ส่งคำขอ'):text('Confirm cancellation','ยืนยันยกเลิก')}</Button></div>
   </div></div>}
  </section>;

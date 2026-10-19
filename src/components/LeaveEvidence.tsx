@@ -1,3 +1,4 @@
+import {leaveErrorMessage} from '@/lib/leaveErrorMessage';
 import {useState} from 'react';
 import liff from '@line/liff';
 import {Upload, FileText, CheckCircle2} from 'lucide-react';
@@ -32,7 +33,7 @@ export default function LeaveEvidence({requestId,employee=false,canUpload=false}
   </button>
   {open&&<div className="mt-3 space-y-3 rounded-2xl border border-rose-100 bg-white p-4">
    {canUpload&&<><p className="font-semibold text-slate-900">{tr('Medical documents','เอกสารการรักษา')}</p><p className="text-xs leading-relaxed text-slate-500">{tr('Attach a clear photo of your medical certificate or bill to this leave request. HR will review the document.','แนบภาพใบรับรองแพทย์หรือใบเสร็จค่ารักษาที่อ่านได้ชัดเจนสำหรับการลาครั้งนี้ ฝ่ายบุคคลจะตรวจสอบเอกสาร')}</p></>}
-   {error&&<p role="alert" className="text-red-700">{error}</p>}
+   {error&&<p role="alert" className="text-red-700">{leaveErrorMessage(error,language)}</p>}
    {success&&<p role="status" className="flex items-center gap-2 text-emerald-700"><CheckCircle2 className="h-4 w-4"/>{tr('Document uploaded.','อัปโหลดเอกสารแล้ว')}</p>}
    {loading?<p role="status">{tr('Loading documents…','กำลังโหลดเอกสาร…')}</p>:!files.length&&<p className="text-xs text-slate-500">{tr('No attachments yet.','ยังไม่มีเอกสารแนบ')}</p>}
    {files.map(f=><button type="button" key={f.id} className="block text-left text-cyan-700 break-all underline" onClick={async()=>{setError('');try{const r=await fetch(`/api/leave-evidence?id=${encodeURIComponent(f.id)}`,{headers:headers()});if(!r.ok)throw Error(tr('Could not download file.','ดาวน์โหลดไฟล์ไม่สำเร็จ'));const url=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=url;a.download=f.filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){setError((e as Error).message);}}}>{f.filename}</button>)}
