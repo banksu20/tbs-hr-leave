@@ -1,3 +1,5 @@
+import {useLanguage} from "@/hooks/useLanguage";
+import {useDashboardText} from "@/hooks/useDashboardText";
 import { useMemo, useState } from "react";
 import { Check, Search, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -28,6 +30,9 @@ export default function QuickAddLeaveModal({
   defaultYear,
   onSubmit,
 }: QuickAddLeaveModalProps) {
+ const dt = useDashboardText();
+ const {language}=useLanguage();
+
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Employee | null>(null);
   const [type, setType] = useState<LeaveType>("annual");
@@ -64,19 +69,19 @@ export default function QuickAddLeaveModal({
 
   const submit = async () => {
     if (!selected) {
-      setError("Choose an employee from the list");
+      setError(dt("Choose an employee from the list"));
       return;
     }
     if (!normalizedDate) {
-      setError("Enter a valid date, for example 2026-08-25 or 25 Aug 26");
+      setError(dt("Enter a valid date, for example 2026-08-25 or 25 Aug 26"));
       return;
     }
-    if (days === 0.5 && !halfDayPeriod) { setError("Choose morning or afternoon"); return; }
+    if (days === 0.5 && !halfDayPeriod) { setError(dt("Choose morning or afternoon")); return; }
     setBusy(true);
     try {
       await onSubmit(selected.id, { date: normalizedDate, type, days, note, halfDayPeriod: days === 0.5 ? halfDayPeriod as "morning" | "afternoon" : null });
       reset(); onOpenChange(false);
-    } catch { setError("Not saved. Your entries are retained. Please retry."); }
+    } catch { setError(dt("Not saved. Your entries are retained. Please retry.")); }
     finally { setBusy(false); }
   };
 
@@ -84,15 +89,14 @@ export default function QuickAddLeaveModal({
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="max-w-lg bg-white rounded-xl p-6">
         <DialogHeader>
-          <DialogTitle className="text-lg font-extrabold text-slate-900">Add leave record</DialogTitle>
+          <DialogTitle className="text-lg font-extrabold text-slate-900">{dt("Add leave record")}</DialogTitle>
           <DialogDescription className="text-xs text-slate-500 font-medium">
-            Search by employee number, name or nickname, then pick from the list.
-          </DialogDescription>
+             {dt("Search by employee number, name or nickname, then pick from the list.")} </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
           <div>
-            <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wide">Employee</label>
+            <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wide">{dt("Employee")}</label>
             {selected ? (
               <div className="mt-1 flex items-center justify-between gap-2 border border-[#00B5E2] bg-sky-50 rounded-lg px-3 py-2">
                 <div className="min-w-0">
@@ -106,7 +110,7 @@ export default function QuickAddLeaveModal({
                 <button
                   onClick={() => { setSelected(null); setQuery(""); }}
                   className="text-slate-400 hover:text-rose-600 shrink-0"
-                  aria-label="Clear selected employee"
+                  aria-label={dt("Clear selected employee")}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -119,14 +123,14 @@ export default function QuickAddLeaveModal({
                     autoFocus
                     value={query}
                     onChange={(e) => { setQuery(e.target.value); setError(""); }}
-                    placeholder="TBS-001, Julian, Kochakorn…"
+                    placeholder={dt("TBS-001, Julian, Kochakorn…")}
                     className="pl-9 h-10 text-sm font-semibold"
                   />
                 </div>
                 {query && (
                   <div className="mt-1 border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-56 overflow-y-auto">
                     {matches.length === 0 && (
-                      <p className="px-3 py-3 text-xs text-slate-400 italic font-medium">No employee matches</p>
+                      <p className="px-3 py-3 text-xs text-slate-400 italic font-medium">{dt("No employee matches")}</p>
                     )}
                     {matches.map((emp) => (
                       <button
@@ -150,7 +154,7 @@ export default function QuickAddLeaveModal({
           </div>
 
           <div>
-            <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wide">Leave type</label>
+            <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wide">{dt("Leave type")}</label>
             <div className="mt-1 grid grid-cols-3 gap-2">
               {LEAVE_TYPES.map((t) => (
                 <button
@@ -162,7 +166,7 @@ export default function QuickAddLeaveModal({
                       : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                   }`}
                 >
-                  {LEAVE_META[t].short}
+                  {dt(LEAVE_META[t].short)}
                 </button>
               ))}
             </div>
@@ -170,7 +174,7 @@ export default function QuickAddLeaveModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wide">Date</label>
+              <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wide">{dt("Date")}</label>
               <Input
                 value={dateInput}
                 onChange={(e) => { setDateInput(e.target.value); setError(""); }}
@@ -180,15 +184,15 @@ export default function QuickAddLeaveModal({
               <p className="text-[10px] font-bold mt-1 h-3">
                 {dateInput && normalizedDate && (
                   <span className="text-emerald-600 inline-flex items-center gap-1">
-                    <Check className="w-3 h-3" /> {formatSheetDate(normalizedDate)}
+                    <Check className="w-3 h-3" /> {formatSheetDate(normalizedDate, language)}
                   </span>
                 )}
-                {dateInput && !normalizedDate && <span className="text-rose-600">Unrecognised date</span>}
+                {dateInput && !normalizedDate && <span className="text-rose-600">{dt("Unrecognised date")}</span>}
               </p>
             </div>
 
             <div>
-              <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wide">Duration</label>
+              <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wide">{dt("Duration")}</label>
               <div className="mt-1 grid grid-cols-3 gap-1">
                 {DAY_OPTIONS.map((opt) => (
                   <button
@@ -200,7 +204,7 @@ export default function QuickAddLeaveModal({
                         : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                     }`}
                   >
-                    {opt.label}
+                    {dt(opt.label)}
                   </button>
                 ))}
               </div>
@@ -208,18 +212,17 @@ export default function QuickAddLeaveModal({
           </div>
 
           <div>
-            <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wide">Reason / notes</label>
+            <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wide">{dt("Reason / notes")}</label>
             <Input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Optional"
+              placeholder={dt("Optional")}
               className="mt-1 h-10 text-sm"
             />
           </div>
 
-          {days === 0.5 && <label className="block text-sm">Half-day period
-            <select className="w-full mt-1 border rounded p-2" value={halfDayPeriod} disabled={busy} onChange={(e) => setHalfDayPeriod(e.target.value as "morning" | "afternoon")}>
-              <option value="" disabled>Choose a period</option><option value="morning">Morning</option><option value="afternoon">Afternoon</option>
+          {days === 0.5 && <label className="block text-sm">{dt("Half-day period")} <select className="w-full mt-1 border rounded p-2" value={halfDayPeriod} disabled={busy} onChange={(e) => setHalfDayPeriod(e.target.value as "morning" | "afternoon")}>
+              <option value="" disabled>{dt("Choose a period")}</option><option value="morning">{dt("Morning")}</option><option value="afternoon">{dt("Afternoon")}</option>
             </select>
           </label>}
 
@@ -228,14 +231,13 @@ export default function QuickAddLeaveModal({
 
         <div className="flex justify-end gap-2 mt-5 pt-4 border-t border-slate-200">
           <Button variant="outline" onClick={() => close(false)} className="font-bold text-xs">
-            Cancel
-          </Button>
+             {dt("Cancel")} </Button>
           <Button
             onClick={submit}
             disabled={busy || !selected || !normalizedDate}
             className="bg-[#00B5E2] hover:bg-[#0099c4] text-white font-bold text-xs disabled:opacity-40"
           >
-            {busy ? "Saving…" : "Add record"}
+            {busy ? dt("Saving…") : dt("Add record")}
           </Button>
         </div>
       </DialogContent>

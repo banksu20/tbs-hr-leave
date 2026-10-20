@@ -1,9 +1,12 @@
+import {useDashboardText} from "@/hooks/useDashboardText";
 import { useState } from 'react';
 import { previewRollover, applyRollover, type RolloverSettings, type RolloverOverride, type RolloverRow } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 
 const draftKey=(year:number)=>`tbs_rollover_preview_v1_${year}`;
 export default function YearRollover({year,onApplied,initialReconcile=false}: {year:string; initialReconcile?:boolean; onApplied?:(targetYear:number,saved:number)=>void}) {
+ const dt = useDashboardText();
+
   const [settings,setSettings]=useState<RolloverSettings>({sourceYear:Number(year),reconcile:initialReconcile,expiresOn:`${Number(year)+1}-03-31`});
   const [preview,setPreview]=useState<Awaited<ReturnType<typeof previewRollover>>|null>(null);
   const [overrides,setOverrides]=useState<Record<string,RolloverOverride>>({});
@@ -12,7 +15,7 @@ export default function YearRollover({year,onApplied,initialReconcile=false}: {y
   const [message,setMessage]=useState('');
   const [dirty,setDirty]=useState(false);
   const [confirm,setConfirm]=useState(false);
-  const change=(next:RolloverSettings)=>{setSettings(next);setPreview(null);setOverrides({});setDirty(false);setMessage('Settings changed. Generate a new preview before adjusting employees.');};
+  const change=(next:RolloverSettings)=>{setSettings(next);setPreview(null);setOverrides({});setDirty(false);setMessage(dt("Settings changed. Generate a new preview before adjusting employees."));};
   const review=async(next=settings,adjustments=overrides)=>{
     setBusy(true);setMessage('');setConfirm(false);setDirty(true);
     try {
@@ -25,20 +28,20 @@ export default function YearRollover({year,onApplied,initialReconcile=false}: {y
         }
       }
       const result=await previewRollover({...next,overrides:normalized});setPreview(result);setDirty(false);}
-    catch(error){setMessage(error instanceof Error?error.message:'Preview failed');}finally{setBusy(false);}
+    catch(error){setMessage(error instanceof Error?error.message:dt("Preview failed"));}finally{setBusy(false);}
   };
   const edit=(row:RolloverRow,patch:Partial<RolloverOverride>)=>{
     setOverrides(current=>({...current,[row.userId]:{userId:row.userId,carriedOver:row.carriedOver,expiresOn:row.expiresOn,note:row.note||'',...(settings.reconcile?{}:{annualTotal:row.annualTotal??0,sickTotal:row.sickTotal,personalTotal:row.personalTotal??0}),...current[row.userId],...patch}}));setDirty(true);setConfirm(false);setMessage('');
   };
   const saveDraft=()=>{
-    try{localStorage.setItem(draftKey(settings.sourceYear),JSON.stringify({settings,overrides:Object.values(overrides)}));setMessage('Draft saved in this browser only. No employee allowances changed.');}
-    catch{setMessage('Could not save the draft in this browser. Keep this page open to retain your edits.');}
+    try{localStorage.setItem(draftKey(settings.sourceYear),JSON.stringify({settings,overrides:Object.values(overrides)}));setMessage(dt("Draft saved in this browser only. No employee allowances changed."));}
+    catch{setMessage(dt("Could not save the draft in this browser. Keep this page open to retain your edits."));}
   };
   const loadDraft=async()=>{
-    try{const raw=localStorage.getItem(draftKey(settings.sourceYear));if(!raw){setMessage('No saved draft for this source year in this browser.');return;}
-      const draft=JSON.parse(raw);if(draft.settings?.sourceYear!==settings.sourceYear||!Array.isArray(draft.overrides))throw Error('Invalid draft');
+    try{const raw=localStorage.getItem(draftKey(settings.sourceYear));if(!raw){setMessage(dt("No saved draft for this source year in this browser."));return;}
+      const draft=JSON.parse(raw);if(draft.settings?.sourceYear!==settings.sourceYear||!Array.isArray(draft.overrides))throw Error(dt("Invalid draft"));
       const next=Object.fromEntries(draft.overrides.map((o:RolloverOverride)=>[o.userId,o]));setSettings(draft.settings);setOverrides(next);await review(draft.settings,next);
-    }catch{setMessage('Could not load this draft. Generate a new preview.');}
+    }catch{setMessage(dt("Could not load this draft. Generate a new preview."));}
   };
   const apply=async()=>{
     if(!preview||dirty||busy||!confirm)return;
@@ -47,9 +50,9 @@ export default function YearRollover({year,onApplied,initialReconcile=false}: {y
       const result=await applyRollover({...settings,overrides:Object.values(overrides).map(a=>({...a,...(settings.sourceYear+1>=2026?{sickTotal:30}:{})}))},preview.token);
       setPreview(null);setOverrides({});setConfirm(false);
       try{localStorage.removeItem(draftKey(settings.sourceYear));}catch{/* Saving succeeded even if local storage is unavailable. */}
-      setMessage(`Rollover complete: ${result.saved} employees saved for ${preview.targetYear}. Source-year allowances were not changed.`);
+      setMessage(dt("Rollover complete: {0} employees saved for {1}. Source-year allowances were not changed.", [result.saved, preview.targetYear]));
       onApplied?.(preview.targetYear,result.saved);
-    }catch(error){setMessage(error instanceof Error?error.message:'Rollover failed');setDirty(true);setConfirm(false);}
+    }catch(error){setMessage(error instanceof Error?error.message:dt("Rollover failed"));setDirty(true);setConfirm(false);}
     finally{setBusy(false);}
   };
   const fixedSick=settings.sourceYear+1>=2026;
@@ -57,35 +60,35 @@ export default function YearRollover({year,onApplied,initialReconcile=false}: {y
   const rows=(preview?.rows.filter(r=>`${r.name} ${r.nickname||''} ${r.empNo??''} TBS-${String(r.empNo??'').padStart(3,'0')} TBS${String(r.empNo??'').padStart(3,'0')}`.toLowerCase().includes(query))||[])
     .sort((a,b)=>(a.empNo??Number.MAX_SAFE_INTEGER)-(b.empNo??Number.MAX_SAFE_INTEGER)||a.name.localeCompare(b.name));
   return <section className="bg-white border rounded-xl p-4 space-y-4">
-    <div><h2 className="font-bold text-lg">Prepare next year’s leave</h2><p className="text-sm text-slate-600">Load a year’s quotas, then edit each employee’s next-year annual, sick and personal allowances, carryover and note.</p></div>
-    <details className="rounded-xl bg-sky-50 border border-sky-100 p-3 text-sm"><summary className="font-semibold cursor-pointer">How does rollover work?</summary><p className="mt-2">Example: 12 new annual days + 5 carried days = 17 days available. Unused carried days expire after the selected expiry date. New annual days keep their normal allowance. Unused sick/personal leave and old carryover are not carried forward.</p></details>
+    <div><h2 className="font-bold text-lg">{dt("Prepare next year’s leave")}</h2><p className="text-sm text-slate-600">{dt("Load a year’s quotas, then edit each employee’s next-year annual, sick and personal allowances, carryover and note.")}</p></div>
+    <details className="rounded-xl bg-sky-50 border border-sky-100 p-3 text-sm"><summary className="font-semibold cursor-pointer">{dt("How does rollover work?")}</summary><p className="mt-2">{dt("Example: 12 new annual days + 5 carried days = 17 days available. Unused carried days expire after the selected expiry date. New annual days keep their normal allowance. Unused sick/personal leave and old carryover are not carried forward.")}</p></details>
     <form className="flex flex-wrap items-end gap-3" onSubmit={e=>{e.preventDefault();void review();}}>
-      <label className="text-sm">Mode<select className="block border rounded p-2" aria-label="Rollover mode" disabled={busy} value={settings.reconcile?'reconcile':'new'} onChange={e=>change({...settings,reconcile:e.target.value==='reconcile'})}><option value="new">Prepare new year</option><option value="reconcile">Review carryover changes</option></select></label>
-      <label className="text-sm">Source year<input className="block border rounded p-2 w-28" type="number" min="2000" max="2099" required disabled={busy} value={settings.sourceYear} onChange={e=>{const yr=Number(e.target.value);change({...settings,sourceYear:yr,expiresOn:`${yr+1}-03-31`});}}/></label>
-      <label className="text-sm">Default expiry<input aria-label="Default carryover expiry" className="block border rounded p-2" type="date" required disabled={busy} min={`${settings.sourceYear+1}-01-01`} max={`${settings.sourceYear+1}-12-31`} value={settings.expiresOn} onChange={e=>{const date=e.target.value;const previous=settings.expiresOn;setSettings({...settings,expiresOn:date});setOverrides(current=>Object.fromEntries(Object.entries(current).map(([id,row])=>[id,{...row,expiresOn:row.expiresOn===previous?date:row.expiresOn}])));setPreview(current=>current?{...current,rows:current.rows.map(row=>({...row,expiresOn:row.expiresOn===previous?date:row.expiresOn}))}:current);setDirty(true);setConfirm(false);setMessage('Default expiry updated. Your allowance edits and notes are kept; check adjustments again.');}}/></label>
-      <Button disabled={busy}>{busy?'Working…':'Load quotas'}</Button><Button type="button" variant="outline" disabled={busy} onClick={()=>void loadDraft()}>Load browser draft</Button>
+      <label className="text-sm">{dt("Mode")}<select className="block border rounded p-2" aria-label={dt("Rollover mode")} disabled={busy} value={settings.reconcile?'reconcile':'new'} onChange={e=>change({...settings,reconcile:e.target.value==='reconcile'})}><option value="new">{dt("Prepare new year")}</option><option value="reconcile">{dt("Review carryover changes")}</option></select></label>
+      <label className="text-sm">{dt("Source year")}<input className="block border rounded p-2 w-28" type="number" min="2000" max="2099" required disabled={busy} value={settings.sourceYear} onChange={e=>{const yr=Number(e.target.value);change({...settings,sourceYear:yr,expiresOn:`${yr+1}-03-31`});}}/></label>
+      <label className="text-sm">{dt("Default expiry")}<input aria-label={dt("Default carryover expiry")} className="block border rounded p-2" type="date" required disabled={busy} min={`${settings.sourceYear+1}-01-01`} max={`${settings.sourceYear+1}-12-31`} value={settings.expiresOn} onChange={e=>{const date=e.target.value;const previous=settings.expiresOn;setSettings({...settings,expiresOn:date});setOverrides(current=>Object.fromEntries(Object.entries(current).map(([id,row])=>[id,{...row,expiresOn:row.expiresOn===previous?date:row.expiresOn}])));setPreview(current=>current?{...current,rows:current.rows.map(row=>({...row,expiresOn:row.expiresOn===previous?date:row.expiresOn}))}:current);setDirty(true);setConfirm(false);setMessage(dt("Default expiry updated. Your allowance edits and notes are kept; check adjustments again."));}}/></label>
+      <Button disabled={busy}>{busy?dt("Working…"):dt("Load quotas")}</Button><Button type="button" variant="outline" disabled={busy} onClick={()=>void loadDraft()}>{dt("Load browser draft")}</Button>
     </form>
-    <p className="text-sm text-slate-500">{settings.reconcile?"Review mode adjusts carryover when source-year balances changed, preserving base allowances and your previous carryover adjustment. No tracked rollover means no automatic correction.":""} Existing next-year allowances and incomplete source quotas are skipped. Pending leave reserves days. There is no company-wide carryover cap. Carryover starts at unused annual leave and can be reduced for each employee. Base annual starts at current annual total minus existing carryover.</p>
+    <p className="text-sm text-slate-500">{settings.reconcile?dt("Review mode adjusts carryover when source-year balances changed, preserving base allowances and your previous carryover adjustment. No tracked rollover means no automatic correction."):""}  {dt("Existing next-year allowances and incomplete source quotas are skipped. Pending leave reserves days. There is no company-wide carryover cap. Carryover starts at unused annual leave and can be reduced for each employee. Base annual starts at current annual total minus existing carryover.")}</p>
     {message&&<p role="status" className="font-medium text-sm">{message}</p>}
     {preview&&<form className="space-y-3" onSubmit={e=>{e.preventDefault();void review();}}>
-      <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">Preview for {preview.targetYear} · {preview.rows.filter(r=>r.status==='Ready').length} ready</h3><input aria-label="Search rollover employees" placeholder="Search employee" className="border rounded-lg px-3 py-2 text-sm w-full sm:w-64" value={search} onChange={e=>setSearch(e.target.value)}/></div>
-      <div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead><tr>{['Employee','New annual','Sick','Personal','Unused annual','Carry over','Annual + carryover','Expires on','Note','Status'].map(h=><th className="p-2 whitespace-nowrap" key={h}>{h}</th>)}</tr></thead><tbody>{rows.map(r=>{
+      <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">{dt("Preview for")} {preview.targetYear} · {preview.rows.filter(r=>r.status==='Ready').length}  {dt("ready")}</h3><input aria-label={dt("Search rollover employees")} placeholder={dt("Search employee")} className="border rounded-lg px-3 py-2 text-sm w-full sm:w-64" value={search} onChange={e=>setSearch(e.target.value)}/></div>
+      <div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead><tr>{['Employee','New annual','Sick','Personal','Unused annual','Carry over','Annual + carryover','Expires on','Note','Status'].map(h=><th className="p-2 whitespace-nowrap" key={h}>{dt(h)}</th>)}</tr></thead><tbody>{rows.map(r=>{
         const current={annualTotal:r.annualTotal??0,sickTotal:r.sickTotal,personalTotal:r.personalTotal??0,carriedOver:r.carriedOver,expiresOn:r.expiresOn,note:r.note||'',...overrides[r.userId],...(fixedSick?{sickTotal:30}:{})};
         const ready=r.status==='Ready'&&r.unusedAnnual!==undefined;
 
         return <tr key={r.userId} className="border-t align-top"><td className="p-2 min-w-40"><p className="font-medium">{r.name}</p><p className="text-xs text-slate-500">{r.empNo!=null?`TBS-${String(r.empNo).padStart(3,'0')}`:''} {r.nickname}</p></td>
-          {(['annualTotal','sickTotal','personalTotal'] as const).map(field=><td className="p-2" key={field}><input aria-label={`${field==='annualTotal'?'Annual':field==='sickTotal'?'Sick':'Personal'} allowance for ${r.name}`} className="w-24 border rounded p-2 disabled:bg-slate-100" type="number" min="0" max="365" step="0.25" required disabled={!ready||busy||settings.reconcile||(field==='sickTotal'&&(fixedSick||current.sickTotal===null))} value={current[field]===null||Number.isNaN(current[field])?'':current[field]} onChange={e=>edit(r,{[field]:e.target.value===''?NaN:Number(e.target.value)})}/>{field==='sickTotal'&&fixedSick&&<p className="text-xs text-slate-500 mt-1">30 paid days</p>}{field==='sickTotal'&&!fixedSick&&<label className="block text-xs mt-1 whitespace-nowrap"><input type="checkbox" aria-label={`Unlimited sick leave for ${r.name}`} disabled={!ready||busy||settings.reconcile} checked={current.sickTotal===null} onChange={e=>edit(r,{sickTotal:e.target.checked?null:r.sickTotal??30})}/> Unlimited</label>}</td>)}
+          {(['annualTotal','sickTotal','personalTotal'] as const).map(field=><td className="p-2" key={field}><input aria-label={dt("{0} allowance for {1}", [dt(field==='annualTotal'?'Annual':field==='sickTotal'?'Sick':'Personal'), r.name])} className="w-24 border rounded p-2 disabled:bg-slate-100" type="number" min="0" max="365" step="0.25" required disabled={!ready||busy||settings.reconcile||(field==='sickTotal'&&(fixedSick||current.sickTotal===null))} value={current[field]===null||Number.isNaN(current[field])?'':current[field]} onChange={e=>edit(r,{[field]:e.target.value===''?NaN:Number(e.target.value)})}/>{field==='sickTotal'&&fixedSick&&<p className="text-xs text-slate-500 mt-1">{dt("30 paid days")}</p>}{field==='sickTotal'&&!fixedSick&&<label className="block text-xs mt-1 whitespace-nowrap"><input type="checkbox" aria-label={dt("Unlimited sick leave for {0}", [r.name])} disabled={!ready||busy||settings.reconcile} checked={current.sickTotal===null} onChange={e=>edit(r,{sickTotal:e.target.checked?null:r.sickTotal??30})}/>  {dt("Unlimited")}</label>}</td>)}
           <td className="p-2">{r.unusedAnnual??'—'}</td>
-          <td className="p-2"><input aria-label={`Carryover for ${r.name}`} className="w-24 border rounded p-2 disabled:bg-slate-100" type="number" min="0" max={Math.min(r.unusedAnnual??0,365)} step="0.25" required disabled={!ready||busy} value={Number.isNaN(current.carriedOver)?'':current.carriedOver} onChange={e=>edit(r,{carriedOver:e.target.value===''?NaN:Number(e.target.value)})}/></td>
+          <td className="p-2"><input aria-label={dt("Carryover for {0}", [r.name])} className="w-24 border rounded p-2 disabled:bg-slate-100" type="number" min="0" max={Math.min(r.unusedAnnual??0,365)} step="0.25" required disabled={!ready||busy} value={Number.isNaN(current.carriedOver)?'':current.carriedOver} onChange={e=>edit(r,{carriedOver:e.target.value===''?NaN:Number(e.target.value)})}/></td>
           <td className="p-2 font-semibold">{Number.isFinite(current.annualTotal+current.carriedOver)?current.annualTotal+current.carriedOver:'—'}</td>
-          <td className="p-2"><input aria-label={`Expiry for ${r.name}`} className="border rounded p-2 disabled:bg-slate-100" type="date" min={`${settings.sourceYear+1}-01-01`} max={`${settings.sourceYear+1}-12-31`} required={!settings.reconcile} disabled={!ready||busy} value={current.expiresOn??""} onChange={e=>edit(r,{expiresOn:e.target.value||null})}/></td>
-          <td className="p-2"><textarea aria-label={`Rollover note for ${r.name}`} className="min-w-48 w-full border rounded p-2 disabled:bg-slate-100" rows={2} maxLength={1000} placeholder="Optional note" disabled={!ready||busy} value={current.note} onChange={e=>edit(r,{note:e.target.value})}/></td><td className="p-2 text-xs">{r.status}</td></tr>;
-      })}</tbody></table>{rows.length===0&&<p className="p-4 text-sm text-slate-500">No matching employees.</p>}</div>
-      {preview.rows.some(r=>r.unusedAnnual===undefined)&&<p role="alert">The rollover backend needs updating before individual edits are available.</p>}
-      <div className="flex flex-wrap gap-2"><Button disabled={busy}>{dirty?'Check my adjustments':'Refresh preview'}</Button><Button type="button" variant="outline" disabled={busy} onClick={e=>{if(e.currentTarget.form?.reportValidity())saveDraft();}}>Save browser draft</Button><Button type="button" variant="ghost" disabled={busy||Object.keys(overrides).length===0} onClick={()=>{setOverrides({});void review(settings,{});}}>Reset adjustments</Button></div>
-      <p role="status" className="rounded-lg bg-amber-50 text-amber-900 p-3 text-sm">{dirty?'Check your adjustments before applying.':'Ready to apply the reviewed allowances.'} This applies to all ready employees, including those hidden by search. {settings.reconcile?"Only reviewed carryover, expiry and notes will change; base allowances stay the same.":"Existing next-year quotas will not be overwritten."}</p>
-      <Button type="button" disabled={busy||dirty||!preview.rows.some(r=>r.status==='Ready')} onClick={()=>setConfirm(true)}>Apply rollover to {preview.targetYear}</Button>
-      {confirm&&<div role="alert" className="rounded-lg border border-amber-300 p-4 space-y-3"><p>{settings.reconcile?"Update carryover in":"Create allowances for"} {preview.targetYear} for {preview.rows.filter(r=>r.status==='Ready').length} employees using the reviewed values? This saves annual, sick, personal, carryover, expiry and notes.</p><div className="flex gap-2"><Button type="button" disabled={busy} onClick={()=>void apply()}>{busy?'Saving…':'Confirm rollover'}</Button><Button type="button" variant="outline" disabled={busy} onClick={()=>setConfirm(false)}>Keep reviewing</Button></div></div>}
+          <td className="p-2"><input aria-label={dt("Expiry for {0}", [r.name])} className="border rounded p-2 disabled:bg-slate-100" type="date" min={`${settings.sourceYear+1}-01-01`} max={`${settings.sourceYear+1}-12-31`} required={!settings.reconcile} disabled={!ready||busy} value={current.expiresOn??""} onChange={e=>edit(r,{expiresOn:e.target.value||null})}/></td>
+          <td className="p-2"><textarea aria-label={dt("Rollover note for {0}", [r.name])} className="min-w-48 w-full border rounded p-2 disabled:bg-slate-100" rows={2} maxLength={1000} placeholder={dt("Optional note")} disabled={!ready||busy} value={current.note} onChange={e=>edit(r,{note:e.target.value})}/></td><td className="p-2 text-xs">{dt(r.status)}</td></tr>;
+      })}</tbody></table>{rows.length===0&&<p className="p-4 text-sm text-slate-500">{dt("No matching employees.")}</p>}</div>
+      {preview.rows.some(r=>r.unusedAnnual===undefined)&&<p role="alert">{dt("The rollover backend needs updating before individual edits are available.")}</p>}
+      <div className="flex flex-wrap gap-2"><Button disabled={busy}>{dirty?dt("Check my adjustments"):dt("Refresh preview")}</Button><Button type="button" variant="outline" disabled={busy} onClick={e=>{if(e.currentTarget.form?.reportValidity())saveDraft();}}>{dt("Save browser draft")}</Button><Button type="button" variant="ghost" disabled={busy||Object.keys(overrides).length===0} onClick={()=>{setOverrides({});void review(settings,{});}}>{dt("Reset adjustments")}</Button></div>
+      <p role="status" className="rounded-lg bg-amber-50 text-amber-900 p-3 text-sm">{dirty?dt("Check your adjustments before applying."):dt("Ready to apply the reviewed allowances.")}  {dt("This applies to all ready employees, including those hidden by search.")} {settings.reconcile?dt("Only reviewed carryover, expiry and notes will change; base allowances stay the same."):dt("Existing next-year quotas will not be overwritten.")}</p>
+      <Button type="button" disabled={busy||dirty||!preview.rows.some(r=>r.status==='Ready')} onClick={()=>setConfirm(true)}>{dt("Apply rollover to")} {preview.targetYear}</Button>
+      {confirm&&<div role="alert" className="rounded-lg border border-amber-300 p-4 space-y-3"><p>{settings.reconcile?dt("Update carryover in"):dt("Create allowances for")} {preview.targetYear}  {dt("for")} {preview.rows.filter(r=>r.status==='Ready').length}  {dt("employees using the reviewed values? This saves annual, sick, personal, carryover, expiry and notes.")}</p><div className="flex gap-2"><Button type="button" disabled={busy} onClick={()=>void apply()}>{busy?dt("Saving…"):dt("Confirm rollover")}</Button><Button type="button" variant="outline" disabled={busy} onClick={()=>setConfirm(false)}>{dt("Keep reviewing")}</Button></div></div>}
     </form>}
   </section>;
 }

@@ -34,10 +34,11 @@ export const LEAVE_META: Record<LeaveType, { label: string; short: string; chip:
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export function formatSheetDate(dateStr: string) {
+export function formatSheetDate(dateStr: string, language: "en" | "th" = "en") {
   if (!dateStr) return "";
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
+  if (language === "th") return d.toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" });
   return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`;
 }
 

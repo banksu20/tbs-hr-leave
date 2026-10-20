@@ -9,7 +9,7 @@ test('individual rollover edits survive filtering and failed validation; draft s
  global.localStorage={getItem:k=>stored.get(k)||null,setItem:(k,v)=>stored.set(k,v)};
  const row=(userId,name)=>({userId,name,nickname:name,empNo:Number(userId),annualTotal:12,sickTotal:30,personalTotal:3,unusedAnnual:12,suggestedCarryover:5,carriedOver:5,expiresOn:'2027-03-31',note:'',status:'Ready'});
  const rows=[row('1','Alice'),row('2','Bob')];
- const Component=loadTS({'@/components/ui/button':{Button:p=>React.createElement('button',p,p.children)},'@/lib/api':{previewRollover:async p=>{calls.push(p);if(fail)throw Error('Refresh required');return {ok:true,targetYear:2027,token:'preview',rows:rows.map(r=>({...r,...p.overrides.find(o=>o.userId===r.userId)}))};}}})('src/components/ceo/YearRollover.tsx').default;
+ const Component=loadTS({'@/hooks/useLanguage':{useLanguage:()=>({language:'en'})},'@/components/ui/button':{Button:p=>React.createElement('button',p,p.children)},'@/lib/api':{previewRollover:async p=>{calls.push(p);if(fail)throw Error('Refresh required');return {ok:true,targetYear:2027,token:'preview',rows:rows.map(r=>({...r,...p.overrides.find(o=>o.userId===r.userId)}))};}}})('src/components/ceo/YearRollover.tsx').default;
  let view;try{
   await act(async()=>{view=renderer.create(React.createElement(Component,{year:'2026'}));});
   await act(async()=>{view.root.findAllByType('form')[0].props.onSubmit({preventDefault(){}});});
@@ -39,14 +39,14 @@ test('individual rollover edits survive filtering and failed validation; draft s
 
 test('rollover requires reviewed edits and confirmation before applying every visible or hidden employee',async()=>{
  let applied;let switched;const rows=[{userId:'1',name:'Alice',annualTotal:12,sickTotal:null,personalTotal:3,sourceAnnual:17,sourceCarried:5,unusedAnnual:8,carriedOver:8,expiresOn:'2027-03-31',status:'Ready'}];
- const Component=loadTS({'@/components/ui/button':{Button:p=>React.createElement('button',p,p.children)},'@/lib/api':{
+ const Component=loadTS({'@/hooks/useLanguage':{useLanguage:()=>({language:'en'})},'@/components/ui/button':{Button:p=>React.createElement('button',p,p.children)},'@/lib/api':{
   previewRollover:async p=>({ok:true,targetYear:2027,token:'checked',rows:rows.map(r=>({...r,...p.overrides.find(o=>o.userId===r.userId)}))}),
   applyRollover:async(p,token)=>{applied={p,token};return {ok:true,saved:1};}
  }})('src/components/ceo/YearRollover.tsx').default;
  let view;try{
   await act(async()=>{view=renderer.create(React.createElement(Component,{year:'2026',onApplied:(year,saved)=>{switched={year,saved};}}));});
   await act(async()=>view.root.findAllByType('form')[0].props.onSubmit({preventDefault(){}}));
-  const applyButton=()=>view.root.findAllByType('button').find(b=>Array.isArray(b.props.children)&&b.props.children[0]==='Apply rollover to ');
+  const applyButton=()=>view.root.findAllByType('button').find(b=>React.Children.toArray(b.props.children).join('')==='Apply rollover to 2027');
   assert.equal(applyButton().props.disabled,false);
   await act(async()=>view.root.findByProps({'aria-label':'Annual allowance for Alice'}).props.onChange({target:{value:'15'}}));
   assert.equal(applyButton().props.disabled,true);

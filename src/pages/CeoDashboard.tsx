@@ -1,3 +1,5 @@
+import {useLanguage} from "@/hooks/useLanguage";
+import {useDashboardText} from "@/hooks/useDashboardText";
 import { readDashboardYear, saveDashboardYear } from "@/lib/dashboardYear";
 import PendingRequests from "@/components/ceo/PendingRequests";
 import YearRollover from "@/components/ceo/YearRollover";
@@ -40,6 +42,9 @@ const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefuge
 const KNOWN_DEPARTMENTS = ["SEO", "Web Developer", "UX/UI Designer", "Graphic", "Content", "PBN", "SEM", "Account", "Sale", "AI"];
 
 export default function CeoDashboard({navigation, account}: {navigation?: ReactNode; account?: ReactNode} = {}) {
+ const dt = useDashboardText();
+ const {language}=useLanguage();
+
   // Selected Year & Department Filters
   const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
@@ -120,7 +125,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
     setEditingEmp(null);
     setSelectedYear(year);
     setViewMode("overview");
-    toast.success(`Rollover saved for ${saved} employees. Now viewing ${year}.`);
+    toast.success(dt("Rollover saved for {0} employees. Now viewing {1}.", [saved, year]));
   };
 
   const activeEmployees = employees.filter((emp) => emp.status !== "inactive");
@@ -139,7 +144,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return dateStr;
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    return `${date.getDate()} ${dt(months[date.getMonth()])} ${date.getFullYear()}`;
   }
 
   function sumLeaves(leaves: LeaveRecord[] | undefined, type: string, year: string) {
@@ -201,7 +206,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
 
     const date = normalizeDateInput(modalLeaveForm.date, selectedYear);
     if (!date) {
-      toast.error("Enter a valid date, for example 2026-08-25");
+      toast.error(dt("Enter a valid date, for example 2026-08-25"));
       return;
     }
 
@@ -210,7 +215,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
       .filter((entry) => entry.days > 0);
 
     if (entries.length === 0) {
-      toast.error("Enter the number of days");
+      toast.error(dt("Enter the number of days"));
       return;
     }
 
@@ -237,7 +242,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
   const updateLeaveRecord = async (empId: string, leaveId: string, patch: Partial<LeaveRecord>) => {
     const leave = employees.find((emp) => emp.id === empId)?.leaves.find((row) => row.id === leaveId);
     if (!leave?.requestId || !leave.requestDates?.length || !leave.requestRevision) {
-      toast.error("Refresh the dashboard before editing this request."); return;
+      toast.error(dt("Refresh the dashboard before editing this request.")); return;
     }
     const next = { ...leave, ...patch };
     const value: LeaveRequestUpdate = {
@@ -275,9 +280,9 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
   const removeLeaveRecord = (empId: string, leaveId: string) => {
     const leave = employees.find((emp) => emp.id === empId)?.leaves.find((row) => row.id === leaveId);
     if (!leave?.requestId || !leave.requestDates?.length || !leave.requestRevision) {
-      toast.error("Refresh the dashboard before removing this request."); return;
+      toast.error(dt("Refresh the dashboard before removing this request.")); return;
     }
-    if (!confirm(`Remove this entire leave request (${leave.requestDates.length} date(s)): ${leave.requestDates.join(", ")}?`)) return;
+    if (!confirm(dt("Remove this entire leave request ({0} date(s)): {1}?", [leave.requestDates.length, leave.requestDates.join(", ")]))) return;
     leaveMutations.remove.mutate({ id: leave.requestId, expectedDates: leave.requestDates, expectedRevision: leave.requestRevision });
   };
 
@@ -342,7 +347,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
       
       {/* 1. Top Executive Navigation Header */}
       <DashboardHeader navigation={navigation} account={account} year={
-                <select aria-label="Leave year" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="bg-slate-800 text-white border border-slate-700 rounded px-2 py-1 text-xs font-bold">
+                <select aria-label={dt("Leave year")} value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="bg-slate-800 text-white border border-slate-700 rounded px-2 py-1 text-xs font-bold">
                   {[...new Set([...Array.from({ length: 5 }, (_, index) => currentYear + 1 - index), Number(selectedYear)])].sort((a,b)=>b-a).map((year) => <option key={year} value={year}>{year}</option>)}
                 </select>
       } actions={
@@ -353,7 +358,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
                 : "text-amber-300 bg-amber-950/80 border-amber-800"
             }`}>
               <span className={`w-2 h-2 rounded-full ${dataSource === "live" ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`}></span>
-              {dataSource === "live" ? "Live records connected" : "Offline - local data"}
+              {dataSource === "live" ? dt("Live records connected") : dt("Offline - local data")}
             </div>
 
             <button
@@ -362,7 +367,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
               className="h-9 px-3 bg-[#68BD24] hover:bg-[#5ca81f] text-slate-950 font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-xs"
             >
               <RotateCw className={`w-3.5 h-3.5 ${isFetchingEmployees ? "animate-spin" : ""}`} />
-              {isFetchingEmployees ? "Refreshing..." : "Refresh records"}
+              {isFetchingEmployees ? dt("Refreshing...") : dt("Refresh records")}
             </button>
 
             <button
@@ -370,8 +375,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
               className="h-9 px-3 bg-white hover:bg-slate-100 text-slate-900 font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
-              Add Leave
-            </button>
+               {dt("Add Leave")} </button>
 
 
           </div>
@@ -391,18 +395,17 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
 
         {/* 3. Main Master Executive Datatable Container */}
         <details className="mb-2 rounded-lg border border-sky-100 bg-sky-50 px-3 py-1 text-xs text-slate-700">
-          <summary className="font-semibold text-slate-900 cursor-pointer">Using this dashboard</summary>
-          <p className="mt-1">Use this dashboard for approvals, employee details and leave allowances. Overview, Roster and Sheet share the same saved records. Download CSV or PDF copies when you need a report.</p>
-          <p className="mt-1 text-xs text-slate-600">Approve requests here or through LINE. Refresh records to see the latest decisions. Existing Google Sheets connections remain in place during the transition.</p>
+          <summary className="font-semibold text-slate-900 cursor-pointer">{dt("Using this dashboard")}</summary>
+          <p className="mt-1">{dt("Use this dashboard for approvals, employee details and leave allowances. Overview, Roster and Sheet share the same saved records. Download CSV or PDF copies when you need a report.")}</p>
+          <p className="mt-1 text-xs text-slate-600">{dt("Approve requests here or through LINE. Refresh records to see the latest decisions. Existing Google Sheets connections remain in place during the transition.")}</p>
         </details>
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
           
           {/* Department filter and navigation toolbar */}
           <div className="px-3 py-2 bg-slate-900 border-b border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-2 flex-wrap">
             <label className="flex items-center gap-2 text-xs font-bold text-slate-300 shrink-0">
-              Department
-              <select aria-label="Department filter" value={selectedDept} onChange={e => setSelectedDept(e.target.value)} className="rounded-lg border border-slate-700 bg-slate-800 text-white px-3 py-2 max-w-[220px]">
-                {departments.map(dept => <option key={dept} value={dept}>{dept === "All" ? "All departments" : dept === "AI Engineering" ? "AI" : dept} ({dept === "All" ? activeEmployees.length : activeEmployees.filter(e => e.department === dept).length})</option>)}
+               {dt("Department")} <select aria-label={dt("Department filter")} value={selectedDept} onChange={e => setSelectedDept(e.target.value)} className="rounded-lg border border-slate-700 bg-slate-800 text-white px-3 py-2 max-w-[220px]">
+                {departments.map(dept => <option key={dept} value={dept}>{dept === "All" ? dt("All departments") : dept === "AI Engineering" ? "AI" : dept} ({dept === "All" ? activeEmployees.length : activeEmployees.filter(e => e.department === dept).length})</option>)}
               </select>
             </label>
 
@@ -414,27 +417,24 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
                     viewMode === "overview" ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  <BarChart3 className="w-3.5 h-3.5" /> Overview
-                </button>
+                  <BarChart3 className="w-3.5 h-3.5" />  {dt("Overview")} </button>
                 <button
                   onClick={() => setViewMode("roster")}
                   className={`px-2.5 py-1 text-xs font-extrabold rounded-md transition-colors flex items-center gap-1.5 ${
                     viewMode === "roster" ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  <LayoutGrid className="w-3.5 h-3.5" /> Roster
-                </button>
+                  <LayoutGrid className="w-3.5 h-3.5" />  {dt("Roster")} </button>
                 <button
                   onClick={() => setViewMode("sheet")}
                   className={`px-2.5 py-1 text-xs font-extrabold rounded-md transition-colors flex items-center gap-1.5 ${
                     viewMode === "sheet" ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5" /> Sheet
-                </button>
-                <select aria-label="More tools" value={["overview","roster","sheet"].includes(viewMode)?"":viewMode} onChange={e=>{if(e.target.value)setViewMode(e.target.value as typeof viewMode);}} className="rounded-md border border-slate-600 bg-slate-800 text-white px-2 py-1.5 text-xs font-bold max-w-[170px]">
-                  <option value="" disabled>More tools</option>
-                  <option value="pending">Pending requests</option><option value="calendar">Team calendar</option><option value="history">Change history</option><option value="rollover">Year rollover</option><option value="removed">Removed employees ({removedEmployees.length})</option>
+                  <FileSpreadsheet className="w-3.5 h-3.5" />  {dt("Sheet")} </button>
+                <select aria-label={dt("More tools")} value={["overview","roster","sheet"].includes(viewMode)?"":viewMode} onChange={e=>{if(e.target.value)setViewMode(e.target.value as typeof viewMode);}} className="rounded-md border border-slate-600 bg-slate-800 text-white px-2 py-1.5 text-xs font-bold max-w-[170px]">
+                  <option value="" disabled>{dt("More tools")}</option>
+                  <option value="pending">{dt("Pending requests")}</option><option value="calendar">{dt("Team calendar")}</option><option value="history">{dt("Change history")}</option><option value="rollover">{dt("Year rollover")}</option><option value="removed">{dt("Removed employees (")}{removedEmployees.length})</option>
                 </select>
               </div>
 
@@ -442,9 +442,9 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
                 <button
                   onClick={() => setCompactRows((v) => !v)}
                   className="h-8 px-2.5 text-xs font-bold rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors"
-                  title="Toggle row density"
+                  title={dt("Toggle row density")}
                 >
-                  {compactRows ? "Compact" : "Comfortable"}
+                  {compactRows ? dt("Compact") : dt("Comfortable")}
                 </button>
               )}
             </div>
@@ -452,7 +452,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
 
           </div>
 
-          {employees.some(e=>e.rolloverNeedsReview)&&<div role="alert" className="m-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">Previous-year leave or allowances changed for {employees.filter(e=>e.rolloverNeedsReview).length} employees. Review their carryover before relying on the balances. <Button variant="outline" size="sm" onClick={()=>{setReviewRollover(true);setViewMode("rollover");}}>Review carryover changes</Button></div>}
+          {employees.some(e=>e.rolloverNeedsReview)&&<div role="alert" className="m-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">{dt("Previous-year leave or allowances changed for")} {employees.filter(e=>e.rolloverNeedsReview).length}  {dt("employees. Review their carryover before relying on the balances.")} <Button variant="outline" size="sm" onClick={()=>{setReviewRollover(true);setViewMode("rollover");}}>{dt("Review carryover changes")}</Button></div>}
           {viewMode === "pending" ? <PendingRequests employees={filteredEmployees} ready={dataSource === "live" && !employeesError && !employeesPartial && !isFetchingEmployees} /> : viewMode === "rollover" ? <YearRollover key={`${selectedYear}-${reviewRollover}`} initialReconcile={reviewRollover} year={reviewRollover?String(Number(selectedYear)-1):selectedYear} onApplied={handleRolloverApplied} /> : viewMode === "calendar" ? <TeamCalendar employees={filteredEmployees} year={selectedYear} /> : viewMode === "history" ? <ChangeHistory employees={employees} /> : viewMode === "overview" ? (
             <div className="p-2 bg-slate-100/70">
               <OverviewDashboard
@@ -462,7 +462,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
                 onLeaveToday={onLeaveToday}
                 onSelectEmployee={setSelectedEmployee}
                 exportReady={dataSource === "live" && !employeesError && !employeesPartial && !isFetchingEmployees}
-                exportScope={`Department: ${selectedDept}`}
+                exportScope={dt("Department: {0}",[dt(selectedDept)])}
               />
             </div>
           ) : viewMode === "roster" ? (
@@ -511,18 +511,17 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
             <DialogHeader className="border-b border-slate-200 pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <DialogTitle className="text-lg font-extrabold text-slate-900">
-                  Name : {selectedEmployee.name} <span className="text-amber-600">({selectedEmployee.nickname})</span>
+                   {dt("Name :")} {selectedEmployee.name} <span className="text-amber-600">({selectedEmployee.nickname})</span>
                 </DialogTitle>
                 <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs">
                   <span className="bg-slate-100 text-slate-700 font-bold px-2.5 py-0.5 rounded border border-slate-200">{selectedEmployee.department}</span>
                   <span className="font-mono text-slate-500 font-bold">{selectedEmployee.empCode}</span>
-                  <span className="text-slate-500 font-bold">&bull; Start Date: {formatDate(selectedEmployee.startDate)}</span>
+                  <span className="text-slate-500 font-bold">{dt("&bull; Start Date:")} {formatDate(selectedEmployee.startDate)}</span>
                 </div>
               </div>
               <div className="flex gap-2">
                 <Button onClick={() => { openEditQuotaModal(selectedEmployee); }} variant="outline" className="h-9 font-bold text-xs">
-                  <Edit className="w-3.5 h-3.5 mr-1" /> Edit Profile & Quotas
-                </Button>
+                  <Edit className="w-3.5 h-3.5 mr-1" />  {dt("Edit Profile & Quotas")} </Button>
               </div>
             </DialogHeader>
 
@@ -532,19 +531,19 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
                 <table className="w-full text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-900 text-white font-extrabold">
-                      <th className="py-2.5 px-3 text-left border-r border-slate-800 w-32">Date</th>
-                      <th className="py-2.5 px-3 text-center border-r border-slate-800 bg-[#CC0000] text-white w-24">Sick Leave</th>
-                      <th className="py-2.5 px-3 text-center border-r border-slate-800 bg-[#FFD700] text-slate-900 w-24">Annual Leave</th>
-                      <th className="py-2.5 px-3 text-center border-r border-slate-800 bg-[#0099FF] text-white w-24">Personal Leave</th>
-                      <th className="py-2.5 px-3 text-left border-r border-slate-800">Reason / Notes</th>
-                      <th className="py-2.5 px-2 text-center w-12">Action</th>
+                      <th className="py-2.5 px-3 text-left border-r border-slate-800 w-32">{dt("Date")}</th>
+                      <th className="py-2.5 px-3 text-center border-r border-slate-800 bg-[#CC0000] text-white w-24">{dt("Sick Leave")}</th>
+                      <th className="py-2.5 px-3 text-center border-r border-slate-800 bg-[#FFD700] text-slate-900 w-24">{dt("Annual Leave")}</th>
+                      <th className="py-2.5 px-3 text-center border-r border-slate-800 bg-[#0099FF] text-white w-24">{dt("Personal Leave")}</th>
+                      <th className="py-2.5 px-3 text-left border-r border-slate-800">{dt("Reason / Notes")}</th>
+                      <th className="py-2.5 px-2 text-center w-12">{dt("Action")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {selectedEmployee.leaves && selectedEmployee.leaves.filter(l => (l.status === "Approved" || !l.status) && l.date.includes(selectedYear)).length === 0 ? (
                       <tr>
                         <td colSpan={6} className="py-6 text-center text-slate-400 font-medium italic">
-                          No leave records for {selectedYear}
+                           {dt("No leave records for")} {selectedYear}
                         </td>
                       </tr>
                     ) : (
@@ -559,7 +558,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
                             <td className="py-2 px-3 text-center font-extrabold text-sky-800 border-r border-slate-200">{l.type === "personal" ? l.days : ""}</td>
                             <td className="py-2 px-3 text-rose-600 font-semibold border-r border-slate-200">{l.note || "-"}</td>
                             <td className="py-2 px-2 text-center">
-                              <button type="button" aria-label="Cancel leave request" onClick={() => handleDeleteLeave(selectedEmployee.id, l.id)} className="text-slate-400 hover:text-rose-600 font-bold"><X className="w-4 h-4" aria-hidden="true" /></button>
+                              <button type="button" aria-label={dt("Cancel leave request")} onClick={() => handleDeleteLeave(selectedEmployee.id, l.id)} className="text-slate-400 hover:text-rose-600 font-bold"><X className="w-4 h-4" aria-hidden="true" /></button>
                             </td>
                           </tr>
                         ))
@@ -568,24 +567,23 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
                     {/* Inline Quick Add Leave Record Form */}
                     <tr className="bg-blue-50/50 border-t border-slate-300">
                       <td className="p-1 border-r border-slate-200">
-                        <Input type="text" placeholder="Date (e.g. 2026-03-15)" value={modalLeaveForm.date} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, date: e.target.value })} className="h-8 text-xs font-semibold" />
+                        <Input type="text" placeholder={dt("Date (e.g. 2026-03-15)")} value={modalLeaveForm.date} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, date: e.target.value })} className="h-8 text-xs font-semibold" />
                       </td>
                       <td className="p-1 border-r border-slate-200">
-                        <Input type="text" placeholder="Sick (0)" value={modalLeaveForm.sick} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, sick: e.target.value })} className="h-8 text-xs text-center font-bold text-rose-700" />
+                        <Input type="text" placeholder={dt("Sick (0)")} value={modalLeaveForm.sick} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, sick: e.target.value })} className="h-8 text-xs text-center font-bold text-rose-700" />
                       </td>
                       <td className="p-1 border-r border-slate-200">
-                        <Input type="text" placeholder="Annual (0)" value={modalLeaveForm.annual} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, annual: e.target.value })} className="h-8 text-xs text-center font-bold text-amber-900" />
+                        <Input type="text" placeholder={dt("Annual (0)")} value={modalLeaveForm.annual} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, annual: e.target.value })} className="h-8 text-xs text-center font-bold text-amber-900" />
                       </td>
                       <td className="p-1 border-r border-slate-200">
-                        <Input type="text" placeholder="Personal (0)" value={modalLeaveForm.personal} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, personal: e.target.value })} className="h-8 text-xs text-center font-bold text-sky-800" />
+                        <Input type="text" placeholder={dt("Personal (0)")} value={modalLeaveForm.personal} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, personal: e.target.value })} className="h-8 text-xs text-center font-bold text-sky-800" />
                       </td>
                       <td className="p-1 border-r border-slate-200">
-                        <Input type="text" placeholder="Reason / Notes..." value={modalLeaveForm.note} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, note: e.target.value })} className="h-8 text-xs text-rose-600 font-medium" />
+                        <Input type="text" placeholder={dt("Reason / Notes...")} value={modalLeaveForm.note} onChange={(e) => setModalLeaveForm({ ...modalLeaveForm, note: e.target.value })} className="h-8 text-xs text-rose-600 font-medium" />
                       </td>
                       <td className="p-1 text-center">
                         <Button type="button" onClick={handleAddLeaveModalSubmit} size="sm" className="h-8 bg-[#00B5E2] hover:bg-[#0099c4] text-xs font-bold px-2">
-                          + Add
-                        </Button>
+                           {dt("+ Add")} </Button>
                       </td>
                     </tr>
                   </tbody>
@@ -593,23 +591,23 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
                   {/* Summary Footer */}
                   <tfoot>
                     <tr className="bg-slate-100 font-extrabold border-t border-slate-300">
-                      <td className="py-2.5 px-3 border-r border-slate-300">All leave getting per year</td>
+                      <td className="py-2.5 px-3 border-r border-slate-300">{dt("All leave getting per year")}</td>
                       <td className="py-2.5 px-3 text-center text-rose-700 border-r border-slate-300">{selectedEmployee.quotas.sickTotal??"∞"}</td>
                       <td className="py-2.5 px-3 text-center text-amber-900 border-r border-slate-300">{selectedEmployee.quotas.annualTotal===null?"∞":selectedEmployee.quotas.annualTotal + selectedEmployee.quotas.carriedOver}</td>
                       <td className="py-2.5 px-3 text-center text-sky-800 border-r border-slate-300">{selectedEmployee.quotas.personalTotal}</td>
                       <td colSpan={2} className="py-2.5 px-3 text-red-600 font-bold text-xs">
-                        {selectedEmployee.quotas.carriedOver > 0 && `${selectedEmployee.quotas.carriedOver} extra days awarded`}
+                        {selectedEmployee.quotas.carriedOver > 0 && dt("{0} extra days awarded", [selectedEmployee.quotas.carriedOver])}
                       </td>
                     </tr>
                     <tr className="bg-slate-100 font-extrabold border-t border-slate-200">
-                      <td className="py-2.5 px-3 border-r border-slate-300">Total taken in {selectedYear}</td>
+                      <td className="py-2.5 px-3 border-r border-slate-300">{dt("Total taken in")} {selectedYear}</td>
                       <td className="py-2.5 px-3 text-center text-rose-700 border-r border-slate-300">{sumLeaves(selectedEmployee.leaves, "sick", selectedYear)}</td>
                       <td className="py-2.5 px-3 text-center text-amber-900 border-r border-slate-300">{sumLeaves(selectedEmployee.leaves, "annual", selectedYear)}</td>
                       <td className="py-2.5 px-3 text-center text-sky-800 border-r border-slate-300">{sumLeaves(selectedEmployee.leaves, "personal", selectedYear)}</td>
                       <td colSpan={2}></td>
                     </tr>
                     <tr className="bg-slate-200 font-extrabold text-slate-900 border-t border-slate-300">
-                      <td className="py-2.5 px-3 border-r border-slate-300">Total remain</td>
+                      <td className="py-2.5 px-3 border-r border-slate-300">{dt("Total remain")}</td>
                       <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.quotas.sickTotal===null?"∞":selectedEmployee.quotas.sickTotal - sumLeaves(selectedEmployee.leaves, "sick", selectedYear)}</td>
                       <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.quotas.annualTotal===null?"∞":selectedEmployee.quotas.annualTotal + selectedEmployee.quotas.carriedOver - sumLeaves(selectedEmployee.leaves, "annual", selectedYear)}</td>
                       <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.quotas.personalTotal - sumLeaves(selectedEmployee.leaves, "personal", selectedYear)}</td>
@@ -628,17 +626,17 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
         <Dialog open={!!editingEmp} onOpenChange={() => setEditingEmp(null)}>
           <DialogContent className="max-w-md bg-white rounded-xl p-6 border border-slate-200">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold text-slate-900">Adjust Leave Quotas & Profile</DialogTitle>
-              <DialogDescription className="text-xs text-slate-500">Edit details for {editingEmp.name}</DialogDescription>
+              <DialogTitle className="text-base font-bold text-slate-900">{dt("Adjust Leave Quotas & Profile")}</DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">{dt("Edit details for")} {editingEmp.name}</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleUpdateQuota} className="space-y-4 mt-2">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-600">Employee Code</label>
+                  <label className="text-xs font-bold text-slate-600">{dt("Employee Code")}</label>
                   <Input value={editEmpCode} onChange={(e) => setEditEmpCode(e.target.value)} className="h-9 text-xs mt-1" />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-600">Department</label>
+                  <label className="text-xs font-bold text-slate-600">{dt("Department")}</label>
                   <select value={editEmpDept} onChange={(e) => setEditEmpDept(e.target.value)} className="w-full h-9 text-xs border rounded-md px-2 mt-1">
                     {departments.filter(d => d !== "All").map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
@@ -646,37 +644,37 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-600">Full Name</label>
+                  <label className="text-xs font-bold text-slate-600">{dt("Full Name")}</label>
                   <Input value={editEmpName} onChange={(e) => setEditEmpName(e.target.value)} className="h-9 text-xs mt-1" />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-600">Nickname</label>
+                  <label className="text-xs font-bold text-slate-600">{dt("Nickname")}</label>
                   <Input value={editEmpNickname} onChange={(e) => setEditEmpNickname(e.target.value)} className="h-9 text-xs mt-1" />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-600">Annual Quota</label>
+                  <label className="text-xs font-bold text-slate-600">{dt("Annual Quota")}</label>
                   <Input type="number" min="0" max="365" step="0.25" disabled={quotaAnnual===null} value={quotaAnnual??""} onChange={(e) => setQuotaAnnual(Number(e.target.value))} className="h-9 text-xs mt-1" />
-                  <label className="text-xs"><input type="checkbox" checked={quotaAnnual===null} onChange={e=>setQuotaAnnual(e.target.checked?null:0)}/> Unlimited</label>
+                  <label className="text-xs"><input type="checkbox" checked={quotaAnnual===null} onChange={e=>setQuotaAnnual(e.target.checked?null:0)}/>  {dt("Unlimited")}</label>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-600">Sick Quota</label>
+                  <label className="text-xs font-bold text-slate-600">{dt("Sick Quota")}</label>
                   <Input type="number" min="0" max="365" step="0.25" disabled={Number(selectedYear)>=2026||quotaSick===null} value={Number(selectedYear)>=2026?30:quotaSick??""} onChange={(e) => setQuotaSick(Number(e.target.value))} className="h-9 text-xs mt-1" />
-                  <p className="text-xs text-slate-500">{Number(selectedYear)>=2026?"30 paid days · company policy":<label><input type="checkbox" checked={quotaSick===null} onChange={e=>setQuotaSick(e.target.checked?null:0)}/> Unlimited</label>}</p>
+                  <p className="text-xs text-slate-500">{Number(selectedYear)>=2026?dt("30 paid days · company policy"):<label><input type="checkbox" checked={quotaSick===null} onChange={e=>setQuotaSick(e.target.checked?null:0)}/>  {dt("Unlimited")}</label>}</p>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-600">Carried Over</label>
+                  <label className="text-xs font-bold text-slate-600">{dt("Carried Over")}</label>
                   <Input type="number" min="0" max="365" step="0.25" required value={quotaCarried} onChange={(e) => setQuotaCarried(Number(e.target.value))} className="h-9 text-xs mt-1" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <label className="text-xs font-bold text-slate-600">Personal quota<Input type="number" min="0" max="365" step="0.25" required value={quotaPersonal} onChange={e=>setQuotaPersonal(Number(e.target.value))}/></label>
-                <label className="text-xs font-bold text-slate-600">Carryover expiry<Input type="date" min={`${selectedYear}-01-01`} max={`${selectedYear}-12-31`} value={quotaExpiry} onChange={e=>setQuotaExpiry(e.target.value)}/><span className="font-normal">Leave blank for no expiry.</span></label>
+                <label className="text-xs font-bold text-slate-600">{dt("Personal quota")}<Input type="number" min="0" max="365" step="0.25" required value={quotaPersonal} onChange={e=>setQuotaPersonal(Number(e.target.value))}/></label>
+                <label className="text-xs font-bold text-slate-600">{dt("Carryover expiry")}<Input type="date" min={`${selectedYear}-01-01`} max={`${selectedYear}-12-31`} value={quotaExpiry} onChange={e=>setQuotaExpiry(e.target.value)}/><span className="font-normal">{dt("Leave blank for no expiry.")}</span></label>
               </div>
               <div className="flex justify-end gap-2 pt-3">
-                <Button type="button" variant="ghost" onClick={() => setEditingEmp(null)} className="h-9 text-xs">Cancel</Button>
-                <Button type="submit" className="h-9 text-xs bg-[#00B5E2] hover:bg-[#0099c4]">Save Changes</Button>
+                <Button type="button" variant="ghost" onClick={() => setEditingEmp(null)} className="h-9 text-xs">{dt("Cancel")}</Button>
+                <Button type="submit" className="h-9 text-xs bg-[#00B5E2] hover:bg-[#0099c4]">{dt("Save Changes")}</Button>
               </div>
             </form>
           </DialogContent>

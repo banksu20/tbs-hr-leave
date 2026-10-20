@@ -1,3 +1,5 @@
+import {useLanguage} from "@/hooks/useLanguage";
+import {useDashboardText} from "@/hooks/useDashboardText";
 import { useState } from 'react';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchHistory, restoreLeave, type ChangeEvent } from '@/lib/api';
@@ -18,33 +20,36 @@ function activity(event:ChangeEvent) {
 const show=(value:unknown)=>value===null||value===undefined?'—':Array.isArray(value)?value.join(', '):typeof value==='object'?'Updated details':String(value);
 const showField=(key:string,value:unknown)=>value===null&&['annual_total','sick_total'].includes(key)?'Unlimited':show(value);
 export default function ChangeHistory({employees,cohort='employee'}: {employees: Employee[];cohort?:'employee'|'intern'}) {
+ const dt = useDashboardText();
+ const {language}=useLanguage();
+
   const [userId,setUserId]=useState('');
   const client=useQueryClient();
   const history=useInfiniteQuery({queryKey:['history',cohort,userId],initialPageParam:undefined as string|undefined,
     queryFn:({pageParam})=>fetchHistory(userId||undefined,pageParam,cohort),getNextPageParam:page=>page.nextCursor??undefined});
   const undo=useMutation({mutationFn:(event:ChangeEvent)=>restoreLeave(event.recordId,event.id),onSuccess:async()=>{
-    toast.success('Cancellation undone'); await Promise.all([client.invalidateQueries({queryKey:['history']}),client.invalidateQueries({queryKey:['employees']})]);
+    toast.success(dt("Cancellation undone")); await Promise.all([client.invalidateQueries({queryKey:['history']}),client.invalidateQueries({queryKey:['employees']})]);
   },onError:(error)=>toast.error(error.message)});
   return <section className="bg-white rounded-xl border p-4 space-y-4">
-    <div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-bold">Change history</h2>
-      <label>Employee <select className="border rounded p-2" value={userId} onChange={e=>setUserId(e.target.value)}><option value="">All employees</option>{employees.map(e=><option key={e.id} value={e.id}>{e.name} · {e.empCode}</option>)}</select></label>
-      <Button variant="outline" disabled={history.isFetching} onClick={()=>history.refetch()}>Refresh</Button>
+    <div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-bold">{dt("Change history")}</h2>
+      <label>{dt("Employee")} <select className="border rounded p-2" value={userId} onChange={e=>setUserId(e.target.value)}><option value="">{dt("All employees")}</option>{employees.map(e=><option key={e.id} value={e.id}>{e.name} · {e.empCode}</option>)}</select></label>
+      <Button variant="outline" disabled={history.isFetching} onClick={()=>history.refetch()}>{dt("Refresh")}</Button>
     </div>
-    <p className="text-sm text-slate-500">See what changed and when. Open “View changes” for the previous and new values. Times use Bangkok time. Older records may not identify the person who made the change.</p>
-    {history.isPending&&<p>Loading history…</p>}
+    <p className="text-sm text-slate-500">{dt("See what changed and when. Open “View changes” for the previous and new values. Times use Bangkok time. Older records may not identify the person who made the change.")}</p>
+    {history.isPending&&<p>{dt("Loading history…")}</p>}
     {history.error&&<p role="alert" className="text-red-700">{history.error.message}</p>}
     {history.data?.pages.flatMap(p=>p.events).map(event=><article key={event.id} className="border rounded-lg p-3 space-y-2">
-      <div className="flex flex-wrap justify-between gap-2"><h3 className="font-semibold">{activity(event)}</h3><time className="text-sm">{new Date(event.changedAt).toLocaleString('en-GB',{timeZone:'Asia/Bangkok',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})} · Bangkok</time></div>
-      <p className="text-sm text-slate-600"><strong>By:</strong> {event.actor}{event.entity==='leave_requests'&&<> · Request #{event.recordId}</>}</p>
-      <p className="font-medium text-slate-700">{event.employeeName||'Employee'}{event.department?` · ${event.department}`:''}</p>
-      {event.entity==='leave_requests'&&(event.after??event.before)?.leave_type!=null&&<p className="text-sm text-slate-500">{show((event.after??event.before)?.leave_type)} leave · {show((event.after??event.before)?.leave_days)} day(s) · {show((event.after??event.before)?.selected_dates||(event.after??event.before)?.start_date)}</p>}
-      {event.entity==='leave_quotas'&&<p className="text-sm text-slate-500">Allowance for {show((event.after??event.before)?.year)}</p>}
-      {(event.action==='reject'||event.action==='reject cancellation')&&<p className="text-sm rounded-lg bg-rose-50 text-rose-900 p-3 whitespace-pre-wrap wrap-break-word"><strong>Rejection reason:</strong> {show(event.after?.rejection_reason||event.after?.decision_reason||'No reason provided')}</p>}
-      <details><summary className="text-sm font-semibold text-sky-700 cursor-pointer py-2">View changes ({changedFields(event).length})</summary>
-      <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>What changed</th><th>Previous</th><th>Now</th></tr></thead><tbody>{changedFields(event).map(key=><tr key={key} className="border-t"><th className="text-left p-1 font-medium">{labels[key]??key.replace(/_/g,' ')}</th><td className="p-1 whitespace-pre-wrap wrap-break-word">{showField(key,event.before?.[key])}</td><td className="p-1 whitespace-pre-wrap wrap-break-word">{showField(key,event.after?.[key])}</td></tr>)}</tbody></table></div></details>
-      {event.canRestore&&<Button variant="outline" disabled={undo.isPending} onClick={()=>{if(window.confirm('Restore this entire leave request to its previous status? Its dates will count against the leave balance again.'))undo.mutate(event);}}>Undo cancellation</Button>}
+      <div className="flex flex-wrap justify-between gap-2"><h3 className="font-semibold">{dt(activity(event))}</h3><time className="text-sm">{new Date(event.changedAt).toLocaleString(language==='th'?'th-TH':'en-GB',{timeZone:'Asia/Bangkok',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}  {dt("· Bangkok")}</time></div>
+      <p className="text-sm text-slate-600"><strong>{dt("By:")}</strong> {event.actor}{event.entity==='leave_requests'&&<>  {dt("· Request #")}{event.recordId}</>}</p>
+      <p className="font-medium text-slate-700">{event.employeeName||dt("Employee")}{event.department?` · ${event.department}`:''}</p>
+      {event.entity==='leave_requests'&&(event.after??event.before)?.leave_type!=null&&<p className="text-sm text-slate-500">{dt(show((event.after??event.before)?.leave_type))}  {dt("leave ·")} {show((event.after??event.before)?.leave_days)}  {dt("day(s) ·")} {show((event.after??event.before)?.selected_dates||(event.after??event.before)?.start_date)}</p>}
+      {event.entity==='leave_quotas'&&<p className="text-sm text-slate-500">{dt("Allowance for")} {show((event.after??event.before)?.year)}</p>}
+      {(event.action==='reject'||event.action==='reject cancellation')&&<p className="text-sm rounded-lg bg-rose-50 text-rose-900 p-3 whitespace-pre-wrap wrap-break-word"><strong>{dt("Rejection reason:")}</strong> {show(event.after?.rejection_reason||event.after?.decision_reason||dt('No reason provided'))}</p>}
+      <details><summary className="text-sm font-semibold text-sky-700 cursor-pointer py-2">{dt("View changes (")}{changedFields(event).length})</summary>
+      <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>{dt("What changed")}</th><th>{dt("Previous")}</th><th>{dt("Now")}</th></tr></thead><tbody>{changedFields(event).map(key=><tr key={key} className="border-t"><th className="text-left p-1 font-medium">{dt(labels[key]??key.replace(/_/g,' '))}</th><td className="p-1 whitespace-pre-wrap wrap-break-word">{["status","leave_type","half_day_period"].includes(key) ? dt(showField(key,event.before?.[key])) : showField(key,event.before?.[key])}</td><td className="p-1 whitespace-pre-wrap wrap-break-word">{["status","leave_type","half_day_period"].includes(key) ? dt(showField(key,event.after?.[key])) : showField(key,event.after?.[key])}</td></tr>)}</tbody></table></div></details>
+      {event.canRestore&&<Button variant="outline" disabled={undo.isPending} onClick={()=>{if(window.confirm(dt("Restore this entire leave request to its previous status? Its dates will count against the leave balance again.")))undo.mutate(event);}}>{dt("Undo cancellation")}</Button>}
     </article>)}
-    {history.data?.pages[0].events.length===0&&<p>No recorded changes for this selection.</p>}
-    {history.hasNextPage&&<Button variant="outline" disabled={history.isFetchingNextPage} onClick={()=>history.fetchNextPage()}>Load older changes</Button>}
+    {history.data?.pages[0].events.length===0&&<p>{dt("No recorded changes for this selection.")}</p>}
+    {history.hasNextPage&&<Button variant="outline" disabled={history.isFetchingNextPage} onClick={()=>history.fetchNextPage()}>{dt("Load older changes")}</Button>}
   </section>;
 }

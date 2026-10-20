@@ -1,3 +1,4 @@
+import {useDashboardText} from "@/hooks/useDashboardText";
 import { Employee, LeaveRecord } from "@/data/mockEmployees";
 import EmployeeSheetBlock from "./EmployeeSheetBlock";
 import { LeaveType } from "./leaveSheetUtils";
@@ -15,16 +16,17 @@ export interface SheetViewProps {
 }
 
 export default function SheetView({ employees, year, compact, ...handlers }: SheetViewProps) {
+ const dt = useDashboardText();
+
   if (employees.length === 0) {
     return (
       <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-400 font-medium italic">
-        No matching employee records found.
-      </div>
+         {dt("No matching employee records found.")} </div>
     );
   }
 
   return (
-    <section><p className="text-sm text-slate-500 mb-3">This is a table view of your saved HR records. Changes here also appear in Overview and Roster. Excel and PDF exports are copies for reporting.</p><div className={`grid grid-cols-1 md:grid-cols-2 ${employees.some(e=>e.employmentType==="intern")?"":"xl:grid-cols-3"} gap-5 items-start`}>
+    <section><p className="text-sm text-slate-500 mb-3">{dt("This is a table view of your saved HR records. Changes here also appear in Overview and Roster. Excel and PDF exports are copies for reporting.")}</p><div className={`grid grid-cols-1 md:grid-cols-2 ${employees.some(e=>e.employmentType==="intern")?"":"xl:grid-cols-3"} gap-5 items-start`}>
       {employees.map((emp) => (
         <EmployeeSheetBlock key={emp.id} employee={emp} year={year} compact={compact} {...handlers} />
       ))}

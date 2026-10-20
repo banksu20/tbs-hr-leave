@@ -1,3 +1,4 @@
+import {useDashboardText} from "./useDashboardText";
 import { conflictingLeave } from "@/lib/leaveConflicts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ function describe(error: unknown): string {
 }
 
 export function useLeaveMutations(year: string) {
+  const dt=useDashboardText();
   const queryClient = useQueryClient();
   const invalidate = () => Promise.all([queryClient.invalidateQueries({ queryKey: ["employees"] }), queryClient.invalidateQueries({ queryKey: ["history"] })]);
 
@@ -32,7 +34,7 @@ export function useLeaveMutations(year: string) {
     const cached = queryClient.getQueriesData<{employees: Employee[]}>({queryKey:["employees"]});
     const leaves = cached.flatMap(([,data]) => data?.employees.filter(e => empId ? e.id === empId : e.leaves.some(l => l.requestId === requestId)).flatMap(e => e.leaves) ?? []);
     const conflicts = conflictingLeave(leaves, dates, days, period, requestId);
-    if (conflicts.length) throw new ApiError(409, `Overlapping leave exists on ${[...new Set(conflicts.map(l => l.date))].join(", ")}. Review the existing request before saving.`);
+    if (conflicts.length) throw new ApiError(409, dt("Overlapping leave exists on {0}. Review the existing request before saving.",[[...new Set(conflicts.map(l => l.date))].join(", ")]));
   };
 
   const create = useMutation({
@@ -48,10 +50,10 @@ export function useLeaveMutations(year: string) {
       });
     },
     onSuccess: async () => {
-      toast.success("Saved to the server");
+      toast.success(dt("Saved to the server"));
       await invalidate();
     },
-    onError: (error) => toast.error(`Not saved: ${describe(error)}`),
+    onError: (error) => toast.error(dt("Not saved: {0}",[dt(describe(error))])),
   });
 
   const update = useMutation({
@@ -59,19 +61,19 @@ export function useLeaveMutations(year: string) {
       { if (patch.status !== "Rejected") checkConflicts(undefined, patch.dates, patch.daysPerDate, patch.halfDayPeriod, id);
         return updateLeave(id, patch); },
     onSuccess: async () => {
-      toast.success("Saved");
+      toast.success(dt("Saved"));
       await invalidate();
     },
-    onError: (error) => toast.error(`Not saved: ${describe(error)}`),
+    onError: (error) => toast.error(dt("Not saved: {0}",[dt(describe(error))])),
   });
 
   const remove = useMutation({
     mutationFn: ({ id, expectedDates, expectedRevision }: { id: string; expectedDates: string[]; expectedRevision: string }) => deleteLeave(id, { scope: "request", expectedDates, expectedRevision }),
     onSuccess: async () => {
-      toast.success("Removed");
+      toast.success(dt("Removed"));
       await invalidate();
     },
-    onError: (error) => toast.error(`Not removed: ${describe(error)}`),
+    onError: (error) => toast.error(dt("Not removed: {0}",[dt(describe(error))])),
   });
 
   const profile = useMutation({
@@ -83,10 +85,10 @@ export function useLeaveMutations(year: string) {
       patch: { empCode?: string; name?: string; nickname?: string; department?: string };
     }) => updateEmployeeProfile({ userId: employee.id, ...patch }),
     onSuccess: async () => {
-      toast.success("Profile saved");
+      toast.success(dt("Profile saved"));
       await invalidate();
     },
-    onError: (error) => toast.error(`Not saved: ${describe(error)}`),
+    onError: (error) => toast.error(dt("Not saved: {0}",[dt(describe(error))])),
   });
 
   const quota = useMutation({
@@ -97,14 +99,14 @@ export function useLeaveMutations(year: string) {
       employee: Employee;
       patch: { annualTotal?: number|null; sickTotal?: number|null; personalTotal?: number; carriedOver?: number; carryoverExpiresOn?: string|null; note?: string };
     }) => {
-      if(!employee.quotaRevision)throw new Error("Refresh employee data before editing allowances.");
+      if(!employee.quotaRevision)throw new Error(dt("Refresh employee data before editing allowances."));
       return updateQuota({ userId: employee.id, year, expectedRevision:employee.quotaRevision, ...patch });
     },
     onSuccess: async () => {
-      toast.success("Quota saved");
+      toast.success(dt("Quota saved"));
       await invalidate();
     },
-    onError: (error) => toast.error(`Not saved: ${describe(error)}`),
+    onError: (error) => toast.error(dt("Not saved: {0}",[dt(describe(error))])),
   });
 
   const employeeStatus = useMutation({
@@ -113,12 +115,12 @@ export function useLeaveMutations(year: string) {
     onSuccess: async (_data, variables) => {
       toast.success(
         variables.status === "inactive"
-          ? `${variables.employee.nickname || variables.employee.name} removed from the roster`
-          : `${variables.employee.nickname || variables.employee.name} restored`
+          ? dt("{0} removed from the roster",[variables.employee.nickname || variables.employee.name])
+          : dt("{0} restored",[variables.employee.nickname || variables.employee.name])
       );
       await invalidate();
     },
-    onError: (error) => toast.error(`Not saved: ${describe(error)}`),
+    onError: (error) => toast.error(dt("Not saved: {0}",[dt(describe(error))])),
   });
 
   return {

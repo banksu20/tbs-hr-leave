@@ -31,7 +31,7 @@ test('CSV handles Thai, commas, quotes and spreadsheet formulas safely',()=>{
 });
 test('employee selection controls export preview and stale data disables download',async()=>{
  const wrap=tag=>props=>React.createElement(tag,props,props.children);
- const Component=loadTS({
+ const Component=loadTS({'@/hooks/useLanguage':{useLanguage:()=>({language:'en'})},
   '@/components/ui/dialog':Object.fromEntries(['Dialog','DialogContent','DialogDescription','DialogHeader','DialogTitle'].map(n=>[n,wrap('div')])),
   '@/components/ui/button':{Button:wrap('button')},
  })('src/components/ceo/MonthlyExportDialog.tsx').default;
@@ -54,7 +54,7 @@ test('employee selection controls export preview and stale data disables downloa
 test('overview month, employee and type filters agree with totals while annual quota usage stays full-year',async()=>{
  const wrap=tag=>props=>React.createElement(tag,props,props.children);
  const charts=Object.fromEntries(['Bar','BarChart','CartesianGrid','Cell','LabelList','Legend','ResponsiveContainer','Tooltip','XAxis','YAxis'].map(n=>[n,wrap('chart-'+n)]));
- const Component=loadTS({'recharts':charts,'./MonthlyExportDialog':{default:wrap('export-dialog')},'@/components/ui/popover':Object.fromEntries(['Popover','PopoverContent','PopoverTrigger'].map(n=>[n,wrap(n)])),'@/components/ui/command':Object.fromEntries(['Command','CommandInput','CommandList','CommandEmpty','CommandItem'].map(n=>[n,wrap(n)]))})('src/components/ceo/OverviewDashboard.tsx').default;
+ const Component=loadTS({'@/hooks/useLanguage':{useLanguage:()=>({language:'en'})},'recharts':charts,'./MonthlyExportDialog':{default:wrap('export-dialog')},'@/components/ui/popover':Object.fromEntries(['Popover','PopoverContent','PopoverTrigger'].map(n=>[n,wrap(n)])),'@/components/ui/command':Object.fromEntries(['Command','CommandInput','CommandList','CommandEmpty','CommandItem'].map(n=>[n,wrap(n)]))})('src/components/ceo/OverviewDashboard.tsx').default;
  let tree;await act(async()=>{tree=renderer.create(React.createElement(Component,{employees,year:'2026',departmentCount:1,onLeaveToday:[],onSelectEmployee(){},exportReady:true,exportScope:'QA'}));});
  const select=name=>tree.root.findAllByType('select').find(x=>x.props['aria-label']===name);
  await act(async()=>tree.root.findAllByType('CommandItem').find(n=>n.props.value.startsWith('1 ')).props.onSelect());

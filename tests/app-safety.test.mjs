@@ -68,7 +68,7 @@ test('year switch never copies previous-year data into the new cache, including 
   let rejectNewYear;
   class ApiError extends Error {}
   class NetworkError extends Error {}
-  const hook=loadTS({'@tanstack/react-query':ReactQuery,'@/lib/api':{
+  const hook=loadTS({'@/hooks/useLanguage':{useLanguage:()=>({language:'en'})},'@tanstack/react-query':ReactQuery,'@/lib/api':{
     ApiError,NetworkError,
     fetchEmployees: async year=> year==='2026' ? {employees:[{id:'employee',leaves:[{date:'2026-12-31'}]}],partial:false} : new Promise((resolve,reject)=>{rejectNewYear=reject;}),
   }})('src/hooks/useEmployeesData.ts');
@@ -91,7 +91,7 @@ test('year switch never copies previous-year data into the new cache, including 
 
 test('failed request save retains form data and does not close the editor',async()=>{
   const wrap=(tag)=>(props)=>React.createElement(tag,props,props.children);
-  const component=loadTS({
+  const component=loadTS({'@/hooks/useLanguage':{useLanguage:()=>({language:'en'})},
     '@/components/ui/dialog':Object.fromEntries(['Dialog','DialogContent','DialogDescription','DialogHeader','DialogTitle'].map(name=>[name,wrap('div')])),
     '@/components/ui/button':{Button:wrap('button')},
     '@/components/ui/input':{Input:wrap('input')},

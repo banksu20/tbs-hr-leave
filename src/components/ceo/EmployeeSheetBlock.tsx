@@ -1,3 +1,5 @@
+import {useLanguage} from "@/hooks/useLanguage";
+import {useDashboardText} from "@/hooks/useDashboardText";
 import {halfDayLabel} from '@/lib/halfDayLabel';
 import { useEffect, useMemo, useState } from "react";
 import { Edit, Trash2 } from "lucide-react";
@@ -41,6 +43,9 @@ export default function EmployeeSheetBlock({
   onQuotaNoteChange,
   onRemoveEmployee,
 }: EmployeeSheetBlockProps) {
+ const dt = useDashboardText();
+ const {language}=useLanguage();
+
   const intern = employee.employmentType === "intern";
   const types: LeaveType[] = intern ? [...LEAVE_TYPES, "university"] : LEAVE_TYPES;
   const [draft, setDraft] = useState(EMPTY_DRAFT);
@@ -107,32 +112,29 @@ export default function EmployeeSheetBlock({
             {[
               employee.department,
               employee.empCode || null,
-              employee.startDate ? `since ${formatSheetDate(employee.startDate)}` : null,
+              employee.startDate ? dt("since {0}",[formatSheetDate(employee.startDate, language)]) : null,
             ]
               .filter(Boolean)
               .join(" · ")}
             {!employee.empCode && (
-              <span className="ml-1.5 text-amber-400" title="This employee has no employee number">
-                no number
-              </span>
+              <span className="ml-1.5 text-amber-400" title={dt("This employee has no employee number")}>
+                 {dt("no number")} </span>
             )}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {quotaReview && (
             <span className="inline-flex items-center gap-1 bg-amber-500/15 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full text-[10px] font-extrabold">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" /> Set quota
-            </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />  {dt("Set quota")} </span>
           )}
           {overQuota && !quotaReview && (
             <span className="inline-flex items-center gap-1 bg-rose-500/15 text-rose-300 border border-rose-500/40 px-2 py-0.5 rounded-full text-[10px] font-extrabold">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" /> Over Quota
-            </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />  {dt("Over Quota")} </span>
           )}
           <button
             onClick={() => onEditProfile(employee)}
             className="text-slate-400 hover:text-white transition-colors"
-            title="Edit profile & quotas"
+            title={dt("Edit profile & quotas")}
           >
             <Edit className="w-3.5 h-3.5" />
           </button>
@@ -140,7 +142,7 @@ export default function EmployeeSheetBlock({
             <button
               onClick={() => onRemoveEmployee(employee)}
               className="text-slate-500 hover:text-rose-400 transition-colors"
-              title="Remove from roster"
+              title={dt("Remove from roster")}
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -153,18 +155,16 @@ export default function EmployeeSheetBlock({
           <thead className="sticky top-0 z-10">
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="sticky left-0 z-10 bg-slate-50 text-left font-extrabold text-slate-600 uppercase tracking-wide text-[10px] px-2 py-2 border-r border-slate-200 w-24">
-                Date
-              </th>
+                 {dt("Date")} </th>
               {types.map((type) => (
                 <th key={type} className={`px-2 py-2 border-r border-slate-200 w-[56px] ${LEAVE_META[type].band}`}>
                   <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold ${LEAVE_META[type].chip}`}>
-                    {LEAVE_META[type].short}
+                    {dt(LEAVE_META[type].short)}
                   </span>
                 </th>
               ))}
               <th className="px-2 py-2 text-left font-extrabold text-slate-600 uppercase tracking-wide text-[10px] min-w-[110px]">
-                Reason / Notes
-              </th>
+                 {dt("Reason / Notes")} </th>
               <th className="w-8" />
             </tr>
           </thead>
@@ -173,7 +173,7 @@ export default function EmployeeSheetBlock({
             {rows.length === 0 && (
               <tr>
                 <td colSpan={types.length+3} className="px-3 py-6 text-center text-slate-400 italic font-medium">
-                  No leave records in {year}
+                   {dt("No leave records in")} {year}
                 </td>
               </tr>
             )}
@@ -182,13 +182,13 @@ export default function EmployeeSheetBlock({
               <tr key={leave.id} className="group hover:bg-slate-50/80">
                 <td className={`sticky left-0 z-10 bg-white group-hover:bg-slate-50/80 border-r border-slate-200 px-1 ${rowPad}`}>
                   <EditableCell
-                    title={leave.requestDates && leave.requestDates.length > 1 ? "Editing opens the complete multi-day request" : undefined}
+                    title={leave.requestDates && leave.requestDates.length > 1 ? dt("Editing opens the complete multi-day request") : undefined}
                     gridId={gridId}
                     cellId={`c:${rowIdx}:0`}
                     value={leave.date}
                     placeholder="YYYY-MM-DD"
                     displayClassName="font-semibold text-slate-800"
-                    format={(v) => formatSheetDate(v)}
+                    format={(v) => formatSheetDate(v, language)}
                     onCommit={(raw) => {
                       const date = normalizeDateInput(raw, year);
                       if (date) onUpdateLeave(employee.id, leave.id, { date });
@@ -208,7 +208,7 @@ export default function EmployeeSheetBlock({
                       inputClassName={LEAVE_META[type].text}
                       onCommit={(raw) => updateDays(leave, type, raw)}
                     />
-                    {leave.type === type && (leave.days === 0.5 || leave.halfDayPeriod) && <span className="block pb-1 text-center text-[11px] text-slate-600">{halfDayLabel(leave.halfDayPeriod)}</span>}
+                    {leave.type === type && (leave.days === 0.5 || leave.halfDayPeriod) && <span className="block pb-1 text-center text-[11px] text-slate-600">{halfDayLabel(leave.halfDayPeriod, language)}</span>}
                   </td>
                 ))}
 
@@ -217,7 +217,7 @@ export default function EmployeeSheetBlock({
                     gridId={gridId}
                     cellId={`c:${rowIdx}:${types.length+1}`}
                     value={leave.note || ""}
-                    placeholder="Add a note"
+                    placeholder={dt("Add a note")}
                     title={leave.note}
                     displayClassName="text-rose-600 font-medium italic"
                     onCommit={(note) => onUpdateLeave(employee.id, leave.id, { note })}
@@ -228,7 +228,7 @@ export default function EmployeeSheetBlock({
                   <button
                     onClick={() => onDeleteLeave(employee.id, leave.id)}
                     className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-300 hover:text-rose-600 transition-opacity"
-                    title={`Remove entire request (${leave.requestDates?.length ?? 1} dates)`}
+                    title={dt("Remove entire request ({0} dates)", [leave.requestDates?.length ?? 1])}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -242,15 +242,15 @@ export default function EmployeeSheetBlock({
                   gridId={gridId}
                   cellId={`c:${rows.length}:0`}
                   value={draft.date}
-                  placeholder="+ Add date"
+                  placeholder={dt("+ Add date")}
                   displayClassName="font-semibold text-[#00B5E2]"
-                  format={(v) => formatSheetDate(v)}
+                  format={(v) => formatSheetDate(v, language)}
                   onCommit={(v) => commitDraft({ ...draft, date: v })}
                 />
               </td>
               {types.map((type, colIdx) => (
                 <td key={type} className={`border-r border-slate-200 px-1 py-1.5 ${LEAVE_META[type].band}`}>
-                  {type==='university'?<span title="University activities must be submitted with supporting evidence" className="block text-center text-slate-400">—</span>:<EditableCell
+                  {type==='university'?<span title={dt("University activities must be submitted with supporting evidence")} className="block text-center text-slate-400">—</span>:<EditableCell
                     gridId={gridId}
                     cellId={`c:${rows.length}:${colIdx + 1}`}
                     align="center"
@@ -266,7 +266,7 @@ export default function EmployeeSheetBlock({
                   gridId={gridId}
                   cellId={`c:${rows.length}:${types.length+1}`}
                   value={draft.note}
-                  placeholder="Reason / notes"
+                  placeholder={dt("Reason / notes")}
                   displayClassName="text-rose-600 font-medium italic"
                   onCommit={(v) => commitDraft({ ...draft, note: v })}
                 />
@@ -282,9 +282,9 @@ export default function EmployeeSheetBlock({
             {(intern ? ["taken"] as const : ["granted", "taken", "remain"] as const).map((key) => (
               <tr key={key} className={key === "remain" ? "bg-slate-100 border-t border-slate-200" : ""}>
                 <td className="px-2 py-1.5 w-24 border-r border-slate-200 font-extrabold text-slate-500 uppercase tracking-wide text-[10px]">
-                  {key === "granted" ? "Quota" : key === "taken" ? `Taken ${year}` : "Remain"}
+                  {key === "granted" ? dt("Quota") : key === "taken" ? dt("Taken {0}", [year]) : dt("Remain")}
                   {!quotasKnown && key === "granted" && (
-                    <span className="ml-1 text-amber-500 normal-case font-bold" title="Quota is not stored in the database yet">not set</span>
+                    <span className="ml-1 text-amber-500 normal-case font-bold" title={dt("Quota is not stored in the database yet")}>{dt("not set")}</span>
                   )}
                 </td>
                 {totals.map((t) => (
@@ -298,7 +298,7 @@ export default function EmployeeSheetBlock({
                     {key === "taken"
                       ? t.taken
                       : t.unlimited
-                        ? <span className="text-slate-400" title="No limit on sick leave">∞</span>
+                        ? <span className="text-slate-400" title={dt("No limit on sick leave")}>∞</span>
                         : quotasKnown
                           ? t[key]
                           : <span className="text-slate-300">—</span>}
@@ -319,12 +319,12 @@ export default function EmployeeSheetBlock({
                         if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                         if (e.key === "Escape") setNoteDraft(employee.quotaNote ?? "");
                       }}
-                      placeholder="Quota note"
+                      placeholder={dt("Quota note")}
                       title={noteDraft}
                       className="w-full h-6 px-1.5 rounded-sm bg-transparent border border-transparent text-[10px] font-semibold text-rose-600 truncate hover:border-slate-300 hover:bg-white focus:bg-white focus:border-[#00B5E2] focus:outline-hidden"
                     />
                   )}
-                  {key === "taken" && employee.quotas.carriedOver > 0 ? `+${employee.quotas.carriedOver} carried over` : ""}
+                  {key === "taken" && employee.quotas.carriedOver > 0 ? dt("+{0} carried over", [employee.quotas.carriedOver]) : ""}
                 </td>
               </tr>
             ))}

@@ -1,3 +1,5 @@
+import {useLanguage} from "@/hooks/useLanguage";
+import {useDashboardText} from "@/hooks/useDashboardText";
 import { useMemo, useState } from "react";
 import { RotateCcw, Search, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -31,6 +33,9 @@ export default function ManageRoster({
   onOpenSheet,
   onManageIntern,
 }: ManageRosterProps) {
+ const dt = useDashboardText();
+ const {language}=useLanguage();
+
   const [query, setQuery] = useState("");
 
   const rows = useMemo(() => {
@@ -51,12 +56,12 @@ export default function ManageRoster({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3">
         <div>
           <h2 className="text-sm font-extrabold text-slate-900">
-            {variant === "removed" ? "Removed staff" : "Manage roster"}
+            {variant === "removed" ? dt("Removed staff") : dt("Manage roster")}
           </h2>
           <p className="text-[11px] font-semibold text-slate-400">
             {variant === "removed"
-              ? "They keep their leave history. Restore to bring them back."
-              : onManageIntern ? "Open an intern’s sheet or manage their internship" : "Click a quota number or note to edit it"}
+              ? dt("They keep their leave history. Restore to bring them back.")
+              : onManageIntern ? dt("Open an intern’s sheet or manage their internship") : dt("Click a quota number or note to edit it")}
           </p>
         </div>
 
@@ -65,7 +70,7 @@ export default function ManageRoster({
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name, nickname, code…"
+            placeholder={dt("Search name, nickname, code…")}
             className="pl-9 h-9 text-xs"
           />
         </div>
@@ -76,22 +81,22 @@ export default function ManageRoster({
           <table className="w-full text-xs border-collapse">
             <thead className="bg-slate-50">
               <tr>
-                <th className={`${HEAD} w-24`}>Code</th>
-                <th className={HEAD}>Employee</th>
-                <th className={`${HEAD} w-28`}>Department</th>
-                <th className={`${HEAD} w-24`}>Started</th>
-                <th className={`${HEAD} w-20 text-center`}>Annual</th>
-                <th className={`${HEAD} w-20 text-center`}>Personal</th>
-                <th className={`${HEAD} w-20 text-center`}>{onManageIntern ? "Sick" : "Carried"}</th>
-                <th className={`${HEAD} min-w-[150px]`}>{onManageIntern ? "Internship" : "Quota note"}</th>
-                <th className={`${HEAD} w-28 text-center`}>Action</th>
+                <th className={`${HEAD} w-24`}>{dt("Code")}</th>
+                <th className={HEAD}>{dt("Employee")}</th>
+                <th className={`${HEAD} w-28`}>{dt("Department")}</th>
+                <th className={`${HEAD} w-24`}>{dt("Started")}</th>
+                <th className={`${HEAD} w-20 text-center`}>{dt("Annual")}</th>
+                <th className={`${HEAD} w-20 text-center`}>{dt("Personal")}</th>
+                <th className={`${HEAD} w-20 text-center`}>{onManageIntern ? dt("Sick") : dt("Carried")}</th>
+                <th className={`${HEAD} min-w-[150px]`}>{onManageIntern ? dt("Internship") : dt("Quota note")}</th>
+                <th className={`${HEAD} w-28 text-center`}>{dt("Action")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={9} className="py-10 text-center text-slate-400 italic font-medium">
-                    {variant === "removed" ? "Nobody has been removed" : "No employees match"}
+                    {variant === "removed" ? dt("Nobody has been removed") : dt("No employees match")}
                   </td>
                 </tr>
               )}
@@ -119,18 +124,18 @@ export default function ManageRoster({
                           {emp.name} <span className="text-amber-600">({emp.nickname})</span>
                         </span>
                         {needsQuota && !inactive && (
-                          <span className="text-[10px] font-extrabold text-amber-600">Quota not set</span>
+                          <span className="text-[10px] font-extrabold text-amber-600">{dt("Quota not set")}</span>
                         )}
                       </button>
                     </td>
                     <td className="py-2 px-3 font-semibold text-slate-600">
                       {emp.department}
                       {inactive && (
-                        <span className="ml-1.5 text-[10px] font-extrabold text-rose-600 uppercase">removed</span>
+                        <span className="ml-1.5 text-[10px] font-extrabold text-rose-600 uppercase">{dt("removed")}</span>
                       )}
                     </td>
                     <td className="py-2 px-3 font-semibold text-slate-500">
-                      {emp.startDate ? formatSheetDate(emp.startDate) : "—"}
+                      {emp.startDate ? formatSheetDate(emp.startDate, language) : "—"}
                     </td>
 
                     {(["annualTotal", "personalTotal", onManageIntern ? "sickTotal" : "carriedOver"] as const).map((field) => (
@@ -155,11 +160,11 @@ export default function ManageRoster({
                     ))}
 
                     <td className="py-1 px-1">
-                      {onManageIntern ? <button className="text-cyan-700 underline font-semibold" onClick={()=>onManageIntern(emp)}>Dates & allowances</button> : <EditableCell
+                      {onManageIntern ? <button className="text-cyan-700 underline font-semibold" onClick={()=>onManageIntern(emp)}>{dt("Dates & allowances")}</button> : <EditableCell
                         gridId={`roster-note-${emp.id}`}
                         cellId="c:0:0"
                         value={emp.quotaNote ?? ""}
-                        placeholder="Add a note"
+                        placeholder={dt("Add a note")}
                         title={emp.quotaNote}
                         displayClassName="text-rose-600 font-medium italic"
                         onCommit={(note) => {
@@ -175,12 +180,11 @@ export default function ManageRoster({
                             onClick={() => onSetStatus(emp, "active")}
                             className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-extrabold text-[11px] flex items-center gap-1"
                           >
-                            <RotateCcw className="w-3 h-3" /> Restore
-                          </button>
+                            <RotateCcw className="w-3 h-3" />  {dt("Restore")} </button>
                         ) : (
                           <button
                             onClick={() => onSetStatus(emp, "inactive")}
-                            title="Remove from roster"
+                            title={dt("Remove from roster")}
                             className="p-1.5 text-slate-300 hover:text-rose-600 transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />

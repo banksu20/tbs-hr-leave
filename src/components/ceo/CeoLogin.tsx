@@ -1,3 +1,4 @@
+import {useDashboardText} from "@/hooks/useDashboardText";
 import { BASE } from "@/lib/api";
 import { useState } from "react";
 import { Lock } from "lucide-react";
@@ -10,6 +11,8 @@ export interface CeoLoginProps {
 }
 
 export default function CeoLogin({ onSuccess }: CeoLoginProps) {
+ const dt = useDashboardText();
+
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -30,9 +33,9 @@ export default function CeoLogin({ onSuccess }: CeoLoginProps) {
         return;
       }
       const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Incorrect password");
+      setError(body.error ?? dt("Incorrect password"));
     } catch {
-      setError("Cannot reach the server");
+      setError(dt("Cannot reach the server"));
     } finally {
       setBusy(false);
     }
@@ -46,12 +49,12 @@ export default function CeoLogin({ onSuccess }: CeoLoginProps) {
             <img src={tbsLogo} alt="TBS" className="h-6 w-auto object-contain" />
           </div>
           <div>
-            <h1 className="text-base font-extrabold text-slate-900">TBS HR - Leave Request System</h1>
+            <h1 className="text-base font-extrabold text-slate-900">{dt("TBS HR - Leave Request System")}</h1>
             <p className="text-[11px] text-slate-500 font-semibold">TBS Marketing</p>
           </div>
         </div>
 
-        <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wide">Password</label>
+        <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wide">{dt("Password")}</label>
         <div className="relative mt-1">
           <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <Input
@@ -71,7 +74,7 @@ export default function CeoLogin({ onSuccess }: CeoLoginProps) {
           disabled={busy || !password}
           className="w-full mt-4 h-10 bg-[#00B5E2] hover:bg-[#0099c4] text-white font-bold disabled:opacity-40"
         >
-          {busy ? "Checking…" : "Sign in"}
+          {busy ? dt("Checking…") : dt("Sign in")}
         </Button>
       </form>
     </div>

@@ -3,7 +3,7 @@ import React from 'react';
 import {createRoot} from 'react-dom/client';
 import {MemoryRouter} from 'react-router-dom';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
-import {LanguageProvider} from '../../src/hooks/useLanguage';
+import {LanguageProvider,useLanguage} from '../../src/hooks/useLanguage';
 import DashboardAccess from '../../src/components/ceo/DashboardAccess';
 import '../../src/index.css';
 let session:{id:string;username:string;role:string;active:boolean}|null=null;
@@ -39,4 +39,5 @@ window.fetch=async(input,init)=>{
  }
  throw Error('Live requests are disabled in this preview');
 };
-createRoot(document.getElementById('root')!).render(<LanguageProvider><QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><MemoryRouter><div className="bg-slate-800 px-4 py-1.5 text-center text-xs text-slate-300">Local preview · Sample data only · Sign in as admin, ceo or hr with any demo password.</div><DashboardAccess/></MemoryRouter></QueryClientProvider></LanguageProvider>);
+export function DemoLanguage(){const {language,toggleLanguage}=useLanguage();return <button className="fixed bottom-3 right-3 z-50 rounded-full border bg-white px-4 py-2 shadow" onClick={toggleLanguage}>{language==='th'?'EN':'ไทย'}</button>;}
+createRoot(document.getElementById('root')!).render(<LanguageProvider><QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><MemoryRouter><div className="bg-slate-800 px-4 py-1.5 text-center text-xs text-slate-300">Local preview · Sample data only · Sign in as admin, ceo or hr with any demo password.</div><DemoLanguage/><DashboardAccess/></MemoryRouter></QueryClientProvider></LanguageProvider>);
