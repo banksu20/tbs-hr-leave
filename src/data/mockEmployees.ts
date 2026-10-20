@@ -28,6 +28,7 @@ export interface Employee {
   quotaRevision?: string;
   employmentType?: "employee"|"intern";
   internNumber?: number|null;
+  universityInternshipApproved?: number;
   storedCarriedOver?: number;
   carryoverExpiresOn?: string|null;
   quotasKnown?: boolean;

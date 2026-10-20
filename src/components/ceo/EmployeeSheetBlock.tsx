@@ -330,6 +330,12 @@ export default function EmployeeSheetBlock({
             ))}
           </tbody>
         </table>
+        {intern && <p className="border-t border-violet-100 bg-violet-50 px-3 py-3 text-sm text-violet-900">
+          <span className="font-semibold">{dt("University leave — whole internship")}: </span>
+          {employee.universityInternshipApproved === undefined
+            ? dt("Total unavailable. Refresh to load.")
+            : dt("{0} approved days", [employee.universityInternshipApproved])}
+        </p>}
       </footer>
     </section>
   );

@@ -25,7 +25,7 @@ window.fetch=async(input,init)=>{
  }
  if(url.pathname==='/api/company-holidays')return json({ok:true,confirmed:true,revision:'demo',holidays:[{date:`${year}-10-13`,name:'Company holiday'}]});
  if(url.pathname==='/api/registration')return json({ok:true,registrations:[]});
- if(url.pathname==='/api/intern-terms')return json({ok:true,terms:[{user_id:'demo-intern',months:4,start_date:`${year}-01-01`,end_date:`${year}-04-30`}]});
+ if(url.pathname==='/api/intern-terms')return json({ok:true,terms:[{user_id:'demo-intern',universityApproved:0,months:4,start_date:`${year}-01-01`,end_date:`${year}-04-30`}]});
  if(!session)return json({error:'Sign in required'},401);
  if(url.pathname==='/api/employees'){const intern=url.searchParams.get('cohort')==='intern';if(session.role==='hr'&&!intern)return json({error:'Access denied'},403);return json({year,count:intern&&internDeleted?0:1,employees:intern&&internDeleted?[]:[employee(intern)]});}
  if(url.pathname==='/api/leave'&&init?.method==='PATCH'&&url.searchParams.get('id')==='demo-request'){pendingDemo=false;return json({ok:true});}
