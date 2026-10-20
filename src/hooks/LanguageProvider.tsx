@@ -1,10 +1,18 @@
-import React,{useState} from "react";
+import React,{useState,useEffect} from "react";
 import {LanguageContext,translations,type Language} from "./language-context";
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
     const savedLang = localStorage.getItem('app_language');
     return (savedLang === 'en' || savedLang === 'th') ? savedLang : 'th';
   });
+
+  useEffect(() => {
+    const syncLanguage = (event: StorageEvent) => {
+      if (event.key === 'app_language' && (event.newValue === 'en' || event.newValue === 'th')) setLanguageState(event.newValue);
+    };
+    window.addEventListener('storage', syncLanguage);
+    return () => window.removeEventListener('storage', syncLanguage);
+  }, []);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);

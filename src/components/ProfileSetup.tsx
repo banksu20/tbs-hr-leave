@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import tbsLogo from "@/image/TBS-Logo.png"; 
+import tbsLogo from "@/image/TBS-Logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import liff from "@line/liff";
+import {useLanguage} from "@/hooks/useLanguage";
 
 
 interface ProfileSetupProps {
@@ -12,6 +13,9 @@ interface ProfileSetupProps {
 }
 
 export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps) {
+  const {language}=useLanguage();
+  const th=language==='th';
+  const [initError,setInitError]=useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [nickName, setNickName] = useState("");
@@ -31,6 +35,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
     })
     .catch((err) => {
       console.error("LIFF Init failed", err);
+      setInitError(true);
     });
   }, []);
 
@@ -40,7 +45,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!firstName.trim() || !lastName.trim()) {
       alert("Please enter your first and last name / กรุณากรอกชื่อและนามสกุล");
       return;
@@ -51,17 +56,18 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
     }
 
     const combinedName = `${firstName.trim()}|${lastName.trim()}|${nickName.trim()}`;
-    
+
     onSave({ name: combinedName, department, employmentType });
   };
 
   const capitalize = (val: string) => val.replace(/\b\w/g, char => char.toUpperCase());
 
-  
+
+  if(initError)return <div className="min-h-screen flex flex-col gap-4 items-center justify-center bg-slate-50"><p role="alert">{th?'เชื่อมต่อ LINE ไม่สำเร็จ กรุณาเปิดหน้านี้ผ่าน LINE อีกครั้ง':'Unable to connect to LINE. Reopen this page through LINE.'}</p><Button onClick={()=>window.location.reload()}>{th?'ลองอีกครั้ง':'Try again'}</Button></div>;
   if(!isLiffInit){
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <p className="text-slate-500">Initializing LIFF...</p>
+        <p className="text-slate-500">{th?'กำลังเชื่อมต่อ LINE…':'Connecting to LINE…'}</p>
       </div>
     )
   }
@@ -75,19 +81,16 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
               <img src={tbsLogo} alt="TBS Marketing Logo" className="h-16 w-auto object-contain" />
             </div>
             <CardDescription className="text-slate-600 text-base leading-relaxed px-4 font-medium">
-              กรุณาเข้าสู่ระบบด้วย LINE เพื่อดำเนินการต่อ
-              <span className="text-slate-400 text-[13px] mt-2 block font-normal">
-                Please log in with your LINE account to access the system.
-              </span>
+              {th?'กรุณาเข้าสู่ระบบด้วย LINE เพื่อดำเนินการต่อ':'Sign in with LINE to continue.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center pb-8 px-6">
-            <Button 
-              onClick={handleLoginLine} 
+            <Button
+              onClick={handleLoginLine}
               className="w-full h-12 text-md font-semibold text-white shadow-md hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: "#06C755" }} 
+              style={{ backgroundColor: "#06C755" }}
             >
-              เข้าสู่ระบบด้วย LINE
+              {th?'เข้าสู่ระบบด้วย LINE':'Sign in with LINE'}
             </Button>
           </CardContent>
         </Card>
@@ -103,25 +106,22 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
             <img src={tbsLogo} alt="TBS Marketing Logo" className="h-16 w-auto object-contain" />
           </div>
           <CardDescription className="text-slate-400 text-sm leading-relaxed px-4">
-            ระบุข้อมูลของคุณเพื่อเริ่มต้นใช้งานระบบวันลา<br/>
-            <span className="text-slate-500 text-[13px] mt-1 block">
-              Please enter your full name and nickname to set up your profile.
-            </span>
+            {th?'กรอกชื่อ นามสกุล ชื่อเล่น และแผนกเพื่อสมัครใช้งานระบบวันลา':'Enter your name, nickname and department to register for leave.'}
           </CardDescription>
         </CardHeader>
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
-            
-            <label className="block text-sm font-semibold text-slate-700">Employment type / ประเภทพนักงาน<select className="mt-2 w-full border rounded-xl p-3 bg-white" value={employmentType} onChange={e=>setEmploymentType(e.target.value as 'employee'|'intern')}><option value="employee">Full-time / พนักงานประจำ</option><option value="intern">Intern / นักศึกษาฝึกงาน</option></select></label>
+
+            <label className="block text-sm font-semibold text-slate-700">{th?'ประเภทพนักงาน':'Employment type'}<select className="mt-2 w-full border rounded-xl p-3 bg-white" value={employmentType} onChange={e=>setEmploymentType(e.target.value as 'employee'|'intern')}><option value="employee">{th?'พนักงานประจำ':'Full-time'}</option><option value="intern">{th?'นักศึกษาฝึกงาน':'Intern'}</option></select></label>
             {/* ชื่อจริง - นามสกุล */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700">
-                  ชื่อจริง <span className="text-[11px] font-normal text-rose-500">(English Only)</span>
+                  {th?'ชื่อจริง':'First name'} <span className="text-[11px] font-normal text-rose-500">{th?'(ภาษาอังกฤษ)':'(English only)'}</span>
                 </label>
-                <Input 
-                  placeholder="First Name" 
+                <Input
+                  aria-label={th?'ชื่อจริง':'First name'} placeholder={th?'ชื่อจริง':'First name'}
                   value={firstName}
                   onChange={(e) => setFirstName(capitalize(e.target.value.replace(/[^a-zA-Z\s]/g, '')))}
                   className="h-11 bg-white border-slate-200 focus-visible:ring-blue-500"
@@ -129,10 +129,10 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700">
-                  นามสกุล <span className="text-[11px] font-normal text-rose-500">(English Only)</span>
+                  {th?'นามสกุล':'Last name'} <span className="text-[11px] font-normal text-rose-500">{th?'(ภาษาอังกฤษ)':'(English only)'}</span>
                 </label>
-                <Input 
-                  placeholder="Last Name" 
+                <Input
+                  aria-label={th?'นามสกุล':'Last name'} placeholder={th?'นามสกุล':'Last name'}
                   value={lastName}
                   onChange={(e) => setLastName(capitalize(e.target.value.replace(/[^a-zA-Z\s]/g, '')))}
                   className="h-11 bg-white border-slate-200 focus-visible:ring-blue-500"
@@ -143,10 +143,10 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
             {/* ชื่อเล่น */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-700">
-                ชื่อเล่น <span className="text-[11px] font-normal text-rose-500">(English Only)</span>
+                {th?'ชื่อเล่น':'Nickname'} <span className="text-[11px] font-normal text-rose-500">{th?'(ภาษาอังกฤษ)':'(English only)'}</span>
               </label>
-              <Input 
-                placeholder="Nickname" 
+              <Input
+                aria-label={th?'ชื่อเล่น':'Nickname'} placeholder={th?'ชื่อเล่น':'Nickname'}
                 value={nickName}
                 onChange={(e) => setNickName(capitalize(e.target.value.replace(/[^a-zA-Z\s]/g, '')))}
                 className="h-11 bg-white border-slate-200 focus-visible:ring-blue-500"
@@ -155,13 +155,14 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
 
             {/* Select Department */}
             <div className="space-y-2 pt-2">
-              <label className="text-sm font-semibold text-slate-700">แผนก</label>
+              <label className="text-sm font-semibold text-slate-700">{th?'แผนก':'Department'}</label>
               <select
+                aria-label={th?'แผนก':'Department'}
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
                 className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-hidden"
               >
-                <option value="" disabled>-- เลือกแผนก --</option>
+                <option value="" disabled>{th?'เลือกแผนก':'Select department'}</option>
                 <option value="Web Developer">Web Developer</option>
                 <option value="UX/UI Designer">UX/UI Designer</option>
                 <option value="SEO">SEO</option>
@@ -176,7 +177,7 @@ export default function ProfileSetup({ defaultName, onSave }: ProfileSetupProps)
             </div>
 
             <Button type="submit" className="w-full mt-8 h-12 text-md font-semibold bg-linear-to-r/srgb from-blue-600 to-indigo-600 hover:from-blue-700 text-white shadow-md">
-              Submit registration
+              {th?'ส่งข้อมูลสมัคร':'Submit registration'}
             </Button>
           </form>
         </CardContent>
