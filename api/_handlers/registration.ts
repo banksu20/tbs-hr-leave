@@ -7,7 +7,7 @@ import {n8nPost} from '../_lib/n8nClient.js';
 import {isPlainDate} from '../_lib/date.js';
 const name=z.string().trim().min(1).max(100);
 const registration=z.object({firstName:name,lastName:name,nickname:z.string().trim().max(100),department:name,employmentType:z.enum(['employee','intern'])});
-const activation=z.object({userId:z.string().min(1),months:z.union([z.literal(4),z.literal(6)]),startDate:z.string().refine(isPlainDate),endDate:z.string().refine(isPlainDate)}).refine(b=>b.endDate>=b.startDate);
+const activation=z.object({months:z.number().optional(),userId:z.string().min(1),startDate:z.string().refine(isPlainDate),endDate:z.string().refine(isPlainDate)}).refine(b=>b.endDate>=b.startDate);
 export default async function handler(req:VercelRequest,res:VercelResponse){
  res.setHeader('Cache-Control','no-store');
  if(!['GET','POST','PATCH'].includes(req.method||''))return json(res,405,{error:'Method not allowed'});
@@ -16,7 +16,7 @@ export default async function handler(req:VercelRequest,res:VercelResponse){
   if(req.method==='PATCH'||req.query.review==='1'){
    if(!await dashboardSession(req))return json(res,401,{error:'Sign in required'});
    payload={action:'list',sessionHash:tokenHash(req)};
-   if(req.method==='PATCH'){if(!sameOrigin(req))return json(res,403,{error:'Access denied'});const p=activation.safeParse(req.body);if(!p.success)return json(res,422,{error:'Check the internship programme and dates.'});payload={...payload,...p.data,action:'activate'};}
+   if(req.method==='PATCH'){if(!sameOrigin(req))return json(res,403,{error:'Access denied'});const p=activation.safeParse(req.body);if(!p.success)return json(res,422,{error:'Choose valid start and end dates.'});payload={...payload,...p.data,action:'activate'};}
   }else{
    let accountId:string;try{accountId=await verifyLineIdentity(headerValue(req,'authorization'));}catch{return json(res,401,{error:'Please sign in through LINE.'});}
    payload={accountId,action:'status'};

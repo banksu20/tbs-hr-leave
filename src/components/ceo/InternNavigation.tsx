@@ -14,7 +14,7 @@ const secondary = [
   { id: 'history', label: 'History', Icon: History },
 ];
 
-export default function InternNavigation({ tab, onChange }: { tab: string; onChange: (tab: string) => void }) {
+export default function InternNavigation({ tab, onChange, pendingCount = 0 }: { tab: string; onChange: (tab: string) => void; pendingCount?: number }) {
   const registrations = useQuery({
     queryKey: ['intern-registration-count'],
     queryFn: async () => {
@@ -26,13 +26,23 @@ export default function InternNavigation({ tab, onChange }: { tab: string; onCha
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
+  const cancellations = useQuery({
+    queryKey: ['cancellations', 'intern'],
+    queryFn: async () => {
+      const response = await fetch('/api/cancellations?view=boss&cohort=intern', { cache: 'no-store' });
+      if (!response.ok) throw new Error('Unable to load pending cancellations');
+      return (await response.json()).requests as { id: number }[];
+    },
+    refetchInterval: 30_000,
+  });
+  const approvalCount = pendingCount + (cancellations.data?.length ?? 0);
   const selected = secondary.find(item => item.id === tab);
   const count = registrations.data ?? 0;
   const badge = count > 0 ? <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[10px] leading-none" aria-label={`${count} pending registrations`}>{count}</span> : null;
   const buttonClass = 'flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300';
 
   return <nav aria-label="Intern dashboard views" className="flex flex-wrap items-center gap-1 rounded-xl bg-slate-900 p-2">
-    {primary.map(({ id, label, Icon }) => <button key={id} type="button" aria-pressed={tab === id} onClick={() => onChange(id)} className={`${buttonClass} ${tab === id ? 'bg-cyan-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}><Icon aria-hidden="true" className="hidden h-4 w-4 sm:block"/>{label}</button>)}
+    {primary.map(({ id, label, Icon }) => <button key={id} type="button" aria-pressed={tab === id} onClick={() => onChange(id)} className={`${buttonClass} ${tab === id ? 'bg-cyan-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}><Icon aria-hidden="true" className="hidden h-4 w-4 sm:block"/>{label}{id === 'pending' && approvalCount > 0 && <span className="inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold leading-none text-white" aria-label={`${approvalCount} ${approvalCount === 1 ? 'request' : 'requests'} awaiting approval`} role="status">{approvalCount > 99 ? '99+' : approvalCount}</span>}</button>)}
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button type="button" aria-label={selected ? `More views: ${selected.label}` : 'More views'} className={`${buttonClass} ml-auto ${selected ? 'bg-cyan-500 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>

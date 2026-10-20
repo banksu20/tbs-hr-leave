@@ -12,7 +12,10 @@ let demoRetried=false;
 let internDeleted=false;
 const accounts=[{id:'demo-admin',username:'admin',role:'admin',active:true},{id:'demo-ceo',username:'ceo',role:'ceo',active:true},{id:'demo-hr',username:'hr',role:'hr',active:true}];
 const year=new Date().getFullYear();
-const employee=(intern:boolean)=>({id:intern?'demo-intern':'demo-staff',empNo:intern?901:1,empCode:intern?'TBSInterns-001':'TBS-001',name:intern?'Sample Intern':'Sample Employee',nickname:'',department:intern?'AI':'SEO',employmentType:intern?'intern':'employee',internNumber:intern?1:null,status:intern?internStatus:'active',startDate:`${year}-01-01`,quotas:{annualTotal:intern?null:10,sickTotal:intern?null:30,personalTotal:intern?0:3,carriedOver:0},quotasKnown:!intern,leaves:[]});
+const approvalDemo=new URLSearchParams(location.search).get('scenario')==='approvals';
+let pendingDemo=approvalDemo;
+const demoDates=[`${year}-10-27`,`${year}-10-28`];
+const employee=(intern:boolean)=>({id:intern?'demo-intern':'demo-staff',empNo:intern?901:1,empCode:intern?'TBSInterns-001':'TBS-001',name:intern?'Sample Intern':'Sample Employee',nickname:'',department:intern?'AI':'SEO',employmentType:intern?'intern':'employee',internNumber:intern?1:null,status:intern?internStatus:'active',startDate:`${year}-01-01`,quotas:{annualTotal:intern?null:10,sickTotal:intern?null:30,personalTotal:intern?0:3,carriedOver:0},quotasKnown:!intern,leaves:intern&&pendingDemo?demoDates.map((date,i)=>({id:`demo-leave-${i}`,requestId:'demo-request',requestRevision:'demo-revision',requestDates:demoDates,date,type:'personal',days:1,note:'Sample two-day request',status:'Pending'})):[]});
 window.fetch=async(input,init)=>{
  const url=new URL(String(input),location.origin),json=(v:unknown,status=200)=>new Response(JSON.stringify(v),{status});
  if(url.pathname==='/api/auth'){
@@ -25,6 +28,7 @@ window.fetch=async(input,init)=>{
  if(url.pathname==='/api/intern-terms')return json({ok:true,terms:[{user_id:'demo-intern',months:4,start_date:`${year}-01-01`,end_date:`${year}-04-30`}]});
  if(!session)return json({error:'Sign in required'},401);
  if(url.pathname==='/api/employees'){const intern=url.searchParams.get('cohort')==='intern';if(session.role==='hr'&&!intern)return json({error:'Access denied'},403);return json({year,count:intern&&internDeleted?0:1,employees:intern&&internDeleted?[]:[employee(intern)]});}
+ if(url.pathname==='/api/leave'&&init?.method==='PATCH'&&url.searchParams.get('id')==='demo-request'){pendingDemo=false;return json({ok:true});}
  if(url.pathname==='/api/accounts')return ['admin','ceo'].includes(session.role)?json({accounts,ok:true}):json({error:'Access denied'},403);
  if(url.pathname==='/api/interns'&&init?.method==='POST'){const b=JSON.parse(String(init.body));if(b.action==='delete'){if(internStatus!=='inactive'||b.confirmation!=='TBSInterns-001')return json({error:'Archive the intern and enter TBSInterns-001 to confirm.'},422);internDeleted=true;return json({ok:true});}if(b.action==='archive')internStatus='inactive';if(b.action==='restore')internStatus='active';return json({ok:true});}
  if(url.pathname==='/api/interns')return json({employees:[{id:'demo-intern',name:'Sample Intern',type:'intern',internNumber:1}]});
