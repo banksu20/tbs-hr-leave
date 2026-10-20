@@ -409,7 +409,7 @@ export const dashboardThai: Record<string, string> = {
   "Sat": "ส.",
   "Calendar confirmed": "ยืนยันปฏิทินแล้ว",
   "HR confirmation required": "รอฝ่ายบุคคลยืนยัน",
-  "Monday–Friday, excluding these dates. Used by leave deadlines and certificate reminders.": "วันทำงานคือวันจันทร์–ศุกร์ ยกเว้นวันที่ระบุ ใช้คำนวณกำหนดยื่นลาและการเตือนใบรับรองแพทย์",
+  "Monday–Friday, excluding these dates. Used by certificate reminders. Leave deadlines use calendar days.": "วันทำงานคือวันจันทร์–ศุกร์ ยกเว้นวันที่ระบุ ใช้สำหรับการเตือนใบรับรองแพทย์ ส่วนกำหนดยื่นลานับตามวันปฏิทิน",
   "English name": "ชื่อภาษาอังกฤษ",
   "Thai name": "ชื่อภาษาไทย",
   "Add holiday": "เพิ่มวันหยุด",
