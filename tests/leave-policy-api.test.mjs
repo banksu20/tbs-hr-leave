@@ -40,3 +40,12 @@ test('employee submission rejects backdating before workflow calls and uses Bang
  const res=response();await handler({method:'POST',headers:{authorization:'Bearer valid'},body:{leaveType:'personal',selectedDates:['2099-10-01'],leaveDays:1,reason:'Test'}},res);assert.equal(res.statusCode,200);assert.equal(forwarded,1);
  const {todayInBangkok}=loadTS()('api/_lib/date.ts');assert.equal(todayInBangkok(new Date('2026-10-13T16:59:59Z')),'2026-10-13');assert.equal(todayInBangkok(new Date('2026-10-13T17:00:00Z')),'2026-10-14');
 });
+test('employee request API accepts optional annual reasons but keeps sick and university validation',async()=>{
+ const calls=[];const handler=loadTS({'../_lib/lineIdentity.js':{verifyLineIdentity:async()=> 'verified'},'../_lib/n8nClient.js':{n8nPost:async(...args)=>{calls.push(args);return {ok:true};}}})('api/_handlers/employee-request.ts').default;
+ for(const leaveType of ['annual','vacation','personal','sick','university']){
+ const res={statusCode:200,setHeader(){},status(n){this.statusCode=n;return this;},send(v){this.body=JSON.parse(v);return this;}};
+ await handler({method:'POST',headers:{authorization:'Bearer valid'},body:{leaveType,selectedDates:['2099-10-15'],leaveDays:1}},res);
+ assert.equal(res.statusCode,['sick','university'].includes(leaveType)?422:200,leaveType);
+ }
+ assert.equal(calls.length,3);for(const [,data] of calls)assert.equal(data.payload.reason,'');
+});
