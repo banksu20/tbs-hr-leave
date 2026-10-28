@@ -60,3 +60,17 @@ test('Thai intern exports retain university type when toggled and leave user dat
  assert.ok(view.root.findAllByType('th').some(t=>t.props.children==='กิจกรรมมหาวิทยาลัย'));assert.match(JSON.stringify(view.toJSON()),/Annual/);
  }finally{view?.unmount();}
 });
+
+test('dashboard leave editor uses the same reason requirements as employee requests',async()=>{
+ const Component=loadTS({
+  '@/hooks/useLanguage':{useLanguage:()=>({language:'en'})},
+  '@/components/ui/dialog':dialogMock,
+  '../LeaveEvidence':{default:()=>null},
+ })('src/components/ceo/LeaveRecordDialog.tsx').default;
+ for(const type of ['annual','personal','sick','university']){
+  let view;try{
+   await act(async()=>{view=renderer.create(React.createElement(Component,{employeeName:'Test',initial:{type,note:'',dates:['2099-01-05'],expectedDates:['2099-01-05'],daysPerDate:1,expectedRevision:'r',scope:'request',status:'Pending'},onClose(){},onSave:async()=>{}}));});
+   const note=view.root.findAllByType('input').find(i=>i.props.value==='');assert.ok(note);assert.equal(note.props.required,type!=='annual',type);
+  }finally{view?.unmount();}
+ }
+});

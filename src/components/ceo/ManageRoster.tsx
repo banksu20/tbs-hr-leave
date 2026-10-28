@@ -78,7 +78,7 @@ export default function ManageRoster({
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-xs border-collapse">
+          <table className="mobile-roster w-full text-xs border-collapse">
             <thead className="bg-slate-50">
               <tr>
                 <th className={`${HEAD} w-24`}>{dt("Code")}</th>
@@ -121,25 +121,25 @@ export default function ManageRoster({
                     <td className="py-2 px-3">
                       <button onClick={() => onOpenSheet(emp)} className="text-left group">
                         <span className="block font-extrabold text-slate-900 group-hover:text-[#00B5E2] truncate">
-                          {emp.name} <span className="text-amber-600">({emp.nickname})</span>
+                          {emp.name} {emp.nickname && <span className="text-amber-600">({emp.nickname})</span>}
                         </span>
                         {needsQuota && !inactive && (
                           <span className="text-[10px] font-extrabold text-amber-600">{dt("Quota not set")}</span>
                         )}
                       </button>
                     </td>
-                    <td className="py-2 px-3 font-semibold text-slate-600">
+                    <td data-label={dt("Department")} className="py-2 px-3 font-semibold text-slate-600">
                       {emp.department}
                       {inactive && (
                         <span className="ml-1.5 text-[10px] font-extrabold text-rose-600 uppercase">{dt("removed")}</span>
                       )}
                     </td>
-                    <td className="py-2 px-3 font-semibold text-slate-500">
+                    <td data-label={dt("Started")} className="py-2 px-3 font-semibold text-slate-500">
                       {emp.startDate ? formatSheetDate(emp.startDate, language) : "—"}
                     </td>
 
                     {(["annualTotal", "personalTotal", onManageIntern ? "sickTotal" : "carriedOver"] as const).map((field) => (
-                      <td key={field} className="py-1 px-1">
+                      <td data-label={dt(field === "annualTotal" ? "Annual" : field === "personalTotal" ? "Personal" : field === "sickTotal" ? "Sick" : "Carried")} key={field} className="py-1 px-1">
                         {onManageIntern ? <span className="block text-center font-extrabold text-slate-800">{emp.quotasKnown===false ? "—" : emp.quotas[field] ?? "—"}</span> : <EditableCell
                           gridId={`roster-${emp.id}`}
                           cellId={`c:0:${field === "annualTotal" ? 0 : field === "personalTotal" ? 1 : 2}`}
@@ -159,7 +159,7 @@ export default function ManageRoster({
                       </td>
                     ))}
 
-                    <td className="py-1 px-1">
+                    <td data-label={onManageIntern ? dt("Internship") : dt("Quota note")} className="py-1 px-1">
                       {onManageIntern ? <button className="text-cyan-700 underline font-semibold" onClick={()=>onManageIntern(emp)}>{dt("Dates & allowances")}</button> : <EditableCell
                         gridId={`roster-note-${emp.id}`}
                         cellId="c:0:0"
@@ -184,7 +184,7 @@ export default function ManageRoster({
                         ) : (
                           <button
                             onClick={() => onSetStatus(emp, "inactive")}
-                            title={dt("Remove from roster")}
+                            title={dt("Remove from roster")} aria-label={dt("Remove from roster") + ": " + emp.name}
                             className="p-1.5 text-slate-300 hover:text-rose-600 transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />

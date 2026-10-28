@@ -95,7 +95,7 @@ export default function EmployeeSheetBlock({
 
   return (
     <section
-      className={`w-full min-w-0 bg-white rounded-xl border shadow-xs flex flex-col overflow-hidden ${
+      className={`mobile-sheet w-full min-w-0 bg-white rounded-xl border shadow-xs flex flex-col overflow-hidden ${
         quotaReview
           ? "border-amber-300 ring-1 ring-amber-200"
           : overQuota
@@ -150,7 +150,8 @@ export default function EmployeeSheetBlock({
         </div>
       </header>
 
-      <div className="grow overflow-auto max-h-[420px]">
+      <p className="sm:hidden border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">{dt("Swipe sideways to see all columns. Tap a value to edit.")}</p>
+      <div className="grow overflow-auto max-h-[65vh] sm:max-h-[420px]" tabIndex={0} aria-label={employee.name}>
         <table className="w-full border-collapse text-xs">
           <thead className="sticky top-0 z-10">
             <tr className="bg-slate-50 border-b border-slate-200">
@@ -227,7 +228,7 @@ export default function EmployeeSheetBlock({
                 <td className="text-center">
                   <button
                     onClick={() => onDeleteLeave(employee.id, leave.id)}
-                    className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-300 hover:text-rose-600 transition-opacity"
+                    className="opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 text-slate-300 hover:text-rose-600 transition-opacity"
                     title={dt("Remove entire request ({0} dates)", [leave.requestDates?.length ?? 1])}
                   >
                     <Trash2 className="w-3.5 h-3.5" />

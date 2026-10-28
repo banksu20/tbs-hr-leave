@@ -343,7 +343,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans text-slate-900 pb-3">
+    <div className="mobile-dashboard min-h-screen bg-slate-100 font-sans text-slate-900 pb-3">
       
       {/* 1. Top Executive Navigation Header */}
       <DashboardHeader navigation={navigation} account={account} year={

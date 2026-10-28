@@ -1,5 +1,6 @@
 // Dashboard copy only. Stored statuses, IDs and employee-entered text stay unchanged.
 export const dashboardThai: Record<string, string> = {
+  "Swipe sideways to see all columns. Tap a value to edit.": "ปัดซ้าย–ขวาเพื่อดูทุกคอลัมน์ แตะค่าเพื่อแก้ไข",
   "TBS HR - Leave Request System": "TBS HR - ระบบขอลา",
   "Overview": "ภาพรวม",
   "Roster": "รายชื่อพนักงาน",

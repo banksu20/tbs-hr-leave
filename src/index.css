@@ -217,3 +217,30 @@ All colors MUST be HSL.
   input, textarea, select { background-color: white; }
   input::placeholder, textarea::placeholder { color: var(--color-gray-400); opacity: 1; }
 }
+
+/* Phone layouts reuse the existing dashboard controls and colour palette. */
+@media (max-width: 639px) {
+  .mobile-dashboard { min-width: 0; }
+  .mobile-dashboard input, .mobile-dashboard select, .mobile-dashboard textarea,
+  [role="dialog"] input, [role="dialog"] select, [role="dialog"] textarea {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  .mobile-dashboard button, [role="dialog"] button { min-height: 44px; }
+  .mobile-roster, .mobile-roster tbody { display: block; width: 100%; }
+  .mobile-roster thead { display: none; }
+  .mobile-roster tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px; gap: 8px; border-bottom: 1px solid #e2e8f0; }
+  .mobile-roster tbody td { display: block; min-width: 0; padding: 4px; overflow-wrap: anywhere; }
+  .mobile-roster tbody td:nth-child(2), .mobile-roster tbody td:nth-child(8), .mobile-roster tbody td:last-child, .mobile-roster tbody td[colspan] { grid-column: 1 / -1; }
+  .mobile-roster tbody td:nth-child(2) { font-size: 15px; }
+  .mobile-roster tbody td:nth-child(2) .truncate { white-space: normal; }
+  .mobile-roster td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 4px; }
+  .mobile-roster input { width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; }
+  .mobile-roster td:last-child > div { justify-content: flex-end; }
+  .mobile-roster button { min-width: 44px; }
+  .mobile-sheet table { min-width: 520px; }
+  .mobile-sheet footer { overflow-x: auto; }
+  .mobile-sheet input { min-height: 44px; }
+  .mobile-sheet header { flex-wrap: wrap; }
+  [role="dialog"] { max-height: 90dvh; overflow-y: auto; }
+}

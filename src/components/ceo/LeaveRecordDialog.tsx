@@ -24,7 +24,7 @@ export default function LeaveRecordDialog({ requestId, initial, employeeName, cr
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
-    <DialogContent className="max-w-lg bg-white">
+    <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto bg-white">
       <DialogHeader>
         <DialogTitle>{creating ? dt("Add leave") : dt("Edit leave request")} — {employeeName}</DialogTitle>
         <DialogDescription>
@@ -60,7 +60,7 @@ export default function LeaveRecordDialog({ requestId, initial, employeeName, cr
             <option value="" disabled>{dt("Choose a period")}</option><option value="morning">{dt("Morning")}</option><option value="afternoon">{dt("Afternoon")}</option>
           </select>
         </label>}
-        <label className="block text-sm">{dt("Reason / notes")}{form.type === "personal" ? ` (${dt("Optional")})` : " *"}<Input required={form.type !== "personal"} value={form.note} disabled={busy} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
+        <label className="block text-sm">{dt("Reason / notes")}{form.type === "annual" ? ` (${dt("Optional")})` : " *"}<Input required={form.type !== "annual"} value={form.note} disabled={busy} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={busy} onClick={onClose}>{dt("Cancel")}</Button><Button disabled={busy}>{busy ? dt("Saving…") : dt("Save request")}</Button></div>
       </form>
