@@ -1,3 +1,4 @@
+import {leaveFormType} from '@/lib/leaveFormType';
 import {leaveErrorMessage} from '@/lib/leaveErrorMessage';
 import {employeeData} from "@/lib/employeeData";
 import {useNotificationLanguage} from '@/hooks/useNotificationLanguage';
@@ -78,7 +79,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     userName: userName || "",
     userId: userId || "",
     department: department || "",
-    leaveType: defaultType === "sick" ? "sick" : defaultType === "vacation" ? "vacation" : defaultType === "personal" ? "personal" : "",
+    leaveType: leaveFormType(defaultType),
     reason: "",
   });
 
@@ -150,9 +151,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
         userId: userId || prev.userId,
         userName: userName || prev.userName,
         department: department || prev.department, 
-        leaveType: initialLeaveType === "sick" ? "sick" : 
-                   initialLeaveType === "vacation" ? "vacation" : 
-                   prev.leaveType,
+        leaveType: leaveFormType(initialLeaveType || "") || prev.leaveType,
       }));
       setIsLoading(false);
     }
@@ -299,7 +298,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       Swal.fire({
         icon: "warning",
         title: language === 'th' ? "ข้อมูลไม่ครบถ้วน" : "Incomplete Form",
-        text: language === 'th' ? "กรุณากรอกเหตุผลในการลา" : "Please fill in all required fields and select at least one leave date.",
+        text: language === 'th' ? "กรุณากรอกข้อมูลที่จำเป็นและเลือกวันลาอย่างน้อยหนึ่งวัน" : "Please fill in all required fields and select at least one leave date.",
         confirmButtonColor: "#00B5E2",
       });
       return;
@@ -472,7 +471,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 <Label className="flex items-center gap-2 text-slate-700 font-semibold text-xs uppercase tracking-wider">
                   <FileText className="h-4 w-4" /> {t('leave_type')}
                 </Label>
-                <Select value={formData.leaveType} onValueChange={(val) => setFormData({ ...formData, leaveType: val })}>
+                <Select disabled={uploading || evidence.length > 0 || isSubmitting} value={formData.leaveType} onValueChange={(val) => setFormData({ ...formData, leaveType: val })}>
                   <SelectTrigger className={`h-12 rounded-xl font-bold border-white bg-white shadow-xs text-sm ${
                     formData.leaveType === 'sick' ? 'text-rose-600 ring-1 ring-rose-100' : 
                     formData.leaveType === 'vacation' ? 'text-sky-600 ring-1 ring-sky-100' : 
@@ -488,6 +487,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   {isIntern&&<SelectItem value="university">{language==='th'?'กิจกรรมมหาวิทยาลัย':'University activities'}</SelectItem>}
                   </SelectContent>
                 </Select>
+                {(uploading || evidence.length > 0) && <p className="text-xs text-slate-600">{language==='th'?'หากต้องการเปลี่ยนประเภทการลา ให้รออัปโหลดเสร็จแล้วลบไฟล์แนบด้านล่างก่อน':'To change leave type, wait for uploads to finish and remove the attachments below first.'}</p>}
               </div>
 
               {/* เลือกวันที่ */}
@@ -625,6 +625,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 )}
               </div>
 
+              {canEmergency&&<div className="space-y-2"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={emergency} onChange={e=>{setEmergency(e.target.checked);setReasonError(false);}}/>{isAnnual ? (language==='th'?'ขออนุมัติลาหลังเวลาที่กำหนด':'Request late approval') : (language==='th'?'เหตุฉุกเฉิน':'Emergency request')}</label>{exceptionSelected&&<p className="text-xs text-slate-500">{language==='th'?'กรอกเหตุผลในช่องด้านล่าง คำขอยังต้องได้รับการอนุมัติและมีสิทธิ์ลาคงเหลือเพียงพอ':'Use the reason box below. Your request still needs approval and enough remaining leave.'}</p>}</div>}
               {/* กล่องเหตุผล */}
               {(
                 <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
@@ -646,7 +647,6 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
               )}
               {policyReady && late && <p role="alert" className="rounded-xl bg-amber-100 p-3 text-sm text-amber-900">{exceptionSelected ? (language==='th'?'กรุณากรอกเหตุผลในช่องด้านบน':'Please enter your explanation in the box above.') : canEmergency ? (isAnnual ? (language==='th'?'เลยกำหนดส่งคำขอแล้ว เลือก “ขออนุมัติลาหลังเวลาที่กำหนด” และอธิบายเหตุผลเพื่อส่งให้ผู้อนุมัติพิจารณา':'The deadline has passed. Select “Request late approval” and explain why to send it for approval.') : (language==='th'?'เลยกำหนดส่งคำขอแล้ว หากเป็นเหตุฉุกเฉิน ให้เลือก “เหตุฉุกเฉิน” และอธิบายเหตุผล':'The deadline has passed. For an urgent request, select “Emergency request” and explain why.')) : (language==='th'?'เลยกำหนดส่งคำขอสำหรับวันที่เลือก กรุณาเลือกวันใหม่':'The deadline for these dates has passed. Please choose later dates.')}</p>}
               {policyReady&&policy?.deadline&&selectedDates.length>0&&<p className="text-xs text-slate-500">{language==='th'?'กำหนดส่งคำขอ:':'Request deadline:'} {new Date(policy.deadline).toLocaleString(language==='th'?'th-TH':'en-GB',{timeZone:'Asia/Bangkok',dateStyle:'medium',timeStyle:'short'})} ({language==='th'?'เวลากรุงเทพฯ':'Bangkok time'}){['personal','university'].includes(formData.leaveType) && <span className="block mt-1">{language==='th'?'ต้องส่งคำขอก่อน 16:30 น. ของวันก่อนวันลา โดยนับรวมวันเสาร์–อาทิตย์และวันหยุด':'Submit before 16:30 on the calendar day before leave, including weekends and holidays.'}</span>}{policy.isIntern && ['annual','vacation'].includes(formData.leaveType) && <span className="block mt-1">{language==='th'?'ลาพักร้อนต้องแจ้งล่วงหน้าอย่างน้อย 3 วันปฏิทิน ก่อน 16:30 น.':'Annual leave requires 3 calendar days’ notice, before 16:30.'}</span>}</p>}
-              {canEmergency&&<div className="space-y-2"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={emergency} onChange={e=>{setEmergency(e.target.checked);setReasonError(false);}}/>{isAnnual ? (language==='th'?'ขออนุมัติลาหลังเวลาที่กำหนด':'Request late approval') : (language==='th'?'เหตุฉุกเฉิน':'Emergency request')}</label>{exceptionSelected&&<p className="text-xs text-slate-500">{language==='th'?'กรอกเหตุผลในช่องด้านบน คำขอยังต้องได้รับการอนุมัติและมีสิทธิ์ลาคงเหลือเพียงพอ':'Use the reason box above. Your request still needs approval and enough remaining leave.'}</p>}</div>}
               {['sick','university'].includes(formData.leaveType)&&<div className="rounded-xl border bg-white p-3 space-y-2"><label className="text-sm font-semibold">{formData.leaveType==='university'?(language==='th'?'หลักฐานกิจกรรม *':'Activity evidence *'):(language==='th'?'ใบรับรองแพทย์ (แนบภายหลังได้)':'Medical certificate (can be supplied later)')}<input aria-label={language==='th'?'เอกสารประกอบ':'Supporting evidence'} className="block mt-2 w-full text-xs" type="file" accept="application/pdf,image/png,image/jpeg" disabled={uploading||evidence.length>=3} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>2097152){setUploadError(language==='th'?'เลือกไฟล์ขนาดไม่เกิน 2 MB':'Choose a file up to 2 MB.');return;}setUploadError('');setUploading(true);try{const content=await new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(file);});const r=await fetch('/api/leave-evidence',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${liff.getAccessToken()}`},body:JSON.stringify({filename:file.name,mime:file.type,content,documentType:formData.leaveType==='sick'?'certificate':'activity'})});const b=await r.json();if(!r.ok)throw Error(b.error);setEvidence(old=>[...old,{id:b.id,filename:b.filename}]);}catch(err){setUploadError((err as Error).message);}finally{setUploading(false);e.target.value='';}}}/></label><p className="text-xs text-slate-500">{language==='th'?'PDF, PNG หรือ JPG · ไฟล์ละไม่เกิน 2 MB · สูงสุด 3 ไฟล์':'PDF, PNG or JPG · up to 2 MB each · up to 3 files'}</p>{uploadError&&<p role="alert" className="text-red-700 text-xs">{leaveErrorMessage(uploadError,language)}</p>}{uploading&&<p className="text-xs">{language==='th'?'กำลังอัปโหลด…':'Uploading…'}</p>}{evidence.map(f=><div key={f.id} className="flex items-center justify-between gap-2 text-xs"><span className="truncate">{f.filename}</span><button type="button" disabled={uploading} onClick={async()=>{setUploading(true);setUploadError('');try{const r=await fetch('/api/leave-evidence?id='+f.id,{method:'DELETE',headers:{Authorization:`Bearer ${liff.getAccessToken()}`}});if(!r.ok)throw Error((await r.json()).error);setEvidence(old=>old.filter(x=>x.id!==f.id));}catch(e){setUploadError((e as Error).message);}finally{setUploading(false);}}}>{language==='th'?'ลบไฟล์':'Remove file'}</button></div>)}</div>}
               {policy?.medicalCertificateRequired && <p role="status" className="rounded-xl bg-rose-100 p-3 text-sm text-rose-900">{language==='th'?'ลาป่วยติดต่อกันอย่างน้อย 3 วันทำงาน กรุณาส่งใบรับรองแพทย์ให้ฝ่ายบุคคล':'Sick leave covers at least 3 consecutive working days. Please submit a medical certificate to HR.'}</p>}
               {policyError && <div role="alert" className="text-sm text-red-700">{leaveErrorMessage(policyError,language)} <button type="button" className="underline" onClick={()=>setPolicyAttempt(n=>n+1)}>{language==='th'?'ลองอีกครั้ง':'Retry'}</button></div>}
