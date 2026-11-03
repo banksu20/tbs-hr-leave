@@ -1,5 +1,8 @@
 // Dashboard copy only. Stored statuses, IDs and employee-entered text stay unchanged.
 export const dashboardThai: Record<string, string> = {
+  "Authorized dashboard entries can exceed the quota. The allowance stays unchanged and the excess is recorded.": "ผู้มีสิทธิ์สามารถบันทึกวันลาเกินโควตาผ่านแดชบอร์ดได้ โดยโควตาเดิมไม่เพิ่มขึ้นและระบบจะบันทึกยอดที่เกิน",
+  "Internship leave usage": "การใช้วันลาตลอดการฝึกงาน",
+  "{0}: used {1} of {2} days · over quota {3} days": "{0}: ใช้แล้ว {1} จาก {2} วัน · เกินโควตา {3} วัน",
   "Swipe sideways to see all columns. Tap a value to edit.": "ปัดซ้าย–ขวาเพื่อดูทุกคอลัมน์ แตะค่าเพื่อแก้ไข",
   "TBS HR - Leave Request System": "TBS HR - ระบบขอลา",
   "Overview": "ภาพรวม",

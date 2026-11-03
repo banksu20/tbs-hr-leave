@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LeaveRequestUpdate } from "@/lib/api";
+import type { LeaveRequestUpdate } from "@/lib/api";
 import { normalizeDateInput } from "./leaveSheetUtils";
 
 export interface LeaveRecordDialogProps {
@@ -34,6 +34,7 @@ export default function LeaveRecordDialog({ requestId, initial, employeeName, cr
         </DialogDescription>
       </DialogHeader>
       {requestId&&<LeaveEvidence requestId={requestId}/>}
+      <p className="text-sm text-amber-800">{dt("Authorized dashboard entries can exceed the quota. The allowance stays unchanged and the excess is recorded.")}</p>
       <form className="space-y-4" onSubmit={async (event) => {
         event.preventDefault();
         const dates = datesText.split(/[,\n]+/).map((text) => normalizeDateInput(text.trim(), initial.dates[0].slice(0, 4)));
@@ -43,7 +44,7 @@ export default function LeaveRecordDialog({ requestId, initial, employeeName, cr
         if (form.daysPerDate === 0.5 && !form.halfDayPeriod) { setError(dt("Choose morning or afternoon.")); return; }
         setBusy(true); setError("");
         try { await onSave({ ...form, dates: dates as string[] }); onClose(); }
-        catch { setError(dt("Not saved. Your entries are retained; check the error message and retry.")); }
+        catch (err) { setError(dt("Not saved: {0}", [dt(err instanceof Error ? ((err as Error & {issues?:string[]}).issues?.[0] ?? err.message) : "Something went wrong")])); }
         finally { setBusy(false); }
       }}>
         <label className="block text-sm">{dt("Dates (YYYY-MM-DD, separated by commas)")} <textarea className="w-full border rounded p-2 mt-1" value={datesText} onChange={(e) => setDatesText(e.target.value)} disabled={busy} required />
