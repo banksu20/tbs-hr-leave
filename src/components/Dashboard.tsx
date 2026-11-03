@@ -1,3 +1,4 @@
+import OverQuotaNotice from './OverQuotaNotice';
 import {employeeData} from "@/lib/employeeData";
 import EmployeeCancellations from "./EmployeeCancellations";
 import { useState, useEffect } from "react";
@@ -166,6 +167,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
                 <span className="text-sm font-medium text-slate-400">{t('days')}{!policyConfigured ? (language==='th'?' · ยังไม่กำหนด':' · Not set') : unlimitedLeave ? (language==='th'?' · ไม่จำกัด':' · No limit') : ''}</span></>
               )}
             </div>
+            <OverQuotaNotice remaining={sickRemaining} configured={policyConfigured} unlimited={unlimitedLeave} loading={isQuotaLoading} language={language}/>
           </div>
 
           {/* Annual Quota Card  */}
@@ -191,6 +193,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
                   <span className="text-sm font-bold text-slate-300">/ {annualTotal}</span></>
                 )}
             </div>
+            <OverQuotaNotice remaining={remainingDays} configured={policyConfigured} unlimited={unlimitedLeave} loading={isQuotaLoading} language={language}/>
           </div>
         </div>
 
@@ -207,12 +210,12 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
               <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">{t('personal_leave')}</span>
             </div>
           </div>
-          <div className="flex items-baseline gap-1 z-10">
+          <div className="flex flex-col items-end z-10"><div className="flex items-baseline gap-1">
             {isQuotaLoading ? <Skeleton className="h-8 w-16" /> : (
                 <><span className="text-3xl font-extrabold text-slate-800">{personalTaken || 0}</span>
                 <span className="text-sm font-medium text-slate-400">{t('days')}{!policyConfigured ? (language==='th'?' · ยังไม่กำหนด':' · Not set') : unlimitedLeave ? (language==='th'?' · ไม่จำกัด':' · No limit') : ''}</span></>
             )}
-          </div>
+          </div><OverQuotaNotice remaining={personalRemaining} configured={policyConfigured} unlimited={unlimitedLeave} loading={isQuotaLoading} language={language}/></div>
         </div>
 
 
