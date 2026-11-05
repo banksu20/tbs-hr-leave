@@ -1,5 +1,11 @@
 // Dashboard copy only. Stored statuses, IDs and employee-entered text stay unchanged.
 export const dashboardThai: Record<string, string> = {
+  "Supporting evidence": "หลักฐานประกอบการลา",
+  "Attach supporting evidence before saving university leave.": "กรุณาแนบหลักฐานก่อนบันทึกวันลากิจกรรมมหาวิทยาลัย",
+  "Could not read this file.": "ไม่สามารถอ่านไฟล์นี้ได้",
+  "Choose a JPG, PNG or PDF up to 2 MB.": "เลือกไฟล์ JPG, PNG หรือ PDF ขนาดไม่เกิน 2 MB",
+  "Attach a university letter, activity notice or other supporting document. JPG, PNG or PDF, up to 2 MB.": "แนบหนังสือจากมหาวิทยาลัย ประกาศกิจกรรม หรือเอกสารประกอบการลา ไฟล์ JPG, PNG หรือ PDF ขนาดไม่เกิน 2 MB",
+
   "Authorized dashboard entries can exceed the quota. The allowance stays unchanged and the excess is recorded.": "ผู้มีสิทธิ์สามารถบันทึกวันลาเกินโควตาผ่านแดชบอร์ดได้ โดยโควตาเดิมไม่เพิ่มขึ้นและระบบจะบันทึกยอดที่เกิน",
   "Internship leave usage": "การใช้วันลาตลอดการฝึกงาน",
   "{0}: used {1} of {2} days · over quota {3} days": "{0}: ใช้แล้ว {1} จาก {2} วัน · เกินโควตา {3} วัน",

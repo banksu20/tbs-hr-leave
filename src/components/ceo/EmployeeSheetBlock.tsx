@@ -251,7 +251,7 @@ export default function EmployeeSheetBlock({
               </td>
               {types.map((type, colIdx) => (
                 <td key={type} className={`border-r border-slate-200 px-1 py-1.5 ${LEAVE_META[type].band}`}>
-                  {type==='university'?<span title={dt("University activities must be submitted with supporting evidence")} className="block text-center text-slate-400">—</span>:<EditableCell
+                  {<EditableCell
                     gridId={gridId}
                     cellId={`c:${rows.length}:${colIdx + 1}`}
                     align="center"

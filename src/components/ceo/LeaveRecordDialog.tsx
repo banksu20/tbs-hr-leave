@@ -21,6 +21,7 @@ export default function LeaveRecordDialog({ requestId, initial, employeeName, cr
 
   const [form, setForm] = useState(initial);
   const [datesText, setDatesText] = useState(initial.dates.join(", "));
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
@@ -43,7 +44,20 @@ export default function LeaveRecordDialog({ requestId, initial, employeeName, cr
         }
         if (form.daysPerDate === 0.5 && !form.halfDayPeriod) { setError(dt("Choose morning or afternoon.")); return; }
         setBusy(true); setError("");
-        try { await onSave({ ...form, dates: dates as string[] }); onClose(); }
+        try {
+          let evidence;
+          if (creating && form.type === 'university') {
+            if (!attachment) throw Error(dt("Attach supporting evidence before saving university leave."));
+            const content = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(String(reader.result).split(',')[1]);
+              reader.onerror = () => reject(Error(dt("Could not read this file.")));
+              reader.readAsDataURL(attachment);
+            });
+            evidence = {filename: attachment.name, mime: attachment.type, content};
+          }
+          await onSave({ ...form, evidence, dates: dates as string[] }); onClose();
+        }
         catch (err) { setError(dt("Not saved: {0}", [dt(err instanceof Error ? ((err as Error & {issues?:string[]}).issues?.[0] ?? err.message) : "Something went wrong")])); }
         finally { setBusy(false); }
       }}>
@@ -62,6 +76,14 @@ export default function LeaveRecordDialog({ requestId, initial, employeeName, cr
           </select>
         </label>}
         <label className="block text-sm">{dt("Reason / notes")}{form.type === "annual" ? ` (${dt("Optional")})` : " *"}<Input required={form.type !== "annual"} value={form.note} disabled={busy} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
+        {creating && form.type === 'university' && <label className="block text-sm">{dt("Supporting evidence")} *
+          <Input type="file" accept="application/pdf,image/png,image/jpeg" required disabled={busy} onChange={e=>{
+            const file=e.target.files?.[0];setAttachment(null);setError('');
+            if(!file)return;
+            if(!['application/pdf','image/png','image/jpeg'].includes(file.type)||!file.size||file.size>2097152){setError(dt("Choose a JPG, PNG or PDF up to 2 MB."));e.target.value='';return;}
+            setAttachment(file);
+          }}/><span className="text-xs text-slate-500">{dt("Attach a university letter, activity notice or other supporting document. JPG, PNG or PDF, up to 2 MB.")}</span>
+        </label>}
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={busy} onClick={onClose}>{dt("Cancel")}</Button><Button disabled={busy}>{busy ? dt("Saving…") : dt("Save request")}</Button></div>
       </form>

@@ -33,6 +33,17 @@ async function create(req: VercelRequest, res: VercelResponse) {
   }
 
   const row = parsed.data;
+  let evidence;
+  if (raw.evidence !== undefined) {
+    const b = raw.evidence as Record<string, unknown> | null;
+    if (!b || row.leave_type !== 'university' || typeof b.filename !== 'string' || !b.filename.trim() || typeof b.content !== 'string' || b.content.length > 2800000)
+      return json(res,422,{error:'Use a valid PDF, PNG or JPEG up to 2 MB.'});
+    const file=Buffer.from(b.content,'base64');
+    const valid=b.mime==='application/pdf'?file.subarray(0,5).toString()==='%PDF-':b.mime==='image/png'?file.subarray(0,8).toString('hex')==='89504e470d0a1a0a':b.mime==='image/jpeg'&&file.subarray(0,3).toString('hex')==='ffd8ff';
+    if(!valid||!file.length||file.length>2097152)return json(res,422,{error:'Use a valid PDF, PNG or JPEG up to 2 MB.'});
+    evidence={filename:b.filename.replace(/[\r\n"\\/]/g,'_').slice(0,150),mime:b.mime,content:file.toString('base64')};
+  }
+
 
   if (!isWithinWindow(row.leave_date)) {
     return json(res, 422, { error: `leave_date ${row.leave_date} is outside the accepted window` });
@@ -47,6 +58,7 @@ async function create(req: VercelRequest, res: VercelResponse) {
 
   try {
     const result = await dashboardCall(req,"leave-create", {body:{
+      evidence,
       userId,
       empNo: row.emp_no ?? null,
       leaveDate: row.leave_date,

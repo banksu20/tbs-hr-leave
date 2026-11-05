@@ -98,7 +98,10 @@ export interface QuotaResponse {
   personalRemaining: number;
 }
 
+export interface DashboardEvidence { filename: string; mime: string; content: string; }
+
 export interface LeaveDraft {
+  evidence?: DashboardEvidence;
   empNo?: number | string;
   userId: string;
   date: string;
@@ -169,6 +172,7 @@ export async function createLeave(draft: LeaveDraft) {
   return request<{ id: string; userId: string }>("/api/leave", {
     method: "POST",
     body: JSON.stringify({
+      evidence: draft.evidence,
       emp_no: draft.empNo,
       user_id: draft.userId,
       leave_date: draft.date,
@@ -186,6 +190,7 @@ export interface RequestTarget {
   expectedRevision: string;
 }
 export interface LeaveRequestUpdate extends RequestTarget {
+  evidence?: DashboardEvidence;
   dates: string[];
   type: LeaveRecord["type"];
   daysPerDate: number;

@@ -6,6 +6,7 @@ import { Employee, LeaveRecord } from "@/data/mockEmployees";
 import { ApiError, NetworkError, createLeave, deleteLeave, setEmployeeStatus, updateEmployeeProfile, updateLeave, updateQuota } from "@/lib/api";
 
 export interface LeaveDraftInput {
+  evidence?: import("@/lib/api").DashboardEvidence;
   empId: string;
   date: string;
   type: LeaveRecord["type"];
@@ -41,6 +42,7 @@ export function useLeaveMutations(year: string) {
     mutationFn: (draft: LeaveDraftInput) => {
       checkConflicts(draft.empId, [draft.date], draft.days, draft.halfDayPeriod);
       return createLeave({
+        evidence: draft.evidence,
         userId: draft.empId,
         date: draft.date,
         type: draft.type,
