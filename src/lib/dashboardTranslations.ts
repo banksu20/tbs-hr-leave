@@ -1,5 +1,18 @@
 // Dashboard copy only. Stored statuses, IDs and employee-entered text stay unchanged.
 export const dashboardThai: Record<string, string> = {
+ "Search": "ค้นหา",
+ "Employee records": "จัดการข้อมูลพนักงาน",
+ "Set the annual allowance in the roster after activation.": "กำหนดสิทธิ์ลาพักร้อนในหน้ารายชื่อพนักงานหลังเปิดใช้งาน",
+ "Archive first. Permanent deletion is available only after pending and current/future leave is resolved.": "เก็บเข้ารายชื่อที่ไม่ใช้งานก่อน ลบถาวรได้เมื่อจัดการคำขอรออนุมัติและวันลาปัจจุบันหรืออนาคตเรียบร้อยแล้ว",
+ "Change employment status for {0}?": "เปลี่ยนสถานะการทำงานของ {0} ใช่หรือไม่?",
+ "Permanently delete {0} ({1})? This removes their profile, leave history and documents. Delivered messages and external calendar/sheet records are not erased. Type {1} to confirm.": "ลบ {0} ({1}) ถาวรหรือไม่? โปรไฟล์ ประวัติการลา และเอกสารจะถูกลบ แต่ข้อความที่ส่งแล้วและข้อมูลในปฏิทินหรือชีตภายนอกจะไม่ถูกลบ พิมพ์ {1} เพื่อยืนยัน",
+ "Protected or linked account. Contact Admin.": "บัญชีนี้เป็นบัญชีที่ได้รับการป้องกันหรือมีบัญชีเชื่อมโยง กรุณาติดต่อผู้ดูแลระบบ",
+ "Archive this employee before deleting.": "กรุณาเก็บพนักงานเข้ารายชื่อที่ไม่ใช้งานก่อนลบ",
+ "Resolve pending or current/future leave before deleting.": "กรุณาจัดการคำขอรออนุมัติหรือวันลาปัจจุบันและอนาคตก่อนลบ",
+ "Delivery is in progress. Try again shortly.": "ระบบกำลังส่งข้อมูล กรุณาลองอีกครั้งในอีกสักครู่",
+ "Enter the exact employee code to confirm.": "กรอกรหัสพนักงานให้ตรงเพื่อยืนยัน",
+
+  "Not recorded": "ยังไม่ได้ระบุ",
   "Supporting evidence": "หลักฐานประกอบการลา",
   "Attach supporting evidence before saving university leave.": "กรุณาแนบหลักฐานก่อนบันทึกวันลากิจกรรมมหาวิทยาลัย",
   "Could not read this file.": "ไม่สามารถอ่านไฟล์นี้ได้",

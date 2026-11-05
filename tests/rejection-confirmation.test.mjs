@@ -1,0 +1,26 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {PGlite} from '@electric-sql/pglite';import {readFileSync} from 'node:fs';
+const db=new PGlite();const q=async(s,p=[])=>(await db.query(s,p)).rows;
+await db.exec(readFileSync('tests/employee-cancellation.test.mjs','utf8').match(/await db.exec\(`([\s\S]*?)`\);/)[1]);
+const files=JSON.parse(readFileSync('tests/leave-policy.test.mjs','utf8').match(/const files=(\[.*?\]);/s)[1].replaceAll("'",'"'));
+for(const f of [...files,'043_decision_history_delivery','047_employee_cancellation_identity'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
+const call=async(operation,body={},token='a')=>(await q('SELECT tbs_dashboard_auth($1::jsonb) r',[JSON.stringify({operation,sessionHash:token.repeat(64),...body})]))[0].r;
+await q("INSERT INTO tbs_dashboard_accounts(username,password_hash,role) VALUES('admin','test','admin'),('hr','test','hr'),('ceo','test','ceo')");
+for(const [name,token] of [['admin','a'],['hr','b'],['ceo','c']])await q("INSERT INTO tbs_dashboard_sessions(token_hash,account_id,version) SELECT $1,id,version FROM tbs_dashboard_accounts WHERE username=$2",[token.repeat(64),name]);
+await q("INSERT INTO tbs_employees(user_id,tbs_id,first_name,nickname,status,employment_type,intern_number) VALUES('staff',50,'Staff','','active','employee',NULL),('intern',51,'Intern','','active','intern',501),('boss',52,'Daniel','Dan','active','employee',NULL)");
+const insert=async()=>(await q("INSERT INTO leave_requests(user_id,user_name,leave_type,leave_days,start_date,end_date,selected_dates,reason,status) VALUES('staff','Staff','sick',1,'2026-10-01','2026-10-01','2026-10-01','Ill','Pending') RETURNING *,md5(to_jsonb(leave_requests)::text) revision"))[0];
+test('saved rejection confirms to its deciding CEO exactly once, with employee result separate',async()=>{
+ await db.exec(readFileSync('n8n/sql/060_line_rejection_confirmation.sql','utf8'));
+ await db.exec(readFileSync('n8n/sql/060_line_rejection_confirmation.sql','utf8'));
+ await q("UPDATE tbs_cancellation_line_settings SET ceo_account_id='boss'");
+ const r=await insert();
+ const p={id:r.id,userId:'staff',accountId:'boss',decisionToken:r.decision_token,expectedRevision:r.revision,rejectionReason:'Conflict'};
+ const decide=async payload=>(await q("SELECT tbs_line_decision('reject',$1) r",[payload]))[0].r;
+ assert.equal((await decide({...p,decisionToken:'wrong'})).ok,false);
+ assert.equal((await q("SELECT count(*)::int n FROM tbs_sync_jobs WHERE payload ? 'rejectionConfirmationRequestId'"))[0].n,0);
+ assert.equal((await decide(p)).ok,true);assert.equal((await decide(p)).ok,false);
+ const jobs=await q("SELECT payload FROM tbs_sync_jobs WHERE payload ? 'rejectionConfirmationRequestId'");
+ assert.equal(jobs.length,1);assert.equal(jobs[0].payload.to,'boss');assert.equal(jobs[0].payload.messages[0].type,'flex');
+ assert.match(JSON.stringify(jobs[0].payload),/Rejection saved/);assert.match(JSON.stringify(jobs[0].payload),/บันทึกการไม่อนุมัติแล้ว/);
+ assert.equal((await q("SELECT count(*)::int n FROM tbs_sync_jobs WHERE kind='line' AND payload->>'to'='staff'"))[0].n,1);
+});
+test.after(()=>db.close());

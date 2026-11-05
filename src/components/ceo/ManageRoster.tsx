@@ -1,3 +1,4 @@
+import EmployeeStartDate from './EmployeeStartDate';
 import {useLanguage} from "@/hooks/useLanguage";
 import {useDashboardText} from "@/hooks/useDashboardText";
 import { useMemo, useState } from "react";
@@ -123,6 +124,7 @@ export default function ManageRoster({
                         <span className="block font-extrabold text-slate-900 group-hover:text-[#00B5E2] truncate">
                           {emp.name} {emp.nickname && <span className="text-amber-600">({emp.nickname})</span>}
                         </span>
+                        <span className="block text-slate-500"><EmployeeStartDate date={emp.startDate}/></span>
                         {needsQuota && !inactive && (
                           <span className="text-[10px] font-extrabold text-amber-600">{dt("Quota not set")}</span>
                         )}

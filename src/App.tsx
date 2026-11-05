@@ -128,7 +128,7 @@ const App = () => {
     );
   }
 
-  if(window.location.pathname!=='/ceo' && (pendingRegistration||profileError))return <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6"><section className="max-w-md rounded-3xl bg-white border p-8 text-center"><h1 className="text-2xl font-bold">{profileError?'Unable to load your profile':'Registration received'}</h1><p className="my-5 text-slate-500">{profileError||'HR will confirm your details before you can request leave.'}</p><button className="rounded-xl bg-cyan-600 text-white px-6 py-3" onClick={()=>window.location.reload()}>Check again</button></section></main>;
+  if(window.location.pathname!=='/ceo' && (pendingRegistration||profileError))return <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6"><section className="max-w-md rounded-3xl bg-white border p-8 text-center"><h1 className="text-2xl font-bold">{profileError?(language==='th'?'ไม่สามารถโหลดโปรไฟล์ได้':'Unable to load your profile'):(language==='th'?'ได้รับข้อมูลลงทะเบียนแล้ว':'Registration received')}</h1><p className="my-5 text-slate-500">{profileError||(language==='th'?'Dan หรือ Nam จะตรวจสอบและเปิดใช้งานโปรไฟล์ก่อนที่คุณจะขอลาได้':'Dan or Nam will review and activate your profile before you can request leave.')}</p><button className="rounded-xl bg-cyan-600 text-white px-6 py-3" onClick={()=>window.location.reload()}>{language==='th'?'ตรวจสอบอีกครั้ง':'Check again'}</button></section></main>;
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

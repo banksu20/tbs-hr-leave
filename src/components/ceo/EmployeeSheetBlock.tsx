@@ -1,3 +1,4 @@
+import EmployeeStartDate from './EmployeeStartDate';
 import {useLanguage} from "@/hooks/useLanguage";
 import {useDashboardText} from "@/hooks/useDashboardText";
 import {halfDayLabel} from '@/lib/halfDayLabel';
@@ -105,14 +106,14 @@ export default function EmployeeSheetBlock({
     >
       <header className="sticky top-0 z-10 bg-slate-900 text-white px-4 py-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-sm font-extrabold truncate">
-            {employee.name} <span className="text-[#F5A623]">({employee.nickname})</span>
+          <h3 className="text-sm font-extrabold flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span>{employee.name} <span className="text-[#F5A623]">({employee.nickname})</span></span>
+            <EmployeeStartDate date={employee.startDate}/>
           </h3>
           <p className="text-[10px] text-slate-400 font-semibold mt-0.5 truncate">
             {[
               employee.department,
               employee.empCode || null,
-              employee.startDate ? dt("since {0}",[formatSheetDate(employee.startDate, language)]) : null,
             ]
               .filter(Boolean)
               .join(" · ")}

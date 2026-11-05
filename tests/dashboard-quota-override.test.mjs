@@ -26,4 +26,12 @@ test('authorized dashboard can exceed quota; scope, dates, overlap, reasons and 
  const r=(await q('SELECT tbs_employee_request($1::jsonb) r',[{userId:'intern',leaveType:'personal',selectedDates:['2099-03-01'],leaveDays:1,reason:'Employee',quotaOverride:true}]))[0].r;assert.equal(r.ok,false);
  assert.equal((await q("SELECT current_setting('app.tbs_quota_override_uid',true) v"))[0].v,'');
 });
+test('all authorized roles can move an over-quota intern entry to another date',async()=>{
+ for(const [token,oldDay,newDay] of [['1','04','14'],['2','05','15'],['3','06','16']]){
+  const row=(await q("SELECT id,md5(to_jsonb(r)::text) revision FROM leave_requests r WHERE user_id='intern' AND start_date=$1",[`2099-02-${oldDay}`]))[0];
+  const result=(await q('SELECT tbs_dashboard_auth($1::jsonb) r',[{operation:'leave-update',sessionHash:token.repeat(64),body:{id:String(row.id),scope:'request',expectedDates:[`2099-02-${oldDay}`],expectedRevision:row.revision,leaveDates:[`2099-02-${newDay}`],leaveType:'personal',leaveDays:1,halfDayPeriod:null,reason:'Correct date',status:'Approved'}}]))[0].r;
+  assert.equal(result.ok,true,JSON.stringify(result));
+ }
+ assert.equal((await q("SELECT tbs_leave_balance('intern',2099,'personal') b"))[0].b.approved,6);
+});
 test.after(()=>db.close());

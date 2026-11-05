@@ -7,7 +7,7 @@ import {n8nPost} from '../_lib/n8nClient.js';
 import {isPlainDate} from '../_lib/date.js';
 const name=z.string().trim().min(1).max(100);
 const registration=z.object({firstName:name,lastName:name,nickname:z.string().trim().max(100),department:name,employmentType:z.enum(['employee','intern'])});
-const activation=z.object({months:z.number().optional(),userId:z.string().min(1),startDate:z.string().refine(isPlainDate),endDate:z.string().refine(isPlainDate)}).refine(b=>b.endDate>=b.startDate);
+const activation=z.object({months:z.number().optional(),userId:z.string().min(1),startDate:z.string().refine(isPlainDate),endDate:z.string().refine(isPlainDate).optional(),annualTotal:z.number().min(0).max(366).optional()}).refine(b=>!b.endDate||b.endDate>=b.startDate);
 export default async function handler(req:VercelRequest,res:VercelResponse){
  res.setHeader('Cache-Control','no-store');
  if(!['GET','POST','PATCH'].includes(req.method||''))return json(res,405,{error:'Method not allowed'});
