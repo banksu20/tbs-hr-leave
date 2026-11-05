@@ -12,3 +12,18 @@ test('review shows both employee types and only interns need an end date',async(
 test('start date displays a translated missing value instead of inventing one',async()=>{
  for(const language of ['en','th']){const Component=loadTS({'@/hooks/useLanguage':{useLanguage:()=>({language})}})('src/components/ceo/EmployeeStartDate.tsx').default;let view;try{await act(async()=>{view=renderer.create(React.createElement(Component,{date:null}));});assert.match(JSON.stringify(view.toJSON()),language==='th'?/ยังไม่ได้ระบุ/:/Not recorded/);}finally{await act(async()=>view?.unmount());}}
 });
+
+test('start date shows pending state and restores the saved date after failure',async()=>{
+ const Component=loadTS({'@/hooks/useLanguage':{useLanguage:()=>({language:'en'})}})('src/components/ceo/EditableStartDate.tsx').default;
+ let view,rejectSave;
+ await act(async()=>{view=renderer.create(React.createElement(Component,{name:'Test',value:'2026-01-01',onSave:()=>new Promise((_,reject)=>{rejectSave=reject;})}));});
+ try{
+ await act(async()=>view.root.findByType('input').props.onChange({target:{value:'2026-02-01'}}));
+ await act(async()=>view.root.findByType('input').props.onBlur());
+ assert.equal(view.root.findByType('input').props.disabled,true);
+ await act(async()=>rejectSave(new Error('Network failed')));
+ assert.equal(view.root.findByType('input').props.value,'2026-01-01');
+ assert.equal(view.root.findByType('input').props.disabled,false);
+ assert.equal(view.root.findByProps({role:'alert'}).props.children,'Not saved');
+ }finally{await act(async()=>view.unmount());}
+});

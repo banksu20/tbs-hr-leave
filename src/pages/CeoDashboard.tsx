@@ -80,7 +80,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
   const [editEmpNickname, setEditEmpNickname] = useState("");
   const [editEmpDept, setEditEmpDept] = useState("SEO");
   const [editEmpStartDate, setEditEmpStartDate] = useState("");
-  const [quotaAnnual, setQuotaAnnual] = useState<number|null>(12);
+  const [quotaAnnual, setQuotaAnnual] = useState<number>(0);
   const [quotaSick, setQuotaSick] = useState<number|null>(30);
   const [quotaExpiry,setQuotaExpiry]=useState("");
   const [quotaPersonal, setQuotaPersonal] = useState(3);
@@ -295,7 +295,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
     setEditEmpNickname(emp.nickname);
     setEditEmpDept(emp.department);
     setEditEmpStartDate(emp.startDate);
-    setQuotaAnnual(emp.quotas.annualTotal);
+    setQuotaAnnual(emp.quotas.annualTotal ?? 0);
     setQuotaSick(Number(selectedYear)>=2026?30:emp.quotas.sickTotal);
     setQuotaPersonal(emp.quotas.personalTotal);
     setQuotaCarried(emp.storedCarriedOver??emp.quotas.carriedOver);
@@ -469,7 +469,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
             <ManageRoster
               employees={activeEmployees}
               onOpenSheet={setSelectedEmployee}
-              onStartDateChange={(employee, startDate) => leaveMutations.profile.mutate({ employee, patch: { startDate } })}
+              onStartDateChange={(employee, startDate) => leaveMutations.profile.mutateAsync({ employee, patch: { startDate } })}
               onQuotaChange={(employee, patch) => leaveMutations.quota.mutate({ employee, patch })}
               onSetStatus={(employee, status) => {
                 if (status === "inactive") {
@@ -484,7 +484,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
               employees={removedEmployees}
               variant="removed"
               onOpenSheet={setSelectedEmployee}
-              onStartDateChange={(employee, startDate) => leaveMutations.profile.mutate({ employee, patch: { startDate } })}
+              onStartDateChange={(employee, startDate) => leaveMutations.profile.mutateAsync({ employee, patch: { startDate } })}
               onQuotaChange={(employee, patch) => leaveMutations.quota.mutate({ employee, patch })}
               onSetStatus={(employee, status) => leaveMutations.employeeStatus.mutate({ employee, status })}
             />
@@ -657,8 +657,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-600">{dt("Annual Quota")}</label>
-                  <Input type="number" min="0" max="365" step="0.25" disabled={quotaAnnual===null} value={quotaAnnual??""} onChange={(e) => setQuotaAnnual(Number(e.target.value))} className="h-9 text-xs mt-1" />
-                  <label className="text-xs"><input type="checkbox" checked={quotaAnnual===null} onChange={e=>setQuotaAnnual(e.target.checked?null:0)}/>  {dt("Unlimited")}</label>
+                  <Input type="number" min="0" max="365" step="0.25" value={quotaAnnual} onChange={(e) => setQuotaAnnual(Number(e.target.value))} className="h-9 text-xs mt-1" />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-600">{dt("Sick Quota")}</label>

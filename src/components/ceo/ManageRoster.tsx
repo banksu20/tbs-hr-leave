@@ -1,3 +1,4 @@
+import EditableStartDate from './EditableStartDate';
 import EmployeeStartDate from './EmployeeStartDate';
 import {useLanguage} from "@/hooks/useLanguage";
 import {useDashboardText} from "@/hooks/useDashboardText";
@@ -21,7 +22,7 @@ export interface ManageRosterProps {
   onQuotaChange: (employee: Employee, patch: QuotaEdit) => void;
   onSetStatus: (employee: Employee, status: "active" | "inactive") => void;
   onOpenSheet: (employee: Employee) => void;
-  onStartDateChange?: (employee: Employee, date: string) => void;
+  onStartDateChange?: (employee: Employee, date: string) => Promise<unknown>;
   onManageIntern?: (employee: Employee) => void;
 }
 
@@ -136,7 +137,7 @@ export default function ManageRoster({
                       )}
                     </td>
                     <td data-label={dt("Started")} className="py-2 px-3 font-semibold text-slate-500">
-                      {onStartDateChange ? <input type="date" aria-label={`${dt("Start date")}: ${emp.name}`} key={`${emp.id}-${emp.startDate}`} defaultValue={emp.startDate || ""} className="w-32 rounded border border-transparent bg-transparent p-1 hover:border-slate-300 focus:border-cyan-500" onBlur={e=>{if(e.currentTarget.value && e.currentTarget.value!==emp.startDate)onStartDateChange(emp,e.currentTarget.value);}}/> : emp.startDate ? formatSheetDate(emp.startDate, language) : "—"}
+                      {onStartDateChange ? <EditableStartDate value={emp.startDate} name={emp.name} onSave={date=>onStartDateChange(emp,date)}/> : emp.startDate ? formatSheetDate(emp.startDate, language) : "—"}
                     </td>
 
                     {(["annualTotal", "personalTotal", onManageIntern ? "sickTotal" : "carriedOver"] as const).map((field) => (

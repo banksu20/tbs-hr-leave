@@ -100,6 +100,7 @@ export const dashboardThai: Record<string, string> = {
   "Start date": "วันที่เริ่ม",
   "End date": "วันที่สิ้นสุด",
   "Saved": "บันทึกแล้ว",
+  "Not saved": "บันทึกไม่สำเร็จ",
   "Saving…": "กำลังบันทึก…",
   "Save internship": "บันทึกการฝึกงาน",
   "Intern registrations": "การลงทะเบียนฝึกงาน",
