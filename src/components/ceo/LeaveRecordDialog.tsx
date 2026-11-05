@@ -46,8 +46,7 @@ export default function LeaveRecordDialog({ requestId, initial, employeeName, cr
         setBusy(true); setError("");
         try {
           let evidence;
-          if (creating && form.type === 'university') {
-            if (!attachment) throw Error(dt("Attach supporting evidence before saving university leave."));
+          if (creating && form.type === 'university' && attachment) {
             const content = await new Promise<string>((resolve, reject) => {
               const reader = new FileReader();
               reader.onload = () => resolve(String(reader.result).split(',')[1]);
@@ -75,9 +74,9 @@ export default function LeaveRecordDialog({ requestId, initial, employeeName, cr
             <option value="" disabled>{dt("Choose a period")}</option><option value="morning">{dt("Morning")}</option><option value="afternoon">{dt("Afternoon")}</option>
           </select>
         </label>}
-        <label className="block text-sm">{dt("Reason / notes")}{form.type === "annual" ? ` (${dt("Optional")})` : " *"}<Input required={form.type !== "annual"} value={form.note} disabled={busy} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
-        {creating && form.type === 'university' && <label className="block text-sm">{dt("Supporting evidence")} *
-          <Input type="file" accept="application/pdf,image/png,image/jpeg" required disabled={busy} onChange={e=>{
+        <label className="block text-sm">{dt("Reason / notes")}{["annual", "university"].includes(form.type) ? ` (${dt("Optional")})` : " *"}<Input required={!["annual", "university"].includes(form.type)} value={form.note} disabled={busy} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
+        {creating && form.type === 'university' && <label className="block text-sm">{dt("Supporting evidence")} ({dt("Optional")})
+          <Input type="file" accept="application/pdf,image/png,image/jpeg" disabled={busy} onChange={e=>{
             const file=e.target.files?.[0];setAttachment(null);setError('');
             if(!file)return;
             if(!['application/pdf','image/png','image/jpeg'].includes(file.type)||!file.size||file.size>2097152){setError(dt("Choose a JPG, PNG or PDF up to 2 MB."));e.target.value='';return;}
