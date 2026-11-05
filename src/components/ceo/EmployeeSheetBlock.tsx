@@ -108,7 +108,6 @@ export default function EmployeeSheetBlock({
         <div className="min-w-0">
           <h3 className="text-sm font-extrabold flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span>{employee.name} <span className="text-[#F5A623]">({employee.nickname})</span></span>
-            <EmployeeStartDate date={employee.startDate}/>
           </h3>
           <p className="text-[10px] text-slate-400 font-semibold mt-0.5 truncate">
             {[
@@ -121,6 +120,9 @@ export default function EmployeeSheetBlock({
               <span className="ml-1.5 text-amber-400" title={dt("This employee has no employee number")}>
                  {dt("no number")} </span>
             )}
+          </p>
+          <p className="mt-1 text-slate-300" data-testid="employee-header-start-date">
+            <EmployeeStartDate date={employee.startDate}/>
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
