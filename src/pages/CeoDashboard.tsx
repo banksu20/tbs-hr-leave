@@ -469,6 +469,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
             <ManageRoster
               employees={activeEmployees}
               onOpenSheet={setSelectedEmployee}
+              onStartDateChange={(employee, startDate) => leaveMutations.profile.mutate({ employee, patch: { startDate } })}
               onQuotaChange={(employee, patch) => leaveMutations.quota.mutate({ employee, patch })}
               onSetStatus={(employee, status) => {
                 if (status === "inactive") {
@@ -483,6 +484,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
               employees={removedEmployees}
               variant="removed"
               onOpenSheet={setSelectedEmployee}
+              onStartDateChange={(employee, startDate) => leaveMutations.profile.mutate({ employee, patch: { startDate } })}
               onQuotaChange={(employee, patch) => leaveMutations.quota.mutate({ employee, patch })}
               onSetStatus={(employee, status) => leaveMutations.employeeStatus.mutate({ employee, status })}
             />

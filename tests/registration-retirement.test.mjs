@@ -15,6 +15,7 @@ for(const [i,role] of ['admin','ceo','hr'].entries())await q(`WITH a AS (INSERT 
 const create=async(uid,date,token='1',kind='personal')=>(await q('SELECT tbs_dashboard_auth($1::jsonb) r',[{operation:'leave-create',sessionHash:token.repeat(64),body:{userId:uid,leaveDate:date,leaveType:kind,leaveDays:1,reason:'Approved exception',status:'Approved'}}]))[0].r;
 
 for(const f of ['058_dashboard_university_evidence','059_optional_dashboard_university_details','060_line_rejection_confirmation','061_registration_review','062_employee_retirement','061_registration_review','062_employee_retirement'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
+await db.exec(readFileSync('n8n/sql/063_employee_defaults_start_date.sql','utf8'));
 const reg=async p=>(await q('SELECT tbs_registration($1::jsonb) r',[p]))[0].r;
 const manage=async(action,userId,token='1',confirmation)=>(await q('SELECT tbs_dashboard_auth($1::jsonb) r',[{operation:action,sessionHash:token.repeat(64),body:{userId,confirmation}}]))[0].r;
 await db.exec("UPDATE tbs_policy_routing SET hr_line_id='nam'; UPDATE tbs_cancellation_line_settings SET ceo_account_id='dan'; INSERT INTO tbs_delivery_admin(singleton,line_id) VALUES(true,'dale') ON CONFLICT(singleton) DO UPDATE SET line_id='dale'");
@@ -55,5 +56,17 @@ test('correction can return inactive intern to review without losing its account
  const result=await reg({action:'activate',sessionHash:'3'.repeat(64),userId:'correction',startDate:'2026-11-01',endDate:'2027-02-28'});assert.equal(result.ok,true,JSON.stringify(result));
  const e=(await q("SELECT tbs_id,intern_number,status FROM tbs_employees WHERE user_id='correction'"))[0];assert.deepEqual(e,{tbs_id:1001,intern_number:801,status:'active'});
  assert.equal(Number((await q("SELECT months FROM tbs_intern_terms WHERE user_id='correction'"))[0].months),4);
+});
+test('full-time defaults to zero and start dates save without changing quotas or intern terms',async()=>{
+ await q("INSERT INTO tbs_employees(user_id,tbs_id,first_name,status,employment_type) VALUES('zero',1005,'Zero','active','employee')");
+ await q("INSERT INTO leave_quotas(user_id,year,annual_total,personal_total,sick_total,carried_over) VALUES('zero',2026,NULL,3,30,0)");
+ assert.equal(Number((await q("SELECT annual_total FROM leave_quotas WHERE user_id='zero'"))[0].annual_total),0);
+ const save=async(userId,date,token='3')=>(await q('SELECT tbs_dashboard_auth($1::jsonb) r',[{operation:'employee-start-date',sessionHash:token.repeat(64),body:{userId,startDate:date}}]))[0].r;
+ assert.equal((await save('zero','2026-11-01','9')).statusCode,401);
+ assert.equal((await save('zero','2026-02-30')).statusCode,422);
+ assert.equal((await save('intern','2026-11-01')).statusCode,404);
+ assert.equal((await save('zero','2026-11-01')).ok,true);
+ assert.equal((await q("SELECT start_date::text d FROM tbs_employees WHERE user_id='zero'"))[0].d,'2026-11-01');
+ assert.equal(Number((await q("SELECT annual_total FROM leave_quotas WHERE user_id='staff'"))[0].annual_total),1);
 });
 test.after(()=>db.close());

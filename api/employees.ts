@@ -83,6 +83,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === "PATCH") {
+    if (req.body?.startDate !== undefined) {
+      if (!await writesAllowed(req)) return json(res, 401, { error: "not authorised" });
+      const {userId,startDate}=req.body;
+      if(typeof userId!=="string" || !userId || typeof startDate!=="string" || !/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !Number.isFinite(Date.parse(startDate)) || new Date(startDate).toISOString().slice(0,10)!==startDate) return json(res,422,{error:"Choose a valid start date"});
+      try { return json(res,200,await dashboardCall(req,"employee-start-date",{body:{userId,startDate}})); }
+      catch(error){return json(res,error instanceof N8nMutationError?error.status:500,{error:error instanceof Error?error.message:"Not saved"});}
+    }
+
     if((await dashboardSession(req))?.role==='hr')return json(res,403,{error:'HR can manage intern leave, not employee profiles'});
     if (!await writesAllowed(req)) return json(res, 401, { error: "not authorised" });
     const body = typeof req.body === "object" && req.body !== null ? (req.body as Record<string, unknown>) : {};

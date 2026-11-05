@@ -21,6 +21,7 @@ export interface ManageRosterProps {
   onQuotaChange: (employee: Employee, patch: QuotaEdit) => void;
   onSetStatus: (employee: Employee, status: "active" | "inactive") => void;
   onOpenSheet: (employee: Employee) => void;
+  onStartDateChange?: (employee: Employee, date: string) => void;
   onManageIntern?: (employee: Employee) => void;
 }
 
@@ -33,6 +34,7 @@ export default function ManageRoster({
   onSetStatus,
   onOpenSheet,
   onManageIntern,
+  onStartDateChange,
 }: ManageRosterProps) {
  const dt = useDashboardText();
  const {language}=useLanguage();
@@ -104,7 +106,6 @@ export default function ManageRoster({
 
               {rows.map((emp) => {
                 const inactive = emp.status === "inactive";
-                const needsQuota = !onManageIntern && emp.quotas.annualTotal === 0;
 
                 return (
                   <tr key={emp.id} className={`hover:bg-slate-50/70 ${inactive ? "bg-rose-50/40" : ""}`}>
@@ -125,9 +126,7 @@ export default function ManageRoster({
                           {emp.name} {emp.nickname && <span className="text-amber-600">({emp.nickname})</span>}
                         </span>
                         <span className="block text-slate-500"><EmployeeStartDate date={emp.startDate}/></span>
-                        {needsQuota && !inactive && (
-                          <span className="text-[10px] font-extrabold text-amber-600">{dt("Quota not set")}</span>
-                        )}
+
                       </button>
                     </td>
                     <td data-label={dt("Department")} className="py-2 px-3 font-semibold text-slate-600">
@@ -137,7 +136,7 @@ export default function ManageRoster({
                       )}
                     </td>
                     <td data-label={dt("Started")} className="py-2 px-3 font-semibold text-slate-500">
-                      {emp.startDate ? formatSheetDate(emp.startDate, language) : "—"}
+                      {onStartDateChange ? <input type="date" aria-label={`${dt("Start date")}: ${emp.name}`} key={`${emp.id}-${emp.startDate}`} defaultValue={emp.startDate || ""} className="w-32 rounded border border-transparent bg-transparent p-1 hover:border-slate-300 focus:border-cyan-500" onBlur={e=>{if(e.currentTarget.value && e.currentTarget.value!==emp.startDate)onStartDateChange(emp,e.currentTarget.value);}}/> : emp.startDate ? formatSheetDate(emp.startDate, language) : "—"}
                     </td>
 
                     {(["annualTotal", "personalTotal", onManageIntern ? "sickTotal" : "carriedOver"] as const).map((field) => (
@@ -147,10 +146,8 @@ export default function ManageRoster({
                           cellId={`c:0:${field === "annualTotal" ? 0 : field === "personalTotal" ? 1 : 2}`}
                           align="center"
                           value={emp.quotas[field] === null || emp.quotas[field] === undefined ? "" : String(emp.quotas[field])}
-                          placeholder="∞"
-                          displayClassName={`font-extrabold ${
-                            field === "annualTotal" && needsQuota ? "text-amber-600" : "text-slate-800"
-                          }`}
+                          placeholder="0"
+                          displayClassName="font-extrabold text-slate-800"
                           onCommit={(raw) => {
                             const parsed = Number(raw);
                             if (!raw.trim() || Number.isNaN(parsed) || parsed < 0) return;

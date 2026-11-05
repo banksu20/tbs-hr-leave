@@ -84,7 +84,7 @@ export function useLeaveMutations(year: string) {
       patch,
     }: {
       employee: Employee;
-      patch: { empCode?: string; name?: string; nickname?: string; department?: string };
+      patch: { startDate?: string; empCode?: string; name?: string; nickname?: string; department?: string };
     }) => updateEmployeeProfile({ userId: employee.id, ...patch }),
     onSuccess: async () => {
       toast.success(dt("Profile saved"));

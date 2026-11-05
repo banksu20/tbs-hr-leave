@@ -214,6 +214,7 @@ export async function setEmployeeStatus(userId: string, status: "active" | "inac
 }
 
 export interface ProfilePatch {
+  startDate?: string;
   userId: string;
   empCode?: string;
   name?: string;
