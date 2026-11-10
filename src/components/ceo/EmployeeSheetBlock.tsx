@@ -282,7 +282,7 @@ export default function EmployeeSheetBlock({
       </div>
 
       <footer className="border-t border-slate-200 bg-slate-50">
-        <table className="w-full border-collapse text-xs">
+        {!intern && <table className="w-full border-collapse text-xs">
           <tbody>
             {(intern ? ["taken"] as const : ["granted", "taken", "remain"] as const).map((key) => (
               <tr key={key} className={key === "remain" ? "bg-slate-100 border-t border-slate-200" : ""}>
@@ -334,8 +334,8 @@ export default function EmployeeSheetBlock({
               </tr>
             ))}
           </tbody>
-        </table>
-        {intern && <InternSheetBalances balances={employee.internshipBalances}/>}
+        </table>}
+        {intern && <InternSheetBalances balances={employee.internshipBalances} universityApproved={employee.universityInternshipApproved}/>}
         {intern && <p className="border-t border-violet-100 bg-violet-50 px-3 py-3 text-sm text-violet-900">
           <span className="font-semibold">{dt("University leave — whole internship")}: </span>
           {employee.universityInternshipApproved === undefined

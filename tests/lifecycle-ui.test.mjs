@@ -32,10 +32,10 @@ test('intern sheet uses whole-internship totals, reserves pending days and shows
  const Component=loadTS({'@/hooks/useLanguage':{useLanguage:()=>({language:'en'})}})('src/components/ceo/InternSheetBalances.tsx').default;
  let view;try{
  await act(async()=>{view=renderer.create(React.createElement(Component,{balances:[{type:'sick',total:4,approved:1,pending:0.5},{type:'annual',total:2,approved:3,pending:0},{type:'personal',total:3,approved:0,pending:0}]}));});
- const rows=view.root.findAllByType('tr');assert.deepEqual(rows[4].findAllByType('td').map(n=>n.props.children),[2.5,0,3]);
- assert.match(JSON.stringify(view.toJSON()),/over quota 1 days/);
+ const rows=view.root.findAllByType('tr');assert.deepEqual(rows[3].findAllByType('td').slice(1,5).map(n=>n.props.children),[2.5,-1,3,'—']);
+ assert.match(rows[3].findAllByType('td')[2].props.className,/text-rose-600/);
  await act(async()=>view.update(React.createElement(Component,{})));
- assert.deepEqual(view.root.findAllByType('td').map(n=>n.props.children),Array(12).fill('—'));
+ assert.deepEqual(view.root.findAllByType('tr').flatMap(r=>r.findAllByType('td').slice(1,5).map(n=>n.props.children)),Array(16).fill('—'));
  assert.match(JSON.stringify(view.toJSON()),/Total unavailable/);
  }finally{await act(async()=>view?.unmount());}
 });

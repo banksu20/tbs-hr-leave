@@ -1,6 +1,7 @@
 // Dashboard copy only. Stored statuses, IDs and employee-entered text stay unchanged.
 export const dashboardThai: Record<string, string> = {
  "Allowances — whole internship (days)": "สิทธิ์วันลา — ตลอดการฝึกงาน (วัน)",
+ "Remaining excludes pending requests.": "วันคงเหลือหักคำขอรออนุมัติแล้ว",
  "Allowance": "สิทธิ์ทั้งหมด",
  "Used (approved)": "ใช้ไปแล้ว (อนุมัติ)",
  "Available to request": "คงเหลือที่ขอได้",
