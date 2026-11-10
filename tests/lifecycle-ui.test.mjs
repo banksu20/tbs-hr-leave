@@ -27,3 +27,15 @@ test('start date shows pending state and restores the saved date after failure',
  assert.equal(view.root.findByProps({role:'alert'}).props.children,'Not saved');
  }finally{await act(async()=>view.unmount());}
 });
+
+test('intern sheet uses whole-internship totals, reserves pending days and shows unavailable honestly',async()=>{
+ const Component=loadTS({'@/hooks/useLanguage':{useLanguage:()=>({language:'en'})}})('src/components/ceo/InternSheetBalances.tsx').default;
+ let view;try{
+ await act(async()=>{view=renderer.create(React.createElement(Component,{balances:[{type:'sick',total:4,approved:1,pending:0.5},{type:'annual',total:2,approved:3,pending:0},{type:'personal',total:3,approved:0,pending:0}]}));});
+ const rows=view.root.findAllByType('tr');assert.deepEqual(rows[4].findAllByType('td').map(n=>n.props.children),[2.5,0,3]);
+ assert.match(JSON.stringify(view.toJSON()),/over quota 1 days/);
+ await act(async()=>view.update(React.createElement(Component,{})));
+ assert.deepEqual(view.root.findAllByType('td').map(n=>n.props.children),Array(12).fill('—'));
+ assert.match(JSON.stringify(view.toJSON()),/Total unavailable/);
+ }finally{await act(async()=>view?.unmount());}
+});

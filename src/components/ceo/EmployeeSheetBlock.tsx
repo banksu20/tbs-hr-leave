@@ -1,3 +1,4 @@
+import InternSheetBalances from './InternSheetBalances';
 import EmployeeStartDate from './EmployeeStartDate';
 import {useLanguage} from "@/hooks/useLanguage";
 import {useDashboardText} from "@/hooks/useDashboardText";
@@ -334,6 +335,7 @@ export default function EmployeeSheetBlock({
             ))}
           </tbody>
         </table>
+        {intern && <InternSheetBalances balances={employee.internshipBalances}/>}
         {intern && <p className="border-t border-violet-100 bg-violet-50 px-3 py-3 text-sm text-violet-900">
           <span className="font-semibold">{dt("University leave — whole internship")}: </span>
           {employee.universityInternshipApproved === undefined

@@ -29,6 +29,7 @@ export interface Employee {
   employmentType?: "employee"|"intern";
   internNumber?: number|null;
   universityInternshipApproved?: number;
+  internshipBalances?: {type:string;total:number;approved:number;pending:number}[];
   storedCarriedOver?: number;
   carryoverExpiresOn?: string|null;
   quotasKnown?: boolean;
