@@ -7,18 +7,20 @@ const {internAllowance}=loadTS()('src/lib/internAllowance.ts');
 const db=new PGlite();
 await db.exec(readFileSync('tests/employee-cancellation.test.mjs','utf8').match(/await db.exec\(`([\s\S]*?)`\);/)[1]);
 const files=JSON.parse(readFileSync('tests/leave-policy.test.mjs','utf8').match(/const files=(\[.*?\]);/s)[1].replaceAll("'",'"'));
-for(const f of [...files,'048_intern_sick_allowance_revision','050_date_based_intern_allowances','050_date_based_intern_allowances'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
+for(const f of [...files,'048_intern_sick_allowance_revision','050_date_based_intern_allowances','050_date_based_intern_allowances','064_intern_half_day_allowances','064_intern_half_day_allowances'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
 const q=async(sql,args=[])=>(await db.query(sql,args)).rows;
 await db.exec("INSERT INTO tbs_employees(user_id,tbs_id,first_name,status,employment_type,intern_number) VALUES('date-intern',501,'Intern','active','intern',501)");
 test('UI and database agree for full months, partial months, leap years and month-end dates',async()=>{
- for(const [start,end,expected] of [['2026-01-01','2026-01-31',1],['2026-01-01','2026-02-28',2],['2026-01-01','2026-04-30',4],['2026-01-01','2026-06-30',6],['2026-01-01','2026-01-15',0.48],['2028-02-01','2028-02-29',1],['2026-01-31','2026-02-27',1],['2026-12-15','2027-01-14',1],['2026-10-20','2026-10-20',0.03]]){
+ for(const [start,end,expected] of [['2026-01-01','2026-01-31',1],['2026-01-01','2026-02-28',2],['2026-01-01','2026-04-30',4],['2026-01-01','2026-06-30',6],['2026-01-01','2026-01-15',0.48],['2028-02-01','2028-02-29',1],['2026-01-31','2026-02-27',1],['2026-12-15','2027-01-14',1],['2026-10-20','2026-10-20',0.03],['2026-01-01','2026-06-26',5.87],['2026-04-01','2026-04-15',0.5],['2026-04-01','2026-04-14',0.47]]){
   const a=internAllowance(start,end);assert.equal(a.months,expected,`${start}/${end}`);
   await q("INSERT INTO tbs_intern_terms(user_id,start_date,end_date) VALUES('date-intern',$1,$2) ON CONFLICT(user_id) DO UPDATE SET start_date=excluded.start_date,end_date=excluded.end_date",[start,end]);
   for(const kind of ['sick','annual','personal']){
    const b=(await q("SELECT tbs_leave_balance('date-intern',2026,$1) b",[kind]))[0].b;
+   assert.equal(b.total*2,Math.floor(b.total*2));
    assert.equal(b.total,a[kind],`${start}/${end}/${kind}`);
   }
  }
+ assert.deepEqual(internAllowance('2026-01-01','2026-06-26'),{months:5.87,sick:5.5,annual:2.5,personal:3});
  assert.equal(internAllowance('2026-02-30','2026-03-01'),null);
  assert.equal(internAllowance('2026-03-02','2026-03-01'),null);
 });

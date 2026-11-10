@@ -19,5 +19,5 @@ export function internAllowance(start: string, end: string) {
   const anchor = anniversary(whole), next = anniversary(whole + 1);
   const months = whole + (+finish - +anchor) / (+next - +anchor);
   const round = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
-  return { months: round(months), sick: round(months), annual: round(months / 2), personal: 3 };
+  return { months: round(months), sick: Math.floor(months * 2) / 2, annual: Math.floor(months) / 2, personal: 3 };
 }
