@@ -16,6 +16,15 @@ const approvalDemo=new URLSearchParams(location.search).get('scenario')==='appro
 let pendingDemo=approvalDemo;
 const demoDates=[`${year}-10-27`,`${year}-10-28`];
 const employee=(intern:boolean)=>({id:intern?'demo-intern':'demo-staff',empNo:intern?901:1,empCode:intern?'TBSInterns-001':'TBS-001',name:intern?'Sample Intern':'Sample Employee',nickname:'',department:intern?'AI':'SEO',employmentType:intern?'intern':'employee',internNumber:intern?1:null,status:intern?internStatus:'active',startDate:`${year}-01-01`,quotas:{annualTotal:intern?null:10,sickTotal:intern?null:30,personalTotal:intern?0:3,carriedOver:0},quotasKnown:!intern,leaves:intern&&pendingDemo?demoDates.map((date,i)=>({id:`demo-leave-${i}`,requestId:'demo-request',requestRevision:'demo-revision',requestDates:demoDates,date,type:'personal',days:1,note:'Sample two-day request',status:'Pending'})):[]});
+const iso=(offset:number)=>new Date(Date.now()+offset*86400000).toISOString().slice(0,10);
+const sampleInterns=[
+ {id:'demo-intern-2',code:'TBSInterns-002',name:'Kirin Example',department:'SEO',status:'active',start:iso(-100),end:iso(18),supervisors:['demo-lead-4'],used:[1.5,1,3],leaves:[{date:iso(3),type:'personal',days:1,note:'Family event\n(TH) งานครอบครัว',status:'Pending'},{date:iso(-20),type:'sick',days:1,note:'Fever',status:'Approved'}]},
+ {id:'demo-intern-3',code:'TBSInterns-003',name:'Yanisa Example',department:'Content',status:'active',start:iso(-30),end:iso(90),supervisors:[],used:[0,0,0],leaves:[]},
+ {id:'demo-intern-4',code:'TBSInterns-004',name:'Sai Example',department:'AI',status:'active',start:iso(-60),end:iso(60),supervisors:['demo-lead-3','demo-lead'],used:[4.5,1,1],leaves:[{date:iso(-5),type:'sick',days:0.5,note:'Clinic visit',status:'Approved',halfDayPeriod:'morning'}]},
+ {id:'demo-intern-5',code:'TBSInterns-005',name:'Past Example',department:'Graphic',status:'inactive',start:iso(-200),end:iso(-40),supervisors:['demo-lead-2'],used:[2,2,1],leaves:[]},
+];
+const sampleEmployees=()=>sampleInterns.map((s,n)=>({id:s.id,empNo:902+n,empCode:s.code,name:s.name,nickname:'',department:s.department,employmentType:'intern',internNumber:2+n,status:s.status,startDate:s.start,quotas:{annualTotal:null,sickTotal:null,personalTotal:0,carriedOver:0},quotasKnown:false,leaves:s.leaves.map((l,i)=>({id:`${s.id}-leave-${i}`,requestId:`${s.id}-request-${i}`,requestRevision:'demo-revision',requestDates:[l.date],...l}))}));
+const sampleTerms=()=>sampleInterns.map(s=>({user_id:s.id,universityApproved:0,months:4,start_date:s.start,end_date:s.end,internshipBalances:['sick','annual','personal'].map((type,i)=>({type,total:[4,2,3][i],approved:s.used[i],pending:0}))}));
 window.fetch=async(input,init)=>{
  const url=new URL(String(input),location.origin),json=(v:unknown,status=200)=>new Response(JSON.stringify(v),{status});
  if(url.pathname==='/api/auth'){
@@ -25,9 +34,9 @@ window.fetch=async(input,init)=>{
  }
  if(url.pathname==='/api/company-holidays')return json({ok:true,confirmed:true,revision:'demo',holidays:[{date:`${year}-10-13`,name:'Company holiday'}]});
  if(url.pathname==='/api/registration')return json({ok:true,registrations:[]});
- if(url.pathname==='/api/intern-terms')return json({ok:true,terms:[{user_id:'demo-intern',universityApproved:0,months:4,start_date:`${year}-01-01`,end_date:`${year}-04-30`}],supervisors:[{userId:'demo-lead',name:'Sample Supervisor (Lead)'},{userId:'demo-lead-2',name:'Second Supervisor'}],internSupervisors:{'demo-intern':['demo-lead']}});
+ if(url.pathname==='/api/intern-terms')return json({ok:true,terms:[{user_id:'demo-intern',universityApproved:0,months:4,start_date:`${year}-01-01`,end_date:`${year}-04-30`},...sampleTerms()],supervisors:[{userId:'demo-lead',name:'Sample Supervisor (Lead)'},{userId:'demo-lead-2',name:'Second Supervisor'},{userId:'demo-lead-3',name:'Alexander Example (Alex)'},{userId:'demo-lead-4',name:'Natthanon Example (Nate)'}],internSupervisors:{'demo-intern':['demo-lead'],...Object.fromEntries(sampleInterns.filter(i=>i.supervisors.length).map(i=>[i.id,i.supervisors]))}});
  if(!session)return json({error:'Sign in required'},401);
- if(url.pathname==='/api/employees'){const intern=url.searchParams.get('cohort')==='intern';if(session.role==='hr'&&!intern)return json({error:'Access denied'},403);return json({year,count:intern&&internDeleted?0:1,employees:intern&&internDeleted?[]:[employee(intern)]});}
+ if(url.pathname==='/api/employees'){const intern=url.searchParams.get('cohort')==='intern';if(session.role==='hr'&&!intern)return json({error:'Access denied'},403);const list=intern?[...(internDeleted?[]:[employee(true)]),...sampleEmployees()]:[employee(false)];return json({year,count:list.length,employees:list});}
  if(url.pathname==='/api/leave'&&init?.method==='PATCH'&&url.searchParams.get('id')==='demo-request'){pendingDemo=false;return json({ok:true});}
  if(url.pathname==='/api/accounts')return ['admin','ceo'].includes(session.role)?json({accounts,ok:true}):json({error:'Access denied'},403);
  if(url.pathname==='/api/interns'&&init?.method==='POST'){const b=JSON.parse(String(init.body));if(b.action==='delete'){if(internStatus!=='inactive'||b.confirmation!=='TBSInterns-001')return json({error:'Archive the intern and enter TBSInterns-001 to confirm.'},422);internDeleted=true;return json({ok:true});}if(b.action==='archive')internStatus='inactive';if(b.action==='restore')internStatus='active';return json({ok:true});}
