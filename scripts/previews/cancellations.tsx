@@ -41,7 +41,7 @@ window.fetch=async(input,init)=>{
  if(url.includes('/api/company-holidays'))return json({confirmed:true,holidays:[{date:'2026-10-13',name:'King Bhumibol Memorial Day',localName:'วันนวมินทรมหาราช'},{date:'2026-10-23',name:'Chulalongkorn Day',localName:'วันปิยมหาราช'}]});
  if(url.includes('delivery=1'))return json({pending:0,failed:0,jobs:[]});
  if(url.includes('action=check-user'))return json({found:true,name:'Demo Employee',department:'Web Developer'});
- if(url.includes('action=get-quota'))return json({remainingDays:10,annualTotal:12,sickTaken:1,sickTotal:null,sickRemaining:null,personalRemaining:2,personalTotal:3,personalTaken:1});
+ if(url.includes('action=get-quota'))return json({remainingDays:10,annualTotal:12,sickTaken:1,sickTotal:30,sickRemaining:29,personalRemaining:2,personalTotal:3,personalTaken:1});
  if(url.includes('action=get-team-calendar')||url.includes('/publicholidays/'))return json([]);
  if(!url.startsWith('/api/cancellations'))throw new Error('Live requests are disabled in this demo');
  const boss=url.includes('view=boss');

@@ -164,7 +164,8 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
             <div className="flex items-baseline gap-1 mt-1">
               {isQuotaLoading ? <Skeleton className="h-8 w-12" /> : (
                 <><span className="text-3xl font-extrabold text-slate-800">{sickTaken || 0}</span>
-                <span className="text-sm font-medium text-slate-400">{t('days')}{!policyConfigured ? (language==='th'?' · ยังไม่กำหนด':' · Not set') : unlimitedLeave ? (language==='th'?' · ไม่จำกัด':' · No limit') : ''}</span></>
+                {policyConfigured && !unlimitedLeave && sickTotal !== null && sickTotal !== undefined && <span className="text-sm font-bold text-slate-300">/ {sickTotal}</span>}
+                <span className="text-sm font-medium text-slate-400">{policyConfigured && !unlimitedLeave && sickTotal !== null && sickTotal !== undefined ? (language==='th'?'วันที่ใช้':'days used') : t('days')}{!policyConfigured ? (language==='th'?' · ยังไม่กำหนด':' · Not set') : unlimitedLeave ? (language==='th'?' · ไม่จำกัด':' · No limit') : ''}</span></>
               )}
             </div>
             <OverQuotaNotice remaining={sickRemaining} configured={policyConfigured} unlimited={unlimitedLeave} loading={isQuotaLoading} language={language}/>
@@ -213,7 +214,8 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
           <div className="flex flex-col items-end z-10"><div className="flex items-baseline gap-1">
             {isQuotaLoading ? <Skeleton className="h-8 w-16" /> : (
                 <><span className="text-3xl font-extrabold text-slate-800">{personalTaken || 0}</span>
-                <span className="text-sm font-medium text-slate-400">{t('days')}{!policyConfigured ? (language==='th'?' · ยังไม่กำหนด':' · Not set') : unlimitedLeave ? (language==='th'?' · ไม่จำกัด':' · No limit') : ''}</span></>
+                {policyConfigured && !unlimitedLeave && personalTotal !== null && personalTotal !== undefined && <span className="text-sm font-bold text-slate-300">/ {personalTotal}</span>}
+                <span className="text-sm font-medium text-slate-400">{policyConfigured && !unlimitedLeave && personalTotal !== null && personalTotal !== undefined ? (language==='th'?'วันที่ใช้':'days used') : t('days')}{!policyConfigured ? (language==='th'?' · ยังไม่กำหนด':' · Not set') : unlimitedLeave ? (language==='th'?' · ไม่จำกัด':' · No limit') : ''}</span></>
             )}
           </div><OverQuotaNotice remaining={personalRemaining} configured={policyConfigured} unlimited={unlimitedLeave} loading={isQuotaLoading} language={language}/></div>
         </div>
