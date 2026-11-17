@@ -108,7 +108,7 @@ export default function EmployeeSheetBlock({
       <header className="sticky top-0 z-10 bg-slate-900 text-white px-4 py-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-sm font-extrabold flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span>{employee.name} <span className="text-[#F5A623]">({employee.nickname})</span></span>
+            <span>{employee.name}{employee.nickname ? <span className="text-[#F5A623]"> ({employee.nickname})</span> : null}</span>
           </h3>
           <p className="text-[10px] text-slate-400 font-semibold mt-0.5 truncate">
             {[
@@ -137,16 +137,16 @@ export default function EmployeeSheetBlock({
           )}
           <button
             onClick={() => onEditProfile(employee)}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-600 px-2.5 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-colors"
             title={dt("Edit profile & quotas")}
           >
-            <Edit className="w-3.5 h-3.5" />
+            <Edit className="w-3.5 h-3.5" /><span className="hidden sm:inline">{dt("Edit")}</span>
           </button>
           {onRemoveEmployee && (
             <button
               onClick={() => onRemoveEmployee(employee)}
-              className="text-slate-500 hover:text-rose-400 transition-colors"
-              title={dt("Remove from roster")}
+              className="inline-flex items-center rounded-lg border border-slate-600 p-1.5 text-slate-300 hover:bg-rose-500/20 hover:text-rose-300 transition-colors"
+              title={dt("Remove from roster")} aria-label={dt("Remove from roster") + ": " + employee.name}
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>

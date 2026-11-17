@@ -29,6 +29,7 @@ import { useEmployeesData } from "@/hooks/useEmployeesData";
 import OverviewDashboard from "@/components/ceo/OverviewDashboard";
 import RemoveEmployeeDialog from "@/components/ceo/RemoveEmployeeDialog";
 import ManageRoster from "@/components/ceo/ManageRoster";
+import ManageStaff from "@/components/ceo/ManageStaff";
 import { useLeaveMutations } from "@/hooks/useLeaveMutations";
 import DataSourceBanner from "@/components/ceo/DataSourceBanner";
 import { findByEmpNo, formatEmpCode, nextEmpNo, parseEmpNo, searchEmployees } from "@/lib/employeeMatch";
@@ -403,57 +404,33 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
           
           {/* Department filter and navigation toolbar */}
           <div className="px-3 py-2 bg-slate-900 border-b border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-2 flex-wrap">
-            <label className="flex items-center gap-2 text-xs font-bold text-slate-300 shrink-0">
+            <label className="flex items-center gap-2 text-xs font-bold text-slate-300 shrink-0 md:order-last">
                {dt("Department")} <select aria-label={dt("Department filter")} value={selectedDept} onChange={e => setSelectedDept(e.target.value)} className="rounded-lg border border-slate-700 bg-slate-800 text-white px-3 py-2 max-w-[220px]">
                 {departments.map(dept => <option key={dept} value={dept}>{dept === "All" ? dt("All departments") : dept === "AI Engineering" ? "AI" : dept} ({dept === "All" ? activeEmployees.length : activeEmployees.filter(e => e.department === dept).length})</option>)}
               </select>
             </label>
 
             <div className="flex items-center gap-2 min-w-0 max-w-full">
-              <div className="flex flex-wrap bg-slate-800 p-0.5 rounded-lg border border-slate-700">
-                <button
-                  onClick={() => setViewMode("overview")}
-                  className={`px-2.5 py-1 text-xs font-extrabold rounded-md transition-colors flex items-center gap-1.5 ${
-                    viewMode === "overview" ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <BarChart3 className="w-3.5 h-3.5" />  {dt("Overview")} </button>
-                <button
-                  onClick={() => setViewMode("roster")}
-                  className={`px-2.5 py-1 text-xs font-extrabold rounded-md transition-colors flex items-center gap-1.5 ${
-                    viewMode === "roster" ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" />  {dt("Roster")} </button>
-                <button
-                  onClick={() => setViewMode("sheet")}
-                  className={`px-2.5 py-1 text-xs font-extrabold rounded-md transition-colors flex items-center gap-1.5 ${
-                    viewMode === "sheet" ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5" />  {dt("Sheet")} </button>
-                <button
-                  onClick={() => setViewMode("pending")}
-                  className={`px-2.5 py-1 text-xs font-extrabold rounded-md transition-colors flex items-center gap-1.5 ${
-                    viewMode === "pending" ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <CircleCheck className="w-3.5 h-3.5" />  {dt("Approvals")} {pendingRequestCount > 0 && <span className="rounded-full bg-red-500 text-white text-[10px] leading-none px-1.5 py-1">{pendingRequestCount}</span>}</button>
-                <select aria-label={dt("More tools")} value={["overview","roster","sheet","pending"].includes(viewMode)?"":viewMode} onChange={e=>{if(e.target.value)setViewMode(e.target.value as typeof viewMode);}} className="rounded-md border border-slate-600 bg-slate-800 text-white px-2 py-1.5 text-xs font-bold max-w-[170px]">
-                  <option value="" disabled>{dt("More tools")}</option>
-                  <option value="calendar">{dt("Team calendar")}</option><option value="history">{dt("Change history")}</option><option value="rollover">{dt("Year rollover")}</option><option value="removed">{dt("Removed employees (")}{removedEmployees.length})</option>
-                </select>
-              </div>
+              <nav aria-label={dt("Dashboard views")} className="flex flex-wrap items-center gap-1">
+                {([
+                  ["overview", dt("Overview"), BarChart3, 0],
+                  ["pending", dt("Approvals"), CircleCheck, pendingRequestCount],
+                  ["roster", dt("Staff"), Users, 0],
+                  ["sheet", dt("Sheet"), FileSpreadsheet, 0],
+                  ["calendar", dt("Team calendar"), CalendarDays, 0],
+                  ["history", dt("Change history"), Clock, 0],
+                  ["rollover", dt("Year rollover"), RotateCw, 0],
+                  ["removed", dt("Removed"), Trash2, removedEmployees.length],
+                ] as const).map(([id, label, Icon, count]) => (
+                  <button key={id} type="button" aria-pressed={viewMode === id} onClick={() => setViewMode(id)}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${viewMode === id ? "bg-[#00B5E2] text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white"}`}>
+                    <Icon className="hidden h-4 w-4 sm:block" aria-hidden="true" />{label}
+                    {count > 0 && <span className={`inline-flex min-w-5 h-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold leading-none ${id === "pending" ? "bg-red-500 text-white" : "bg-white/15 text-white"}`}>{count}</span>}
+                  </button>
+                ))}
+              </nav>
 
-              {viewMode === "sheet" && (
-                <button
-                  onClick={() => setCompactRows((v) => !v)}
-                  className="h-8 px-2.5 text-xs font-bold rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors"
-                  title={dt("Toggle row density")}
-                >
-                  {compactRows ? dt("Compact") : dt("Comfortable")}
-                </button>
-              )}
+
             </div>
 
 
@@ -468,23 +445,19 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
                 departmentCount={Math.max(departments.length - 1, 0)}
                 onLeaveToday={onLeaveToday}
                 onSelectEmployee={setSelectedEmployee}
+                onOpenApprovals={() => setViewMode("pending")}
                 exportReady={dataSource === "live" && !employeesError && !employeesPartial && !isFetchingEmployees}
                 exportScope={dt("Department: {0}",[dt(selectedDept)])}
               />
             </div>
           ) : viewMode === "roster" ? (
-            <ManageRoster
+            <ManageStaff
               employees={activeEmployees}
+              year={selectedYear}
               onOpenSheet={setSelectedEmployee}
               onStartDateChange={(employee, startDate) => leaveMutations.profile.mutateAsync({ employee, patch: { startDate } })}
               onQuotaChange={(employee, patch) => leaveMutations.quota.mutate({ employee, patch })}
-              onSetStatus={(employee, status) => {
-                if (status === "inactive") {
-                  setEmployeeToRemove(employee);
-                } else {
-                  leaveMutations.employeeStatus.mutate({ employee, status });
-                }
-              }}
+              onRemove={setEmployeeToRemove}
             />
           ) : viewMode === "removed" ? (
             <ManageRoster
@@ -501,6 +474,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
                 employees={filteredEmployees}
                 year={selectedYear}
                 compact={compactRows}
+                onToggleCompact={setCompactRows}
                 onUpdateLeave={updateLeaveRecord}
                 onAddLeave={addLeaveRecord}
                 onDeleteLeave={removeLeaveRecord}

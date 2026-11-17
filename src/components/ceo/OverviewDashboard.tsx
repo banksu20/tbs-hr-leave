@@ -2,6 +2,7 @@ import {useDashboardText} from "@/hooks/useDashboardText";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import MonthlyExportDialog from "./MonthlyExportDialog";
+import OverviewAttention from "./OverviewAttention";
 import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
@@ -47,6 +48,7 @@ export interface OverviewDashboardProps {
   onSelectEmployee: (emp: Employee) => void;
   exportReady: boolean;
   exportScope: string;
+  onOpenApprovals?: () => void;
 }
 
 function Card({ title, children, hint }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -128,6 +130,7 @@ export default function OverviewDashboard({
   onSelectEmployee,
   exportReady,
   exportScope,
+  onOpenApprovals,
 }: OverviewDashboardProps) {
  const dt = useDashboardText();
 
@@ -143,17 +146,12 @@ export default function OverviewDashboard({
   const periodEmployees = useMemo(()=>employees.map(e=>({...e,leaves:e.leaves.filter(l=>(month==='all'||Number(l.date.slice(5,7))===Number(month))&&selectedTypes.includes(l.type))})),[employees,month,selectedTypes]);
   const months = useMemo(() => month === 'all' ? monthlyTotals(periodEmployees, year, selectedTypes) : dailyTotals(periodEmployees, year, Number(month), selectedTypes), [periodEmployees, year, selectedTypes,month]);
   const todayEmployees = onLeaveToday.filter(e=>employees.some(p=>p.id===e.id));
-  const sickEmployees = useMemo(() => employees.map(employee => ({
-    id: employee.id,
-    employee,
-    label: employee.nickname || employee.name,
-    days: Math.round(sumLeavesByType(employee.leaves.filter(leave => month === "all" || Number(leave.date.slice(5, 7)) === Number(month)), "sick", year) * 100) / 100,
-  })).sort((a, b) => b.days - a.days || a.employee.empCode.localeCompare(b.employee.empCode, undefined, {numeric: true})), [employees, month, year]);
-  const [sickPage, setSickPage] = useState(0);
-  useEffect(() => setSickPage(0), [employees, month, year]);
-  const sickPageCount = Math.max(1, Math.ceil(sickEmployees.length / 6));
-  const currentSickPage = Math.min(sickPage, sickPageCount - 1);
-  const visibleSickEmployees = sickEmployees.slice(currentSickPage * 6, (currentSickPage + 1) * 6);
+  const people = exportScope === 'Interns' ? "interns" : "staff";
+  const [showAllPeople, setShowAllPeople] = useState(false);
+  const peopleRows = useMemo(() => periodEmployees.map(employee => {
+    const byType = availableTypes.map(type => Math.round(sumLeavesByType(employee.leaves, type, year) * 100) / 100);
+    return { employee, byType, total: Math.round(byType.reduce((sum, days) => sum + days, 0) * 100) / 100 };
+  }).sort((a, b) => b.total - a.total || a.employee.name.localeCompare(b.employee.name)), [periodEmployees, availableTypes, year]);
   const quotaUsage = useMemo(() => annualQuotaUsage(employees, year, 4), [employees, year]);
   const overQuota = useMemo(() => overQuotaList(employees, year), [employees, year]);
   const peak = useMemo(() => busiestMonth(months), [months]);
@@ -170,15 +168,15 @@ export default function OverviewDashboard({
     };
   }, [periodEmployees, year, availableTypes]);
 
-  const maxSickDays = sickEmployees[0]?.days ?? 0;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      <OverviewAttention employees={availableEmployees} onSelectEmployee={onSelectEmployee} onOpenApprovals={onOpenApprovals} />
       <div className={`grid grid-cols-2 ${showQuota ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-3`}>
         <StatTile
-          label={dt("Total staff")}
+          label={people === "interns" ? dt("Total interns") : dt("Total staff")}
           value={employees.length}
-          unit={dt("employees")}
+          unit={people === "interns" ? dt("interns") : dt("employees")}
           tone="sky"
           icon={<Users className="w-5 h-5" />}
           detail={<span className="text-[#68BD24] font-bold">{dt("Across")} {new Set(employees.map(e=>e.department)).size}  {dt("departments")}</span>}
@@ -186,7 +184,7 @@ export default function OverviewDashboard({
         <StatTile
           label={dt("On leave today")}
           value={todayEmployees.length}
-          unit={dt("staff")}
+          unit={people === "interns" ? dt("interns") : dt("staff")}
           tone="amber"
           icon={<Palmtree className="w-5 h-5" />}
           detail={
@@ -278,57 +276,16 @@ export default function OverviewDashboard({
       {exportOpen && <MonthlyExportDialog employees={employees} year={year} initialMonth={month==='all'?undefined:Number(month)} initialTypes={selectedTypes} scope={exportScope} ready={exportReady} onClose={() => setExportOpen(false)} />}
 
       <div className={`grid grid-cols-1 ${showQuota ? "lg:grid-cols-3" : ""} gap-3`}>
-        <Card title={dt("Sick leave usage by person")} hint={dt("Approved sick leave only · {0}", [period])}>
-          <ResponsiveContainer width="100%" height={130}>
-            <BarChart data={visibleSickEmployees} layout="vertical" margin={{ top: 0, right: 44, left: 8, bottom: 0 }} barSize={11}>
-              <CartesianGrid stroke={GRID} strokeDasharray="2 4" horizontal={false} />
-              <XAxis type="number" domain={[0, Math.max(1, maxSickDays)]} tick={{ fontSize: 11, fill: MUTED, fontWeight: 700 }} axisLine={false} tickLine={false} />
-              <YAxis
-                type="category"
-                dataKey="label"
-                width={92}
-                interval={0}
-                tick={{ fontSize: 10, fill: INK, fontWeight: 700 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                cursor={{ fill: "rgba(148,163,184,0.12)" }}
-                content={({ active, payload }) =>
-                  active && payload?.length ? (
-                    <div className="bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2">
-                      <p className="text-[11px] font-extrabold text-slate-900">{payload[0].payload.employee.name} · {payload[0].payload.employee.empCode}</p>
-                      <p className="text-[11px] font-semibold text-slate-600">
-                        {payload[0].payload.days}  {dt("sick days")} </p>
-                      <p className="text-[11px] font-semibold text-slate-600">
-                        {payload[0].payload.employee.department}
-                      </p>
-                    </div>
-                  ) : null
-                }
-              />
-              <Bar dataKey="days" radius={[0, 4, 4, 0]} isAnimationActive={false}>
-                {visibleSickEmployees.map((row) => (
-                  <Cell
-                    key={row.id}
-                    fill={SERIES.sick}
-                    fillOpacity={maxSickDays ? 0.35 + (row.days / maxSickDays) * 0.65 : 0.6}
-                  />
-                ))}
-                <LabelList
-                  dataKey="days"
-                  position="right"
-                  style={{ fontSize: 10, fontWeight: 800, fill: INK }}
-                />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          {sickEmployees.length === 0 && <p className="text-xs text-slate-400 text-center">{dt("No employees match these filters")}</p>}
-          {sickPageCount > 1 && <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
-            <button type="button" aria-label={dt("Previous employees in sick leave chart")} disabled={currentSickPage === 0} onClick={() => setSickPage(currentSickPage - 1)} className="px-2 py-1 rounded hover:bg-slate-100 disabled:opacity-40">{dt("Previous")}</button>
-            <span>{currentSickPage * 6 + 1}–{Math.min((currentSickPage + 1) * 6, sickEmployees.length)}  {dt("of")} {sickEmployees.length}</span>
-            <button type="button" aria-label={dt("Next employees in sick leave chart")} disabled={currentSickPage === sickPageCount - 1} onClick={() => setSickPage(currentSickPage + 1)} className="px-2 py-1 rounded hover:bg-slate-100 disabled:opacity-40">{dt("Next")}</button>
-          </div>}
+        <Card title={dt("Leave by person")} hint={dt("Approved leave · {0}", [period])}>
+          {peopleRows.length ? <div className="overflow-x-auto"><table className="w-full text-sm">
+            <thead><tr className="text-left text-xs text-slate-500"><th className="py-1.5 pr-2 font-medium">{people === "interns" ? dt("Intern") : dt("Employee")}</th>{availableTypes.map(type => <th key={type} className="py-1.5 px-2 font-medium text-right">{dt(LEAVE_META[type].short)}</th>)}<th className="py-1.5 pl-2 font-medium text-right">{dt("Total")}</th></tr></thead>
+            <tbody>{(showAllPeople ? peopleRows : peopleRows.slice(0, 6)).map(row => <tr key={row.employee.id} className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => onSelectEmployee(row.employee)}>
+              <td className="py-1.5 pr-2 font-medium text-slate-800 truncate max-w-[180px]">{row.employee.nickname || row.employee.name}</td>
+              {row.byType.map((days, index) => <td key={availableTypes[index]} className={`py-1.5 px-2 text-right tabular-nums ${days ? "text-slate-800" : "text-slate-300"}`}>{days}</td>)}
+              <td className="py-1.5 pl-2 text-right font-bold tabular-nums">{row.total}</td>
+            </tr>)}</tbody>
+          </table></div> : <p className="text-sm text-slate-400 text-center py-4">{dt("No employees match these filters")}</p>}
+          {peopleRows.length > 6 && <button type="button" className="mt-2 text-sm text-cyan-700 underline" onClick={() => setShowAllPeople(v => !v)}>{showAllPeople ? dt("Show fewer") : dt("Show all {0}", [peopleRows.length])}</button>}
         </Card>
 
         {showQuota && <>
