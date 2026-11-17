@@ -6,6 +6,7 @@ import { ceoAuthorised, json, queryParam, writesAllowed } from "./_lib/http.js";
 import { leaveRowSchema, normalizeRow } from "./_lib/leaveSchema.js";
 import { N8nMutationError, N8nNotRegisteredError, N8nUnavailableError, n8nPost } from "./_lib/n8nClient.js";
 import { cleanString } from "./_lib/normalize.js";
+import { withTranslation } from "./_lib/translateReason.js";
 
 function n8nFailure(res: VercelResponse, err: unknown) {
   if (err instanceof N8nMutationError) return json(res, err.status, { error: err.message });
@@ -83,7 +84,7 @@ async function update(req: VercelRequest, res: VercelResponse, id: string) {
     if(req.body.action==='reject'&&rejectionReason!==undefined&&(typeof rejectionReason!=='string'||rejectionReason.length>1000))return json(res,422,{error:'Rejection reason must be 1,000 characters or fewer'});
     if (typeof revision !== "string" || !/^[a-f0-9]{32}$/.test(revision)) return json(res,422,{error:"Refresh the request before deciding"});
     try {
-      const result = await dashboardCall(req,"leave-update", {body:{id,action:req.body.action,expectedRevision:revision,...(req.body.action==='reject'?{rejectionReason:rejectionReason?.trim()??''}:{})}});
+      const result = await dashboardCall(req,"leave-update", {body:{id,action:req.body.action,expectedRevision:revision,...(req.body.action==='reject'?{rejectionReason:await withTranslation(rejectionReason,1000)}:{})}});
       return json(res,200,{ok:true,id,n8n:result});
     } catch (err) { return n8nFailure(res,err); }
   }

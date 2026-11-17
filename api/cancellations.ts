@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { ceoAuthorised, writesAllowed, headerValue, json, queryParam } from './_lib/http.js';
 import { n8nPost, N8nMutationError } from './_lib/n8nClient.js';
 import { verifyLineIdentity } from './_lib/lineIdentity.js';
+import { withTranslation } from './_lib/translateReason.js';
 const requestSchema=z.object({id:z.number().int().positive(),revision:z.string().regex(/^[a-f0-9]{32}$/),dates:z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).min(1).max(366),reason:z.string().max(1000).default('')});
 const lineLinkSchema=z.object({id:z.coerce.number().int().positive(),token:z.string().uuid()});
 const lineDecisionSchema=z.object({id:z.number().int().positive(),token:z.string().uuid(),action:z.enum(['approve','reject']),reason:z.string().max(1000).default('')});
@@ -41,7 +42,7 @@ export default async function handler(req:VercelRequest,res:VercelResponse) {
    const parsed=(line?lineDecisionSchema:admin?decisionSchema:requestSchema).safeParse(req.body);
    if(!parsed.success) return json(res,422,{error:'Invalid cancellation details'});
    operation=line?'line-'+(parsed.data as z.infer<typeof lineDecisionSchema>).action:admin?(parsed.data as z.infer<typeof decisionSchema>).action:'request';
-   payload={...parsed.data,accountId};
+   payload={...parsed.data,reason:await withTranslation(parsed.data.reason,1000),accountId};
   }
   if(admin&&operation==='admin-delivery'&&(await dashboardSession(req))?.role==='hr')return json(res,403,{error:'Delivery administration is restricted'});
   const result=admin&&operation!=='admin-delivery'?await dashboardCall(req,operation==='admin-list'?'cancel-list':'cancel-'+operation,{body:payload,cohort:queryParam(req,'cohort')??'employee'}):await n8nPost('employee-cancellations',{operation,payload});
