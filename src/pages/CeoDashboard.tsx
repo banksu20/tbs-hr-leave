@@ -13,7 +13,8 @@ import {
   Users, Calendar, Clock, Plus, Trash2, Edit, FileText, X,
   AlertCircle, CheckCircle2, LayoutGrid, BarChart3,
   AlertTriangle, TrendingUp, Palmtree, Thermometer, CalendarDays,
-  Building, RotateCw, ShieldCheck, FileSpreadsheet, Upload, Download, Sparkles, Check, ArrowRight, ChevronRight, Filter, UserPlus, CircleCheck } from "lucide-react";
+  Building, RotateCw, ShieldCheck, FileSpreadsheet, Upload, Download, Sparkles, Check, ArrowRight, ChevronRight, Filter, UserPlus, CircleCheck, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -413,21 +414,41 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
             <div className="flex items-center gap-2 min-w-0 max-w-full">
               <nav aria-label={dt("Dashboard views")} className="flex flex-wrap items-center gap-1">
                 {([
-                  ["overview", dt("Overview"), BarChart3, 0],
-                  ["pending", dt("Approvals"), CircleCheck, pendingRequestCount],
-                  ["roster", dt("Staff"), Users, 0],
-                  ["sheet", dt("Sheet"), FileSpreadsheet, 0],
-                  ["calendar", dt("Team calendar"), CalendarDays, 0],
-                  ["history", dt("Change history"), Clock, 0],
-                  ["rollover", dt("Year rollover"), RotateCw, 0],
-                  ["removed", dt("Removed"), Trash2, removedEmployees.length],
-                ] as const).map(([id, label, Icon, count]) => (
+                  ["overview", dt("Overview"), BarChart3],
+                  ["pending", dt("Approvals"), CircleCheck],
+                  ["roster", dt("Staff"), Users],
+                  ["sheet", dt("Sheet"), FileSpreadsheet],
+                ] as const).map(([id, label, Icon]) => (
                   <button key={id} type="button" aria-pressed={viewMode === id} onClick={() => setViewMode(id)}
                     className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${viewMode === id ? "bg-[#00B5E2] text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white"}`}>
                     <Icon className="hidden h-4 w-4 sm:block" aria-hidden="true" />{label}
-                    {count > 0 && <span className={`inline-flex min-w-5 h-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold leading-none ${id === "pending" ? "bg-red-500 text-white" : "bg-white/15 text-white"}`}>{count}</span>}
+                    {id === "pending" && pendingRequestCount > 0 && <span className="inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold leading-none text-white">{pendingRequestCount}</span>}
                   </button>
                 ))}
+                {(() => {
+                  const more = [
+                    ["calendar", dt("Team calendar"), CalendarDays],
+                    ["history", dt("Change history"), Clock],
+                    ["rollover", dt("Year rollover"), RotateCw],
+                    ["removed", `${dt("Removed")}${removedEmployees.length ? ` (${removedEmployees.length})` : ""}`, Trash2],
+                  ] as const;
+                  const current = more.find(([id]) => id === viewMode);
+                  return <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button type="button" aria-label={current ? dt("More views: {0}", [current[1]]) : dt("More views")}
+                        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${current ? "bg-[#00B5E2] text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white"}`}>
+                        {current ? current[1] : dt("More")}<ChevronDown className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" sideOffset={8} className="w-56 rounded-xl border-slate-700 bg-slate-900 p-1.5 text-slate-200 shadow-xl">
+                      <DropdownMenuRadioGroup value={viewMode} onValueChange={value => setViewMode(value as typeof viewMode)}>
+                        {more.map(([id, label, Icon]) => <DropdownMenuRadioItem key={id} value={id} className="gap-2 rounded-lg py-3 pr-3 focus:bg-slate-800 focus:text-white data-[state=checked]:bg-cyan-500/15 data-[state=checked]:text-cyan-300">
+                          <Icon className="h-4 w-4" aria-hidden="true" />{label}
+                        </DropdownMenuRadioItem>)}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>;
+                })()}
               </nav>
 
 
