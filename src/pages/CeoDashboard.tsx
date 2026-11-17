@@ -13,8 +13,7 @@ import {
   Users, Calendar, Clock, Plus, Trash2, Edit, FileText, X,
   AlertCircle, CheckCircle2, LayoutGrid, BarChart3,
   AlertTriangle, TrendingUp, Palmtree, Thermometer, CalendarDays,
-  Building, RotateCw, ShieldCheck, FileSpreadsheet, Upload, Download, Sparkles, Check, ArrowRight, ChevronRight, Filter, UserPlus
-} from "lucide-react";
+  Building, RotateCw, ShieldCheck, FileSpreadsheet, Upload, Download, Sparkles, Check, ArrowRight, ChevronRight, Filter, UserPlus, CircleCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -192,6 +191,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
 
 
   // Filtered employees
+  const pendingRequestCount = activeEmployees.reduce((count, emp) => count + new Set(emp.leaves.filter((l) => l.status === "Pending").map((l) => l.requestId ?? l.id)).size, 0);
   const filteredEmployees = activeEmployees.filter(
     (emp) => selectedDept === "All" || emp.department === selectedDept
   );
@@ -432,9 +432,16 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
                   }`}
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" />  {dt("Sheet")} </button>
-                <select aria-label={dt("More tools")} value={["overview","roster","sheet"].includes(viewMode)?"":viewMode} onChange={e=>{if(e.target.value)setViewMode(e.target.value as typeof viewMode);}} className="rounded-md border border-slate-600 bg-slate-800 text-white px-2 py-1.5 text-xs font-bold max-w-[170px]">
+                <button
+                  onClick={() => setViewMode("pending")}
+                  className={`px-2.5 py-1 text-xs font-extrabold rounded-md transition-colors flex items-center gap-1.5 ${
+                    viewMode === "pending" ? "bg-[#00B5E2] text-white" : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <CircleCheck className="w-3.5 h-3.5" />  {dt("Approvals")} {pendingRequestCount > 0 && <span className="rounded-full bg-red-500 text-white text-[10px] leading-none px-1.5 py-1">{pendingRequestCount}</span>}</button>
+                <select aria-label={dt("More tools")} value={["overview","roster","sheet","pending"].includes(viewMode)?"":viewMode} onChange={e=>{if(e.target.value)setViewMode(e.target.value as typeof viewMode);}} className="rounded-md border border-slate-600 bg-slate-800 text-white px-2 py-1.5 text-xs font-bold max-w-[170px]">
                   <option value="" disabled>{dt("More tools")}</option>
-                  <option value="pending">{dt("Pending requests")}</option><option value="calendar">{dt("Team calendar")}</option><option value="history">{dt("Change history")}</option><option value="rollover">{dt("Year rollover")}</option><option value="removed">{dt("Removed employees (")}{removedEmployees.length})</option>
+                  <option value="calendar">{dt("Team calendar")}</option><option value="history">{dt("Change history")}</option><option value="rollover">{dt("Year rollover")}</option><option value="removed">{dt("Removed employees (")}{removedEmployees.length})</option>
                 </select>
               </div>
 

@@ -1,0 +1,41 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {PGlite} from '@electric-sql/pglite';
+import {readFileSync,readdirSync} from 'node:fs';
+const db=new PGlite();const q=async(s,p=[])=>(await db.query(s,p)).rows;
+await db.exec(readFileSync('tests/employee-cancellation.test.mjs','utf8').match(/await db.exec\(`([\s\S]*?)`\);/)[1]);
+const files=JSON.parse(readFileSync('tests/leave-policy.test.mjs','utf8').match(/const files=(\[.*?\]);/s)[1].replaceAll("'",'"'));
+const later=readdirSync('n8n/sql').filter(f=>/^0(4[3-9]|5\d|6[0-6])_/.test(f)).sort().map(f=>f.replace('.sql',''));
+for(const f of [...files,...later,'067_approval_card_balances','067_approval_card_balances'])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
+const rpc=async(fn,p)=>(await q(`SELECT ${fn}($1::jsonb) r`,[JSON.stringify(p)]))[0].r;
+await q("INSERT INTO tbs_employees(user_id,tbs_id,first_name,last_name,status,employment_type,intern_number) VALUES('bal-staff',701,'Sam','Staff','active','employee',NULL),('bal-intern',702,'Ina','Intern','active','intern',701),('bal-hr',703,'Nam','HR','active','employee',NULL)");
+await q("UPDATE tbs_policy_routing SET hr_line_id='bal-hr'");
+await q("INSERT INTO tbs_policy_routing(hr_line_id) SELECT 'bal-hr' WHERE NOT EXISTS(SELECT 1 FROM tbs_policy_routing)");
+await q("INSERT INTO tbs_calendar_years(year) VALUES(2099) ON CONFLICT DO NOTHING");
+await q("INSERT INTO leave_quotas(user_id,year,annual_total,sick_total,personal_total,carried_over) VALUES('bal-staff',2099,10,30,3,0)");
+await q("INSERT INTO tbs_intern_terms(user_id,start_date,end_date) VALUES('bal-intern','2099-01-01','2099-04-30')");
+const card=async(userId,body)=>{const r=await rpc('tbs_employee_request',{userId,submittedBy:userId,emergencyReason:'Urgent family matter',reason:'Urgent family matter',...body});assert.equal(r.ok,true,JSON.stringify(r));return (await q("SELECT payload FROM tbs_sync_jobs WHERE kind='line' AND user_id=$1 AND jsonb_typeof(payload->'to')='array' ORDER BY delivery_order DESC LIMIT 1",[userId]))[0].payload.messages[0].contents;};
+const lines=bubble=>bubble.body.contents.map(c=>c.text);
+test('full-time approval card shows days left after the request and keeps its buttons',async()=>{
+ const bubble=await card('bal-staff',{leaveType:'personal',selectedDates:['2099-03-03'],leaveDays:0.5,halfDayPeriod:'morning'});
+ const line=lines(bubble).at(-1);
+ assert.match(line,/Left after this request/);
+ assert.match(line,/Sick 30\/30/);assert.match(line,/Annual 10\/10/);assert.match(line,/Personal 2\.5\/3/);
+ assert.equal(bubble.footer.contents.length,2);assert.ok(JSON.stringify(bubble.footer).includes('action=approve'));
+ assert.ok(lines(bubble).some(t=>t.includes('Urgent family matter')));
+});
+test('intern approval card shows whole-internship balances and intern buttons',async()=>{
+ const bubble=await card('bal-intern',{leaveType:'sick',selectedDates:['2099-02-03','2099-02-04'],leaveDays:2});
+ const line=lines(bubble).at(-1);
+ assert.match(line,/Sick 2\/4/);assert.match(line,/Annual 2\/2/);assert.match(line,/Personal 3\/3/);
+ assert.ok(JSON.stringify(bubble.footer).includes('leave-decision'));
+});
+test('card is unchanged when no balance is known',async()=>{
+ await q("INSERT INTO tbs_employees(user_id,tbs_id,first_name,status,employment_type) VALUES('bal-ghost',704,'Ghost','active','employee')");
+ const request=(await q("INSERT INTO leave_requests(user_id,user_name,leave_type,leave_days,start_date,end_date,selected_dates,reason,status) VALUES('nobody','No Body','sick',1,'2099-05-05','2099-05-05','2099-05-05','Ill','Pending') RETURNING id"))[0].id;
+ const m=(await q("SELECT tbs_approval_message(r,'[\"bal-hr\"]'::jsonb) m,tbs_approval_message_before_balance(r,'[\"bal-hr\"]'::jsonb) base FROM leave_requests r WHERE id=$1",[request]))[0];
+ const added=m.m.messages[0].contents.body.contents.length-m.base.messages[0].contents.body.contents.length;
+ assert.ok(added===0||added===1);
+ assert.deepEqual(m.m.messages[0].contents.footer,m.base.messages[0].contents.footer);
+});
+test.after(()=>db.close());

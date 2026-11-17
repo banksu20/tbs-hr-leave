@@ -13,8 +13,9 @@ let activationNotice=(text:string)=>{};
 const sample=(type:string)=>({user_id:crypto.randomUUID(),first_name:'Sample',last_name:type==='intern'?'Intern':'Employee',nickname:'',department:'AI',employment_type:type,active:false});
 window.fetch=async(input,init)=>{
  const u=new URL(String(input),location.origin);
- if(u.pathname!=='/api/registration')throw Error('Live requests are disabled in this demo');
  const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json'}});
+ if(u.pathname==='/api/intern-terms')return json({ok:true,terms:[],supervisors:[{userId:'demo-lead',name:'Alexander Example (Alex)'},{userId:'demo-lead-2',name:'Natthanon Example (Nate)'},{userId:'demo-lead-3',name:'Kasidit Example (First)'}],internSupervisors:{}});
+ if(u.pathname!=='/api/registration')throw Error('Live requests are disabled in this demo');
  if(init?.method==='PATCH'){
   const b=JSON.parse(String(init.body)),r=registrations.find(r=>r.user_id===b.userId);
   if(!r)return json({error:'Registration not found'},404);
