@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Dashboard from "@/components/Dashboard";
 import { Loader2 } from "lucide-react";
 
-type IndexProps = { profile?: { userId: string; displayName: string } | null; registration?: { name: string; department: string } | null };
+type IndexProps = { profile?: { userId: string; displayName: string; pictureUrl?: string } | null; registration?: { name: string; department: string } | null };
 
 const Index = ({ profile, registration }: IndexProps = {}) => {
   const navigate = useNavigate();
