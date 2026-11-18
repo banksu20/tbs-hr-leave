@@ -19,13 +19,14 @@ const LIFF_ID = "2008617589-89gR1Y3Y";
 
 type KnownProfile = { userId: string; displayName: string; pictureUrl?: string };
 type KnownRegistration = { name: string; department: string };
-type Tone = { icon: string; bar: string; ring: string };
+type Tone = { card: string; label: string; badge: string; track: string; stroke: string };
 
 const tones: Record<'sick' | 'vacation' | 'personal', Tone> = {
-  sick: { icon: 'bg-rose-50 text-rose-500', bar: 'bg-rose-400', ring: 'hover:border-rose-200' },
-  vacation: { icon: 'bg-sky-50 text-sky-500', bar: 'bg-sky-400', ring: 'hover:border-sky-200' },
-  personal: { icon: 'bg-amber-50 text-amber-500', bar: 'bg-amber-400', ring: 'hover:border-amber-200' },
+  sick: { card: 'from-rose-50 border-rose-100 hover:border-rose-200', label: 'text-rose-600', badge: 'bg-rose-500', track: '#ffe4e6', stroke: '#f43f5e' },
+  vacation: { card: 'from-sky-50 border-sky-100 hover:border-sky-200', label: 'text-sky-600', badge: 'bg-sky-500', track: '#e0f2fe', stroke: '#0ea5e9' },
+  personal: { card: 'from-amber-50 border-amber-100 hover:border-amber-200', label: 'text-amber-600', badge: 'bg-amber-500', track: '#fef3c7', stroke: '#f59e0b' },
 };
+const RING = 2 * Math.PI * 30;
 
 const bangkokNow = () => {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()).map(p => [p.type, p.value]));
@@ -48,22 +49,27 @@ function BalanceCard({ label, Icon, tone, loading, configured, unlimited, remain
   const left = known ? Math.max(Number(remaining), 0) : 0;
   const used = known ? Math.max(Number(total) - Number(remaining), 0) : 0;
   const empty = known && left <= 0;
+  const share = known ? Math.min(1, left / Number(total)) : unlimited ? 1 : 0;
+  const blank = ' ';
   return (
-    <button type="button" onClick={onClick} className={`group flex flex-col rounded-2xl border border-slate-100 bg-white p-3 text-left shadow-xs transition active:scale-[0.97] ${tone.ring} hover:shadow-sm`}>
-      <span className={`mb-2 grid h-8 w-8 place-items-center rounded-xl ${tone.icon}`}><Icon className="h-4 w-4" /></span>
-      <span className="text-[11px] font-semibold text-slate-500 leading-tight">{label}</span>
-      {loading ? <Skeleton className="mt-1 h-8 w-10" /> : (
-        <span className="mt-0.5 flex items-baseline gap-1">
-          <span className={`text-[28px] font-extrabold leading-none ${empty ? 'text-rose-500' : 'text-slate-900'}`}>{!configured ? '—' : unlimited ? '∞' : known ? left : '—'}</span>
-          {known && <span className="text-[11px] font-medium text-slate-400 whitespace-nowrap">{th ? 'วัน' : left === 1 ? 'day' : 'days'}</span>}
-        </span>
-      )}
-      <span className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-        {known && <span className={`block h-full rounded-full ${empty ? 'bg-rose-400' : tone.bar}`} style={{ width: `${Math.min(100, (used / Number(total)) * 100)}%` }} />}
+    <button type="button" onClick={onClick} className={`group relative flex flex-col items-center rounded-2xl border bg-linear-to-b/srgb to-white px-2 pt-3 pb-3.5 text-center shadow-xs transition active:scale-[0.97] hover:shadow-sm ${tone.card}`}>
+      <span className={`flex items-center gap-1 text-xs font-bold ${tone.label}`}><Icon className="h-3.5 w-3.5" />{label}</span>
+      <span className="relative mt-2 grid h-[76px] w-[76px] place-items-center">
+        <svg viewBox="0 0 72 72" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
+          <circle cx="36" cy="36" r="30" fill="none" stroke={tone.track} strokeWidth="7" />
+          {!loading && share > 0 && <circle cx="36" cy="36" r="30" fill="none" stroke={tone.stroke} strokeWidth="7" strokeLinecap="round" strokeDasharray={RING} strokeDashoffset={RING * (1 - share)} className="transition-[stroke-dashoffset] duration-700" />}
+        </svg>
+        {loading ? <Skeleton className="h-6 w-8" /> : (
+          <span className="relative flex flex-col items-center leading-none">
+            <span className={`text-2xl font-extrabold ${empty ? 'text-rose-500' : 'text-slate-900'}`}>{!configured ? '—' : unlimited ? '∞' : known ? left : '—'}</span>
+            {known && <span className="mt-0.5 text-[10px] font-medium text-slate-400">{th ? 'วัน' : left === 1 ? 'day' : 'days'}</span>}
+          </span>
+        )}
       </span>
-      <span className="mt-1.5 text-[10px] font-medium text-slate-400 leading-tight">
-        {loading ? ' ' : !configured ? (th ? 'ยังไม่กำหนด' : 'Not set') : unlimited ? (th ? 'ไม่จำกัด' : 'No limit') : known ? (empty ? (th ? 'ใช้ครบแล้ว' : 'All used') : (th ? `ใช้ไป ${used}/${total}` : `${used}/${total} used`)) : ' '}
+      <span className={`mt-2 text-[10px] font-medium leading-tight ${empty ? 'text-rose-500' : 'text-slate-500'}`}>
+        {loading ? blank : !configured ? (th ? 'ยังไม่กำหนด' : 'Not set') : unlimited ? (th ? 'ไม่จำกัด' : 'No limit') : known ? (empty ? (th ? 'ใช้ครบแล้ว' : 'All used') : (th ? `ใช้ไป ${used} จาก ${total}` : `${used} of ${total} used`)) : blank}
       </span>
+      <span className={`mt-2.5 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold text-white shadow-xs ${tone.badge}`}><Plus className="h-3 w-3" strokeWidth={3} />{th ? 'ขอลา' : 'Request'}</span>
       <OverQuotaNotice remaining={remaining} configured={configured} unlimited={unlimited} loading={loading} language={th ? 'th' : 'en'} />
     </button>
   );
@@ -199,15 +205,12 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
             <h2 className="text-sm font-bold text-slate-800">{th ? 'วันลาคงเหลือ' : 'Your leave balance'}</h2>
             <span className="text-[11px] font-medium text-slate-400">{th ? `ปี ${year + 543}` : year}</span>
           </div>
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-2">
             {balances.map(b => (
               <BalanceCard key={b.key} label={b.label} Icon={b.Icon} tone={tones[b.key]} loading={isQuotaLoading} configured={policyConfigured} unlimited={unlimitedLeave}
                 remaining={b.remaining} total={b.total} th={th} onClick={() => navigate(`/leave-request?type=${b.key}`)} />
             ))}
           </div>
-          <button type="button" onClick={() => navigate('/leave-request')} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-3.5 text-sm font-bold text-white shadow-sm transition active:scale-[0.98] hover:bg-slate-800">
-            <Plus className="h-4 w-4" />{th ? 'ขอลางาน' : 'Request leave'}
-          </button>
         </section>
 
         <div className="grid grid-cols-2 gap-3">
