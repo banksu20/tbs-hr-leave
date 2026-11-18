@@ -2,7 +2,7 @@ import {leaveFormType} from '@/lib/leaveFormType';
 import {leaveErrorMessage} from '@/lib/leaveErrorMessage';
 import {employeeData} from "@/lib/employeeData";
 import {useNotificationLanguage} from '@/hooks/useNotificationLanguage';
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, type ComponentType } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import liff from "@line/liff";
 import Swal from "sweetalert2";
@@ -15,15 +15,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Loader2, Calendar as CalendarIcon, User, FileText, ArrowLeft, AlertTriangle, Clock } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, User, FileText, ArrowLeft, AlertTriangle, Clock, Check, Paperclip, Upload, Send, Thermometer, Palmtree, CalendarDays, GraduationCap } from "lucide-react";
 import { exceedsBalance, type LeavePolicy } from "@/lib/leavePolicy";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/useLanguage";
 
 
 const LIFF_ID = import.meta.env.VITE_LIFF_ID || "2008617589-89gR1Y3Y";
 const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || "https://n8n.womenrefugeeroute.org";
+
+type FormTone={header:string;solid:string;soft:string;text:string;activeCard:string;focus:string;hex:string;icon:ComponentType<{className?:string}>};
+const formTones:Record<string,FormTone>={
+  sick:{header:'from-rose-500 to-pink-500',solid:'bg-rose-500',soft:'bg-rose-50',text:'text-rose-600',activeCard:'border-rose-400 bg-rose-50/60',focus:'focus-visible:ring-rose-400',hex:'#f43f5e',icon:Thermometer},
+  personal:{header:'from-amber-500 to-orange-500',solid:'bg-amber-500',soft:'bg-amber-50',text:'text-amber-600',activeCard:'border-amber-400 bg-amber-50/60',focus:'focus-visible:ring-amber-400',hex:'#f59e0b',icon:CalendarDays},
+  vacation:{header:'from-sky-500 to-indigo-500',solid:'bg-sky-500',soft:'bg-sky-50',text:'text-sky-600',activeCard:'border-sky-400 bg-sky-50/60',focus:'focus-visible:ring-sky-400',hex:'#0ea5e9',icon:Palmtree},
+  university:{header:'from-violet-500 to-purple-600',solid:'bg-violet-500',soft:'bg-violet-50',text:'text-violet-600',activeCard:'border-violet-400 bg-violet-50/60',focus:'focus-visible:ring-violet-400',hex:'#8b5cf6',icon:GraduationCap},
+};
 
 interface LeaveRequestFormProps {
   userId?: string;
@@ -420,301 +427,255 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType, pict
     );
   }
 
+  const tone = formTones[formData.leaveType] ?? formTones.vacation;
+  const thai = language === 'th';
+  const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
+  const submitDisabled = isSubmitting || uploading || !policyReady || isOverQuota || late || (formData.leaveType==='university'&&!evidence.length) || selectedDates.length === 0;
+  const displayName = (() => {
+    const parts = (formData.userName || "").split('|').map(p => p.trim().replace(/[()]/g, ""));
+    const validParts = parts.filter(p => p !== "");
+    if (parts.length >= 3 && parts[0] && parts[1] && parts[2]) return `${parts[0]} ${parts[1]} (${parts[2]})`;
+    if (validParts.length > 1) { const nick = validParts.pop(); return `${validParts.join(" ")} (${nick})`; }
+    if (validParts.length === 1) return validParts[0];
+    return "Unknown User";
+  })();
+  const summaryText = selectedDates.length === 0 ? '' : `${requestedDays} ${thai ? 'วัน' : requestedDays === 1 ? 'day' : 'days'}${isHalfDay && selectedDates.length === 1 ? ` · ${halfDayType === 'morning' ? (thai ? 'ช่วงเช้า' : 'Morning') : (thai ? 'ช่วงบ่าย' : 'Afternoon')}` : ''}`;
+  const step = (n: number, title: string, Icon: typeof CalendarIcon) => (
+    <div className="mb-3 flex items-center gap-2.5">
+      <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold text-white ${tone.solid}`}>{n}</span>
+      <Icon className="h-4 w-4 text-slate-400" />
+      <h2 className="text-sm font-bold text-slate-800">{title}</h2>
+    </div>
+  );
+
   return (
     <div className="min-h-dvh bg-slate-50 flex flex-col font-sans relative">
-      
-      {/* Header */}
-      <div className="bg-white text-slate-800 py-6 px-4 md:px-6 shadow-xs relative overflow-hidden rounded-b-3xl z-10 shrink-0">
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-linear-to-r/srgb from-sky-500 via-amber-400 to-emerald-500"></div>
-        <div className="flex items-center gap-3 md:max-w-2xl md:mx-auto">
-          <button 
-            type="button"
-            aria-label={language==='th'?'กลับหน้าหลัก':'Back to home'}
-            onClick={() => navigate("/")} 
-            className="p-2.5 -ml-1 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors text-slate-600 active:scale-95"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div>
-            <h1 className="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight">{t('leave_request')}</h1>
-            <p className="text-xs font-medium text-slate-500 mt-0.5">{t('submit_leave')}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Form Content Area */}
-      <div className="px-4 pb-40 md:px-6 md:max-w-2xl md:mx-auto w-full mt-4 flex-1 space-y-4">
-
-
-        <form id="leave-form" onSubmit={handleSubmit} className="space-y-4">
-          
-          <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 space-y-3">
-            <div className="flex items-center gap-3 min-w-0">
-              {pictureUrl&&!pictureFailed?<img src={pictureUrl} alt="" aria-hidden referrerPolicy="no-referrer" onError={()=>setPictureFailed(true)} className="shrink-0 w-11 h-11 rounded-full object-cover bg-slate-100"/>:<span className="shrink-0 w-11 h-11 rounded-full bg-sky-100 text-sky-700 grid place-items-center"><User className="h-5 w-5" aria-hidden /></span>}
-              <div className="min-w-0">
-                <p className="text-slate-800 font-bold text-sm truncate" aria-label={t('user_name')}>
-                {(() => {
-                  const parts = (formData.userName || "").split('|').map(p => p.trim().replace(/[()]/g, ""));
-                  const validParts = parts.filter(p => p !== "");
-
-                  if (parts.length >= 3 && parts[0] && parts[1] && parts[2]) {
-                    return `${parts[0]} ${parts[1]} (${parts[2]})`;
-                  }
-                  if (validParts.length > 1) {
-                    const nick = validParts.pop(); 
-                    const name = validParts.join(" "); 
-                    return `${name} (${nick})`;
-                  }
-                  if (validParts.length === 1) {
-                    return validParts[0]; 
-                  }
-                  return "Unknown User";
-                })()}
-                </p>
-                <p className="text-xs text-slate-500 truncate" aria-label={t('department')}>{formData.department || t('department')}</p>
-              </div>
+      <header className={`relative overflow-hidden bg-linear-to-br/srgb ${tone.header} px-4 pt-5 pb-16 text-white rounded-b-[2rem] shrink-0 transition-colors duration-300`}>
+        <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10" />
+        <div className="pointer-events-none absolute -left-10 bottom-0 h-28 w-28 rounded-full bg-white/5" />
+        <div className="relative md:max-w-2xl md:mx-auto">
+          <div className="flex items-center gap-3 pr-14">
+            <button
+              type="button"
+              aria-label={thai?'กลับหน้าหลัก':'Back to home'}
+              onClick={() => navigate("/")}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/20 transition hover:bg-white/30 active:scale-95"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">{t('leave_request')}</h1>
+              <p className="text-xs font-medium text-white/80">{t('submit_leave')}</p>
             </div>
           </div>
+          <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white/15 p-3 ring-1 ring-white/20">
+            {pictureUrl&&!pictureFailed
+              ? <img src={pictureUrl} alt="" aria-hidden referrerPolicy="no-referrer" onError={()=>setPictureFailed(true)} className="h-10 w-10 shrink-0 rounded-xl object-cover bg-white/20"/>
+              : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/20"><User className="h-5 w-5" aria-hidden /></span>}
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold" aria-label={t('user_name')}>{displayName}</p>
+              <p className="truncate text-xs text-white/80" aria-label={t('department')}>{formData.department || t('department')}</p>
+            </div>
+          </div>
+        </div>
+      </header>
 
-          {/* รายละเอียดการลา */}
-          <div className={`p-4 rounded-2xl shadow-xs border transition-colors duration-300 ${
-            formData.leaveType === 'sick' ? 'bg-rose-50/60 border-rose-100' : 
-            formData.leaveType === 'vacation' ? 'bg-sky-50/60 border-sky-100' : 
-            formData.leaveType === 'personal' ? 'bg-amber-50/60 border-amber-100' : 
-            'bg-white border-slate-100'
-          }`}>
-            <div className="space-y-4">
-              
-              {/* ประเภทการลา */}
-              <div className="space-y-1.5">
-                <Label className="flex items-center gap-2 text-slate-700 font-semibold text-xs uppercase tracking-wider">
-                  <FileText className="h-4 w-4" /> {t('leave_type')}
-                </Label>
-                <div role="radiogroup" aria-label={t('leave_type')} className={`grid gap-2 ${isIntern?'grid-cols-2 sm:grid-cols-4':'grid-cols-3'}`}>
-                  {typeOptions.map(o=>{const active=formData.leaveType===o.value;const b=overview.find(x=>x.type===(o.value==='vacation'?'annual':o.value));return (
-                    <button type="button" role="radio" aria-checked={active} key={o.value} disabled={uploading || evidence.length > 0 || isSubmitting} onClick={()=>setFormData(prev=>({...prev,leaveType:o.value}))}
-                      className={`rounded-xl border-2 bg-white p-2.5 text-left transition-colors disabled:opacity-60 ${active?o.active:'border-transparent shadow-xs hover:border-slate-200'}`}>
-                      <span className={`flex items-center gap-1.5 text-xs font-bold ${o.text}`}><span className={`h-2 w-2 shrink-0 rounded-full ${o.dot}`}/>{o.label}</span>
-                      {b?<><span className="mt-1 block leading-none"><span className={`text-xl font-extrabold ${b.available<=0?'text-amber-600':'text-slate-800'}`}>{b.available}</span><span className="text-xs font-medium text-slate-400">/{b.total}</span></span><span className="mt-0.5 block text-[10px] text-slate-500">{language==='th'?'วันคงเหลือ':'days left'}</span></>
-                        :<span className="mt-1 block text-[11px] leading-tight text-slate-400">{o.value==='university'?(language==='th'?'ต้องแนบหลักฐาน':'Needs evidence'):'\u00a0'}</span>}
-                    </button>);})}
-                </div>
-                {overview.length>0&&<p className="text-[11px] text-slate-500">{language==='th'?(isIntern?'จำนวนวันคงเหลือตลอดการฝึกงาน':'จำนวนวันคงเหลือของปีนี้'):(isIntern?'Days left for your whole internship':'Days left this year')}</p>}
-                {(uploading || evidence.length > 0) && <p className="text-xs text-slate-600">{language==='th'?'หากต้องการเปลี่ยนประเภทการลา ให้รออัปโหลดเสร็จแล้วลบไฟล์แนบด้านล่างก่อน':'To change leave type, wait for uploads to finish and remove the attachments below first.'}</p>}
+      <div className="relative -mt-10 w-full flex-1 px-4 pb-44 md:max-w-2xl md:mx-auto">
+        <form id="leave-form" onSubmit={handleSubmit} className="space-y-3">
+
+          <section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-md shadow-slate-200/50">
+            {step(1, t('leave_type'), FileText)}
+            <div role="radiogroup" aria-label={t('leave_type')} className={`grid gap-2 ${isIntern?'grid-cols-2 sm:grid-cols-4':'grid-cols-3'}`}>
+              {typeOptions.map(o=>{const active=formData.leaveType===o.value;const b=overview.find(x=>x.type===(o.value==='vacation'?'annual':o.value));const ot=formTones[o.value];const Icon=ot.icon;return (
+                <button type="button" role="radio" aria-checked={active} key={o.value} disabled={uploading || evidence.length > 0 || isSubmitting} onClick={()=>setFormData(prev=>({...prev,leaveType:o.value}))}
+                  className={`relative flex flex-col items-start rounded-2xl border-2 p-3 text-left transition disabled:opacity-60 active:scale-[0.97] ${active?`${ot.activeCard} shadow-sm`:'border-slate-100 bg-white hover:border-slate-200'}`}>
+                  {active&&<span className={`absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full text-white ${ot.solid}`}><Check className="h-3 w-3" strokeWidth={3}/></span>}
+                  <span className={`grid h-8 w-8 place-items-center rounded-xl ${ot.soft} ${ot.text}`}><Icon className="h-4 w-4"/></span>
+                  <span className={`mt-2 text-xs font-bold leading-tight ${active?ot.text:'text-slate-700'}`}>{o.label}</span>
+                  {b?<span className="mt-1 leading-none"><span className={`text-lg font-extrabold ${b.available<=0?'text-rose-500':'text-slate-900'}`}>{b.available}</span><span className="text-[11px] font-medium text-slate-400">/{b.total} {thai?'วัน':'left'}</span></span>
+                    :<span className="mt-1 text-[11px] leading-tight text-slate-400">{o.value==='university'?(thai?'ต้องแนบหลักฐาน':'Needs evidence'):' '}</span>}
+                </button>);})}
+            </div>
+            {overview.length>0&&<p className="mt-2 text-[11px] text-slate-400">{thai?(isIntern?'จำนวนวันคงเหลือตลอดการฝึกงาน':'จำนวนวันคงเหลือของปีนี้'):(isIntern?'Days left for your whole internship':'Days left this year')}</p>}
+            {(uploading || evidence.length > 0) && <p className="mt-2 text-xs text-slate-600">{thai?'หากต้องการเปลี่ยนประเภทการลา ให้รออัปโหลดเสร็จแล้วลบไฟล์แนบด้านล่างก่อน':'To change leave type, wait for uploads to finish and remove the attachments below first.'}</p>}
+          </section>
+
+          <section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-xs">
+            {step(2, t('select_date'), CalendarIcon)}
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/60">
+              <CalendarComponent
+                mode="multiple"
+                selected={selectedDates}
+                onSelect={handleDateSelect}
+                disabled={(date) => {
+                  const isPastDisabled = toLocalDateString(date) < new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date(clock));
+                  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                  const { isFullyTaken } = getDateLeaveStatus(date);
+                  return isPastDisabled || isWeekend || isFullyTaken;
+                }}
+                modifiers={{
+                  taken: (date) => getDateLeaveStatus(date).isFullyTaken,
+                  partiallyTaken: (date) => {
+                    const status = getDateLeaveStatus(date);
+                    return !status.isFullyTaken && (status.hasMorning || status.hasAfternoon);
+                  }
+                }}
+                locale={thai ? th : enUS}
+                className="w-full p-2"
+                classNames={{
+                  months: "w-full",
+                  month: "w-full space-y-3",
+                  caption_label: "text-sm font-bold text-slate-800",
+                  table: "w-full border-collapse",
+                  head_row: "flex w-full",
+                  head_cell: "flex-1 text-slate-400 font-medium text-[0.75rem]",
+                  row: "flex w-full mt-1",
+                  cell: "flex-1 h-10 p-0.5 text-center text-sm relative focus-within:z-20",
+                  day: "h-full w-full rounded-xl p-0 font-medium text-slate-700 transition hover:bg-white aria-selected:opacity-100",
+                  day_today: "ring-1 ring-slate-300",
+                }}
+                modifiersStyles={{
+                  selected: { backgroundColor: tone.hex, color: "white", borderRadius: "12px" },
+                  disabled: { color: "#cbd5e1", opacity: "0.5" },
+                  taken: { color: "#ef4444", backgroundColor: "#fee2e2", fontWeight: "bold", borderRadius: "12px", opacity: "0.6" },
+                  partiallyTaken: { color: "#d97706", backgroundColor: "#fef3c7", fontWeight: "bold", borderRadius: "12px" },
+                }}
+              />
+            </div>
+            {sortedDates.length > 0 ? (
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 text-xs font-semibold text-slate-600">{t('selected')} <span className={`font-bold ${tone.text}`}>{selectedDates.length}</span> {t('days')}</span>
+                {sortedDates.map(d => <span key={d.getTime()} className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone.soft} ${tone.text}`}>{format(d, "EEE d MMM", { locale: thai ? th : undefined })}</span>)}
               </div>
+            ) : <p className="mt-3 text-xs text-slate-400">{t('click_to_select_date')}</p>}
 
-              {/* เลือกวันที่ */}
-              <div className="space-y-1.5">
-                <Label className="flex items-center gap-2 text-slate-700 font-semibold text-xs uppercase tracking-wider">
-                  <CalendarIcon className="h-4 w-4" /> {t('select_date')}
+            {selectedDates.length === 1 && (
+              <div className="mt-4 space-y-2 border-t border-slate-100 pt-4 animate-in fade-in slide-in-from-top-2">
+                <Label className="flex items-center gap-2 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
+                  <Clock className="h-3.5 w-3.5" /> {t('duration')}
                 </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal h-12 rounded-xl bg-white border-white shadow-xs text-sm hover:bg-slate-50 transition-colors",
-                        !selectedDates?.length && "text-slate-400",
-                        formData.leaveType === 'sick' ? 'ring-1 ring-rose-100' : formData.leaveType === 'vacation' ? 'ring-1 ring-sky-100' : 'border-slate-200'
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4 text-slate-400" />
-                      {selectedDates && selectedDates.length > 0 ? (
-                        <span className="text-slate-800 font-medium truncate">
-                          {t('selected')} <span className="text-sky-600 font-bold">{selectedDates.length}</span> {t('days')}
-                          <span className="text-[10px] text-slate-400 ml-1.5 font-normal">
-                              ({[...selectedDates]
-                                .sort((a,b)=>a.getTime()-b.getTime())
-                                .map(d => format(d, "dd MMM", { locale: language === 'th' ? th : undefined }))
-                                .join(", ")})
-                          </span>
-                        </span>
-                      ) : (
-                        <span>{t('click_to_select_date')}</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 border-slate-200 shadow-2xl rounded-2xl" align="center">
-                    <CalendarComponent
-                      mode="multiple"
-                      selected={selectedDates}
-                      onSelect={handleDateSelect}
-                      disabled={(date) => {
-                        const isPastDisabled = toLocalDateString(date) < new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date(clock));
-                        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                        
-                        const { isFullyTaken } = getDateLeaveStatus(date);
-                        
-                        return isPastDisabled || isWeekend || isFullyTaken;
-                      }}
-                      modifiers={{
-                        taken: (date) => getDateLeaveStatus(date).isFullyTaken,
-                        partiallyTaken: (date) => {
-                          const status = getDateLeaveStatus(date);
-                          return !status.isFullyTaken && (status.hasMorning || status.hasAfternoon);
-                        }
-                      }}
-                      initialFocus
-                      className="pointer-events-auto bg-white rounded-2xl p-3"
-                      modifiersStyles={{
-                        selected: {
-                          backgroundColor: formData.leaveType === 'sick' ? "#f43f5e" : "#0ea5e9",
-                          color: "white",
-                          borderRadius: "12px",
-                        },
-                        disabled:{
-                          color: "#cbd5e1",
-                          opacity: "0.5",
-                        },
-                        taken: {
-                          color: "#ef4444", 
-                          backgroundColor: "#fee2e2", 
-                          fontWeight: "bold",
-                          borderRadius: "12px",
-                          opacity: "0.6" 
-                        },
-                        partiallyTaken: {
-                          color: "#d97706",
-                          backgroundColor: "#fef3c7",
-                          fontWeight: "bold",
-                          borderRadius: "12px",
-                        }
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                {/* เลือก ครึ่งวัน/เต็มวัน */}
-                {selectedDates.length === 1 && (
-                  <div className="mt-3 pt-3 border-t border-slate-200/50 space-y-3 animate-in fade-in slide-in-from-top-2">
-                    <Label className="flex items-center gap-2 text-slate-500 text-[10px] uppercase tracking-wider font-bold">
-                      <Clock className="h-3 w-3" /> {t('duration')}
-                    </Label>
-                    
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant={!isHalfDay ? "default" : "outline"}
-                        disabled={selectedDateStatus.hasMorning || selectedDateStatus.hasAfternoon}
-                        className={cn("flex-1 h-10 rounded-xl shadow-xs text-xs font-bold transition-all", !isHalfDay ? (formData.leaveType === 'sick' ? "bg-rose-500 hover:bg-rose-600 text-white" : "bg-sky-500 hover:bg-sky-600 text-white") : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
-                        onClick={() => setIsHalfDay(false)}
-                      >
-                        {t('full_day')}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={isHalfDay ? "default" : "outline"}
-                        className={cn("flex-1 h-10 rounded-xl shadow-xs text-xs font-bold transition-all", isHalfDay ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent" : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
-                        onClick={() => setIsHalfDay(true)}
-                      >
-                        {t('half_day')}
-                      </Button>
-                    </div>
-
-                    {/* ตัวเลือก เช้า/บ่าย จะโชว์ก็ต่อเมื่อกดเลือกปุ่ม "ครึ่งวัน" */}
-                    {isHalfDay && (
-                      <div className="flex gap-2 pt-1 animate-in slide-in-from-top-1">
-                        <Button
-                          type="button"
-                          variant={halfDayType === "morning" ? "default" : "outline"}
-                          disabled={selectedDateStatus.hasMorning}
-                          className={cn("flex-1 h-9 rounded-lg text-xs font-semibold transition-all", halfDayType === "morning" ? "bg-slate-800 text-white" : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
-                          onClick={() => setHalfDayType("morning")}
-                        >
-                          {language === 'th' ? "ช่วงเช้า" : "Morning"} {selectedDateStatus.hasMorning ? (language==='th'?"(ลาแล้ว)":"(already booked)") : ""}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={halfDayType === "afternoon" ? "default" : "outline"}
-                          disabled={selectedDateStatus.hasAfternoon}
-                          className={cn("flex-1 h-9 rounded-lg text-xs font-semibold transition-all", halfDayType === "afternoon" ? "bg-slate-800 text-white" : "text-slate-500 bg-white border-slate-200 hover:bg-slate-50")}
-                          onClick={() => setHalfDayType("afternoon")}
-                        >
-                          {language === 'th' ? "ช่วงบ่าย" : "Afternoon"} {selectedDateStatus.hasAfternoon ? "(ลาแล้ว)" : ""}
-                        </Button>
-                      </div>
-                    )}
+                <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">
+                  <button type="button" disabled={selectedDateStatus.hasMorning || selectedDateStatus.hasAfternoon} onClick={() => setIsHalfDay(false)}
+                    className={cn("h-10 rounded-xl text-xs font-bold transition disabled:opacity-40", !isHalfDay ? "bg-white text-slate-900 shadow-sm" : "text-slate-500")}>{t('full_day')}</button>
+                  <button type="button" onClick={() => setIsHalfDay(true)}
+                    className={cn("h-10 rounded-xl text-xs font-bold transition", isHalfDay ? "bg-white text-slate-900 shadow-sm" : "text-slate-500")}>{t('half_day')}</button>
+                </div>
+                {isHalfDay && (
+                  <div className="grid grid-cols-2 gap-2 pt-1 animate-in slide-in-from-top-1">
+                    <button type="button" disabled={selectedDateStatus.hasMorning} onClick={() => setHalfDayType("morning")}
+                      className={cn("h-10 rounded-xl border-2 text-xs font-semibold transition disabled:opacity-40", halfDayType === "morning" ? `${tone.activeCard} ${tone.text}` : "border-slate-100 text-slate-500")}>
+                      {thai ? "ช่วงเช้า" : "Morning"} {selectedDateStatus.hasMorning ? (thai?"(ลาแล้ว)":"(already booked)") : ""}
+                    </button>
+                    <button type="button" disabled={selectedDateStatus.hasAfternoon} onClick={() => setHalfDayType("afternoon")}
+                      className={cn("h-10 rounded-xl border-2 text-xs font-semibold transition disabled:opacity-40", halfDayType === "afternoon" ? `${tone.activeCard} ${tone.text}` : "border-slate-100 text-slate-500")}>
+                      {thai ? "ช่วงบ่าย" : "Afternoon"} {selectedDateStatus.hasAfternoon ? (thai?"(ลาแล้ว)":"(already booked)") : ""}
+                    </button>
                   </div>
                 )}
               </div>
+            )}
+            {policyReady&&policy?.deadline&&selectedDates.length>0&&<p className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-500">{thai?'กำหนดส่งคำขอ:':'Request deadline:'} {new Date(policy.deadline).toLocaleString(thai?'th-TH':'en-GB',{timeZone:'Asia/Bangkok',dateStyle:'medium',timeStyle:'short'})} ({thai?'เวลากรุงเทพฯ':'Bangkok time'}){['personal','university'].includes(formData.leaveType) && <span className="block mt-1">{thai?'ต้องส่งคำขอก่อน 16:30 น. ของวันก่อนวันลา โดยนับรวมวันเสาร์–อาทิตย์และวันหยุด':'Submit before 16:30 on the calendar day before leave, including weekends and holidays.'}</span>}{policy.isIntern && ['annual','vacation'].includes(formData.leaveType) && <span className="block mt-1">{thai?'ลาพักร้อนต้องแจ้งล่วงหน้าอย่างน้อย 3 วันปฏิทิน ก่อน 16:30 น.':'Annual leave requires 3 calendar days’ notice, before 16:30.'}</span>}</p>}
+          </section>
 
-              {canEmergency&&<div className="space-y-2"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={emergency} onChange={e=>{setEmergency(e.target.checked);setReasonError(false);}}/>{isAnnual ? (language==='th'?'ขออนุมัติลาหลังเวลาที่กำหนด':'Request late approval') : (language==='th'?'เหตุฉุกเฉิน':'Emergency request')}</label>{!exceptionSelected&&<p className="text-xs text-slate-500">{isAnnual ? (language==='th'?'เลือกเมื่อเลยกำหนดส่งคำขอลาพักร้อนแล้ว และต้องการให้ผู้อนุมัติพิจารณาเป็นกรณีพิเศษ':'Tick this when the annual leave deadline has passed and you want the approvers to consider it anyway.') : (language==='th'?'เลือกเมื่อเลยกำหนดส่งคำขอแล้วเพราะเหตุฉุกเฉิน เช่น ป่วยกะทันหันหรือเรื่องด่วนของครอบครัว':'Tick this when the request deadline has passed because of an emergency, such as sudden illness or an urgent family matter.')}</p>}{exceptionSelected&&<p className="text-xs text-slate-500">{language==='th'?'กรอกเหตุผลในช่องด้านล่าง คำขอยังต้องได้รับการอนุมัติและมีสิทธิ์ลาคงเหลือเพียงพอ':'Use the reason box below. Your request still needs approval and enough remaining leave.'}</p>}</div>}
-              {/* กล่องเหตุผล */}
-              {(
-                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
-                  <Label className="flex items-center gap-2 text-slate-700 font-semibold text-xs uppercase tracking-wider">
-                    <FileText className="h-4 w-4" /> {reasonLabel} {!reasonRequired ? (language === 'th' ? '(ไม่บังคับ)' : '(optional)') : '*'}
-                  </Label>
-                  <Textarea
-                    aria-label={reasonLabel}
-                    aria-required={reasonRequired}
-                    aria-invalid={reasonError}
-                    maxLength={2000}
-                    placeholder={exceptionSelected ? reasonLabel : t('reason_placeholder')}
-                    value={formData.reason}
-                    onChange={(e) => {setFormData({ ...formData, reason: e.target.value });setReasonError(false);}}
-                    className={`min-h-[80px] resize-none rounded-xl bg-white shadow-xs text-sm border-white ${formData.leaveType === 'sick' ? 'ring-1 ring-rose-100 focus-visible:ring-rose-400' : 'border-slate-200 focus-visible:ring-sky-400'}`}
-                  />
-                  {reasonError && reasonRequired && <p role="alert" className="text-xs text-red-700">{language==='th'?'กรุณากรอกเหตุผลในการลา':'Please enter a reason for your leave.'}</p>}
-                </div>
-              )}
-              {policyReady && late && <p role="alert" className="rounded-xl bg-amber-100 p-3 text-sm text-amber-900">{exceptionSelected ? (language==='th'?'กรุณากรอกเหตุผลในช่องด้านบน':'Please enter your explanation in the box above.') : canEmergency ? (isAnnual ? (language==='th'?'เลยกำหนดส่งคำขอแล้ว เลือก “ขออนุมัติลาหลังเวลาที่กำหนด” และอธิบายเหตุผลเพื่อส่งให้ผู้อนุมัติพิจารณา':'The deadline has passed. Select “Request late approval” and explain why to send it for approval.') : (language==='th'?'เลยกำหนดส่งคำขอแล้ว หากเป็นเหตุฉุกเฉิน ให้เลือก “เหตุฉุกเฉิน” และอธิบายเหตุผล':'The deadline has passed. For an urgent request, select “Emergency request” and explain why.')) : (language==='th'?'เลยกำหนดส่งคำขอสำหรับวันที่เลือก กรุณาเลือกวันใหม่':'The deadline for these dates has passed. Please choose later dates.')}</p>}
-              {policyReady&&policy?.deadline&&selectedDates.length>0&&<p className="text-xs text-slate-500">{language==='th'?'กำหนดส่งคำขอ:':'Request deadline:'} {new Date(policy.deadline).toLocaleString(language==='th'?'th-TH':'en-GB',{timeZone:'Asia/Bangkok',dateStyle:'medium',timeStyle:'short'})} ({language==='th'?'เวลากรุงเทพฯ':'Bangkok time'}){['personal','university'].includes(formData.leaveType) && <span className="block mt-1">{language==='th'?'ต้องส่งคำขอก่อน 16:30 น. ของวันก่อนวันลา โดยนับรวมวันเสาร์–อาทิตย์และวันหยุด':'Submit before 16:30 on the calendar day before leave, including weekends and holidays.'}</span>}{policy.isIntern && ['annual','vacation'].includes(formData.leaveType) && <span className="block mt-1">{language==='th'?'ลาพักร้อนต้องแจ้งล่วงหน้าอย่างน้อย 3 วันปฏิทิน ก่อน 16:30 น.':'Annual leave requires 3 calendar days’ notice, before 16:30.'}</span>}</p>}
-              {['sick','university'].includes(formData.leaveType)&&<div className="rounded-xl border bg-white p-3 space-y-2"><label className="text-sm font-semibold">{formData.leaveType==='university'?(language==='th'?'หลักฐานกิจกรรม *':'Activity evidence *'):(language==='th'?'ใบรับรองแพทย์ (แนบภายหลังได้)':'Medical certificate (can be supplied later)')}<input aria-label={language==='th'?'เอกสารประกอบ':'Supporting evidence'} className="block mt-2 w-full text-xs" type="file" accept="application/pdf,image/png,image/jpeg" disabled={uploading||evidence.length>=3} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>2097152){setUploadError(language==='th'?'เลือกไฟล์ขนาดไม่เกิน 2 MB':'Choose a file up to 2 MB.');return;}setUploadError('');setUploading(true);try{const content=await new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(file);});const r=await fetch('/api/leave-evidence',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${liff.getAccessToken()}`},body:JSON.stringify({filename:file.name,mime:file.type,content,documentType:formData.leaveType==='sick'?'certificate':'activity'})});const b=await r.json();if(!r.ok)throw Error(b.error);setEvidence(old=>[...old,{id:b.id,filename:b.filename}]);}catch(err){setUploadError((err as Error).message);}finally{setUploading(false);e.target.value='';}}}/></label><p className="text-xs text-slate-500">{language==='th'?'PDF, PNG หรือ JPG · ไฟล์ละไม่เกิน 2 MB · สูงสุด 3 ไฟล์':'PDF, PNG or JPG · up to 2 MB each · up to 3 files'}</p>{uploadError&&<p role="alert" className="text-red-700 text-xs">{leaveErrorMessage(uploadError,language)}</p>}{uploading&&<p className="text-xs">{language==='th'?'กำลังอัปโหลด…':'Uploading…'}</p>}{evidence.map(f=><div key={f.id} className="flex items-center justify-between gap-2 text-xs"><span className="truncate">{f.filename}</span><button type="button" disabled={uploading} onClick={async()=>{setUploading(true);setUploadError('');try{const r=await fetch('/api/leave-evidence?id='+f.id,{method:'DELETE',headers:{Authorization:`Bearer ${liff.getAccessToken()}`}});if(!r.ok)throw Error((await r.json()).error);setEvidence(old=>old.filter(x=>x.id!==f.id));}catch(e){setUploadError((e as Error).message);}finally{setUploading(false);}}}>{language==='th'?'ลบไฟล์':'Remove file'}</button></div>)}</div>}
-              {policy?.medicalCertificateRequired && <p role="status" className="rounded-xl bg-rose-100 p-3 text-sm text-rose-900">{language==='th'?'ลาป่วยติดต่อกันอย่างน้อย 3 วันทำงาน กรุณาส่งใบรับรองแพทย์ให้ฝ่ายบุคคล':'Sick leave covers at least 3 consecutive working days. Please submit a medical certificate to HR.'}</p>}
-              {policyError && <div role="alert" className="text-sm text-red-700">{leaveErrorMessage(policyError,language)} <button type="button" className="underline" onClick={()=>setPolicyAttempt(n=>n+1)}>{language==='th'?'ลองอีกครั้ง':'Retry'}</button></div>}
-              {policyReady && policy && formData.leaveType && (formData.leaveType !== 'sick' || policy.isIntern) && <div className="space-y-3 text-sm" aria-label={language==='th'?'สรุปสิทธิ์ลา':'Leave allowance summary'}>
-                <p className="font-semibold text-slate-800">{language==='th'
-                  ? ({sick:'ลาป่วย',personal:'ลากิจ',vacation:'ลาพักร้อน',annual:'ลาพักร้อน',university:'ลากิจกรรมมหาวิทยาลัย'}[formData.leaveType])
-                  : ({sick:'Sick leave',personal:'Personal leave',vacation:'Annual leave',annual:'Annual leave',university:'University activity'}[formData.leaveType])}</p>
-                {policy.unlimited ? <p>{language==='th'?'ไม่จำกัดวันลา':'No leave limit'}</p> : policy.balances.map(b=><div key={b.year} className="rounded-xl bg-white p-3 text-slate-700 space-y-2">
-                  <p className="text-xs text-slate-500">{policy.isIntern ? (language==='th'?'สิทธิ์ตลอดการฝึกงาน':'Whole internship allowance') : b.year}</p>
-                  {!b.known ? <p>{language==='th'?'ยังไม่กำหนดสิทธิ์ลา กรุณาติดต่อฝ่ายบุคคล':'Allowance is not configured. Contact HR.'}</p> : b.unlimited ? <p>{language==='th'?'ไม่มีโควตาวันลา ต้องแนบหลักฐานและได้รับอนุมัติ':'No fixed allowance. Evidence and approval are required.'}</p> : <>
-                    <div className="flex flex-wrap justify-between gap-2 font-semibold">
-                      <span>{language==='th'?`คงเหลือ ${b.available} วัน`:`${b.available} days remaining`}</span>
-                      <span>{language==='th'?`คำขอนี้ ${b.requested} วัน`:`This request: ${b.requested} ${b.requested===1?'day':'days'}`}</span>
-                    </div>
-                    <p className="text-xs text-slate-500">{language==='th'?`สิทธิ์ทั้งหมด ${b.total} วัน · ใช้แล้ว ${b.approved} วัน · รออนุมัติ ${b.pending} วัน`:`Allowance: ${b.total} days · Used: ${b.approved} · Pending: ${b.pending}`}</p>
-                    {!b.allowed && <p role="alert" className="text-red-700">{b.available!==null && b.requested>b.available
-                      ? (language==='th'?`คำขอนี้เกินสิทธิ์คงเหลือ ${b.requested-b.available} วัน กรุณาลดจำนวนวันที่เลือก`:`This request exceeds your remaining allowance by ${b.requested-b.available} ${b.requested-b.available===1?'day':'days'}. Select fewer days.`)
-                      : (policy.isIntern ? (language==='th'?'วันที่เลือกอยู่นอกช่วงฝึกงานของคุณ กรุณาเลือกวันที่ภายในช่วงฝึกงาน หรือติดต่อฝ่ายบุคคลหากวันเริ่มหรือสิ้นสุดไม่ถูกต้อง':'The selected dates are outside your internship period. Choose dates within your internship, or contact HR if your start or end date is incorrect.') : (language==='th'?'วันที่เลือกอยู่นอกช่วงสิทธิ์ลา กรุณาติดต่อฝ่ายบุคคล':'The selected dates are outside your eligible leave period. Contact HR.'))}</p>}
-                  </>}
-                </div>)}
-                {policy.isIntern && <p className="text-xs text-slate-500">{language==='th'?'สิทธิ์ลาป่วย ลากิจ และลาพักร้อนแยกจากกัน':'Sick, personal and annual leave have separate allowances.'}</p>}
-                {canSwitchAnnual && <Button type="button" variant="outline" onClick={()=>setFormData(prev=>({...prev,leaveType:'vacation'}))}>{language==='th'?'เปลี่ยนเป็นลาพักร้อน':'Switch to annual leave'}</Button>}
-              </div>}
+          <section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-xs space-y-3">
+            {step(3, reasonLabel, FileText)}
+            {canEmergency&&<div>
+              <label className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-3 transition ${emergency?'border-amber-300 bg-amber-50':'border-slate-100 hover:border-slate-200'}`}>
+                <input type="checkbox" className="peer sr-only" checked={emergency} onChange={e=>{setEmergency(e.target.checked);setReasonError(false);}}/>
+                <span className={`mt-0.5 flex h-6 w-10 shrink-0 items-center rounded-full p-0.5 transition peer-focus-visible:ring-2 peer-focus-visible:ring-amber-400 ${emergency?'bg-amber-500':'bg-slate-200'}`}><span className={`h-5 w-5 rounded-full bg-white shadow-sm transition ${emergency?'translate-x-4':''}`}/></span>
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1.5 text-sm font-bold text-slate-800"><AlertTriangle className="h-4 w-4 text-amber-500"/>{isAnnual ? (thai?'ขออนุมัติลาหลังเวลาที่กำหนด':'Request late approval') : (thai?'เหตุฉุกเฉิน':'Emergency request')}</span>
+                  <span className="mt-0.5 block text-xs text-slate-500">{!exceptionSelected
+                    ? (isAnnual ? (thai?'เลือกเมื่อเลยกำหนดส่งคำขอลาพักร้อนแล้ว และต้องการให้ผู้อนุมัติพิจารณาเป็นกรณีพิเศษ':'Tick this when the annual leave deadline has passed and you want the approvers to consider it anyway.') : (thai?'เลือกเมื่อเลยกำหนดส่งคำขอแล้วเพราะเหตุฉุกเฉิน เช่น ป่วยกะทันหันหรือเรื่องด่วนของครอบครัว':'Tick this when the request deadline has passed because of an emergency, such as sudden illness or an urgent family matter.'))
+                    : (thai?'กรอกเหตุผลในช่องด้านล่าง คำขอยังต้องได้รับการอนุมัติและมีสิทธิ์ลาคงเหลือเพียงพอ':'Use the reason box below. Your request still needs approval and enough remaining leave.')}</span>
+                </span>
+              </label>
+            </div>}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500">
+                {reasonLabel} {!reasonRequired ? (thai ? '(ไม่บังคับ)' : '(optional)') : <span className="text-rose-500">*</span>}
+              </Label>
+              <Textarea
+                aria-label={reasonLabel}
+                aria-required={reasonRequired}
+                aria-invalid={reasonError}
+                maxLength={2000}
+                placeholder={exceptionSelected ? reasonLabel : t('reason_placeholder')}
+                value={formData.reason}
+                onChange={(e) => {setFormData({ ...formData, reason: e.target.value });setReasonError(false);}}
+                className={`min-h-[96px] resize-none rounded-2xl border-slate-200 bg-slate-50/60 text-sm focus-visible:bg-white ${reasonError&&reasonRequired?'border-rose-300 focus-visible:ring-rose-400':tone.focus}`}
+              />
+              <div className="flex justify-between text-[11px]">
+                {reasonError && reasonRequired ? <p role="alert" className="text-red-700">{thai?'กรุณากรอกเหตุผลในการลา':'Please enter a reason for your leave.'}</p> : <span/>}
+                <span className="text-slate-300">{formData.reason.length}/2000</span>
+              </div>
             </div>
-          </div>
+            {policyReady && late && <p role="alert" className="rounded-2xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">{exceptionSelected ? (thai?'กรุณากรอกเหตุผลในช่องด้านบน':'Please enter your explanation in the box above.') : canEmergency ? (isAnnual ? (thai?'เลยกำหนดส่งคำขอแล้ว เลือก “ขออนุมัติลาหลังเวลาที่กำหนด” และอธิบายเหตุผลเพื่อส่งให้ผู้อนุมัติพิจารณา':'The deadline has passed. Select “Request late approval” and explain why to send it for approval.') : (thai?'เลยกำหนดส่งคำขอแล้ว หากเป็นเหตุฉุกเฉิน ให้เลือก “เหตุฉุกเฉิน” และอธิบายเหตุผล':'The deadline has passed. For an urgent request, select “Emergency request” and explain why.')) : (thai?'เลยกำหนดส่งคำขอสำหรับวันที่เลือก กรุณาเลือกวันใหม่':'The deadline for these dates has passed. Please choose later dates.')}</p>}
+          </section>
+
+          {['sick','university'].includes(formData.leaveType)&&<section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-xs space-y-3">
+            <div className="flex items-center gap-2.5">
+              <span className={`grid h-7 w-7 place-items-center rounded-full ${tone.soft} ${tone.text}`}><Paperclip className="h-3.5 w-3.5"/></span>
+              <h2 className="text-sm font-bold text-slate-800">{formData.leaveType==='university'?(thai?'หลักฐานกิจกรรม *':'Activity evidence *'):(thai?'ใบรับรองแพทย์ (แนบภายหลังได้)':'Medical certificate (can be supplied later)')}</h2>
+            </div>
+            <label className={`flex cursor-pointer flex-col items-center gap-1 rounded-2xl border-2 border-dashed p-4 text-center transition ${uploading||evidence.length>=3?'cursor-not-allowed border-slate-100 opacity-60':'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>
+              {uploading?<Loader2 className="h-6 w-6 animate-spin text-slate-400"/>:<Upload className="h-6 w-6 text-slate-400"/>}
+              <span className="text-sm font-semibold text-slate-700">{uploading?(thai?'กำลังอัปโหลด…':'Uploading…'):(thai?'แตะเพื่อเลือกไฟล์':'Tap to choose a file')}</span>
+              <span className="text-[11px] text-slate-400">{thai?'PDF, PNG หรือ JPG · ไฟล์ละไม่เกิน 2 MB · สูงสุด 3 ไฟล์':'PDF, PNG or JPG · up to 2 MB each · up to 3 files'}</span>
+              <input aria-label={thai?'เอกสารประกอบ':'Supporting evidence'} className="sr-only" type="file" accept="application/pdf,image/png,image/jpeg" disabled={uploading||evidence.length>=3} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>2097152){setUploadError(thai?'เลือกไฟล์ขนาดไม่เกิน 2 MB':'Choose a file up to 2 MB.');return;}setUploadError('');setUploading(true);try{const content=await new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(file);});const r=await fetch('/api/leave-evidence',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${liff.getAccessToken()}`},body:JSON.stringify({filename:file.name,mime:file.type,content,documentType:formData.leaveType==='sick'?'certificate':'activity'})});const b=await r.json();if(!r.ok)throw Error(b.error);setEvidence(old=>[...old,{id:b.id,filename:b.filename}]);}catch(err){setUploadError((err as Error).message);}finally{setUploading(false);e.target.value='';}}}/>
+            </label>
+            {uploadError&&<p role="alert" className="text-red-700 text-xs">{leaveErrorMessage(uploadError,language)}</p>}
+            {evidence.map(f=><div key={f.id} className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs">
+              <span className="flex min-w-0 items-center gap-2"><FileText className="h-4 w-4 shrink-0 text-slate-400"/><span className="truncate font-medium text-slate-700">{f.filename}</span></span>
+              <button type="button" disabled={uploading} className="shrink-0 font-semibold text-rose-600 disabled:opacity-50" onClick={async()=>{setUploading(true);setUploadError('');try{const r=await fetch('/api/leave-evidence?id='+f.id,{method:'DELETE',headers:{Authorization:`Bearer ${liff.getAccessToken()}`}});if(!r.ok)throw Error((await r.json()).error);setEvidence(old=>old.filter(x=>x.id!==f.id));}catch(e){setUploadError((e as Error).message);}finally{setUploading(false);}}}>{thai?'ลบไฟล์':'Remove file'}</button>
+            </div>)}
+          </section>}
+
+          {policy?.medicalCertificateRequired && <p role="status" className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">{thai?'ลาป่วยติดต่อกันอย่างน้อย 3 วันทำงาน กรุณาส่งใบรับรองแพทย์ให้ฝ่ายบุคคล':'Sick leave covers at least 3 consecutive working days. Please submit a medical certificate to HR.'}</p>}
+          {policyError && <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{leaveErrorMessage(policyError,language)} <button type="button" className="font-semibold underline" onClick={()=>setPolicyAttempt(n=>n+1)}>{thai?'ลองอีกครั้ง':'Retry'}</button></div>}
+          {policyReady && policy && formData.leaveType && (formData.leaveType !== 'sick' || policy.isIntern) && <section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-xs space-y-3 text-sm" aria-label={thai?'สรุปสิทธิ์ลา':'Leave allowance summary'}>
+            <p className="font-bold text-slate-800">{thai
+              ? ({sick:'ลาป่วย',personal:'ลากิจ',vacation:'ลาพักร้อน',annual:'ลาพักร้อน',university:'ลากิจกรรมมหาวิทยาลัย'}[formData.leaveType])
+              : ({sick:'Sick leave',personal:'Personal leave',vacation:'Annual leave',annual:'Annual leave',university:'University activity'}[formData.leaveType])}</p>
+            {policy.unlimited ? <p>{thai?'ไม่จำกัดวันลา':'No leave limit'}</p> : policy.balances.map(b=><div key={b.year} className="rounded-2xl bg-slate-50 p-3 text-slate-700 space-y-2">
+              <p className="text-xs text-slate-500">{policy.isIntern ? (thai?'สิทธิ์ตลอดการฝึกงาน':'Whole internship allowance') : b.year}</p>
+              {!b.known ? <p>{thai?'ยังไม่กำหนดสิทธิ์ลา กรุณาติดต่อฝ่ายบุคคล':'Allowance is not configured. Contact HR.'}</p> : b.unlimited ? <p>{thai?'ไม่มีโควตาวันลา ต้องแนบหลักฐานและได้รับอนุมัติ':'No fixed allowance. Evidence and approval are required.'}</p> : <>
+                <div className="flex flex-wrap justify-between gap-2 font-semibold">
+                  <span>{thai?`คงเหลือ ${b.available} วัน`:`${b.available} days remaining`}</span>
+                  <span className={tone.text}>{thai?`คำขอนี้ ${b.requested} วัน`:`This request: ${b.requested} ${b.requested===1?'day':'days'}`}</span>
+                </div>
+                {b.total ? <div className="h-2 overflow-hidden rounded-full bg-white"><div className="flex h-full"><span className="h-full bg-slate-300" style={{width:`${Math.min(100,(b.approved+b.pending)/b.total*100)}%`}}/><span className={`h-full ${b.allowed?tone.solid:'bg-red-500'}`} style={{width:`${Math.min(100,b.requested/b.total*100)}%`}}/></div></div> : null}
+                <p className="text-xs text-slate-500">{thai?`สิทธิ์ทั้งหมด ${b.total} วัน · ใช้แล้ว ${b.approved} วัน · รออนุมัติ ${b.pending} วัน`:`Allowance: ${b.total} days · Used: ${b.approved} · Pending: ${b.pending}`}</p>
+                {!b.allowed && <p role="alert" className="text-red-700">{b.available!==null && b.requested>b.available
+                  ? (thai?`คำขอนี้เกินสิทธิ์คงเหลือ ${b.requested-b.available} วัน กรุณาลดจำนวนวันที่เลือก`:`This request exceeds your remaining allowance by ${b.requested-b.available} ${b.requested-b.available===1?'day':'days'}. Select fewer days.`)
+                  : (policy.isIntern ? (thai?'วันที่เลือกอยู่นอกช่วงฝึกงานของคุณ กรุณาเลือกวันที่ภายในช่วงฝึกงาน หรือติดต่อฝ่ายบุคคลหากวันเริ่มหรือสิ้นสุดไม่ถูกต้อง':'The selected dates are outside your internship period. Choose dates within your internship, or contact HR if your start or end date is incorrect.') : (thai?'วันที่เลือกอยู่นอกช่วงสิทธิ์ลา กรุณาติดต่อฝ่ายบุคคล':'The selected dates are outside your eligible leave period. Contact HR.'))}</p>}
+              </>}
+            </div>)}
+            {policy.isIntern && <p className="text-xs text-slate-500">{thai?'สิทธิ์ลาป่วย ลากิจ และลาพักร้อนแยกจากกัน':'Sick, personal and annual leave have separate allowances.'}</p>}
+            {canSwitchAnnual && <Button type="button" variant="outline" className="rounded-xl" onClick={()=>setFormData(prev=>({...prev,leaveType:'vacation'}))}>{thai?'เปลี่ยนเป็นลาพักร้อน':'Switch to annual leave'}</Button>}
+          </section>}
         </form>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 md:px-6 md:py-5 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-50">
-        <div className="max-w-2xl mx-auto space-y-3">
-          
-          {isQuotaLoading && <p className="text-xs text-slate-500">{language==='th'?'กำลังตรวจสอบสิทธิ์ลา…':'Checking leave allowance…'}</p>}
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 p-4 backdrop-blur md:px-6 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.12)]">
+        <div className="mx-auto max-w-2xl space-y-2">
+          {isQuotaLoading && <p className="text-center text-xs text-slate-500">{thai?'กำลังตรวจสอบสิทธิ์ลา…':'Checking leave allowance…'}</p>}
           {!isQuotaLoading && !isSubmitting && submitHint && <p role="status" className="text-xs text-amber-700 text-center">{submitHint}</p>}
-
-          {/* ปุ่มกดลางาน */}
-          <Button
-            type="submit"
-            form="leave-form" 
-            disabled={isSubmitting || uploading || !policyReady || isOverQuota || late || (formData.leaveType==='university'&&!evidence.length) || selectedDates.length === 0}
-            className={`w-full h-12 md:h-14 text-base font-bold text-white rounded-xl shadow-md transition-all active:scale-[0.98]
-                ${isSubmitting || uploading || !policyReady || isOverQuota || late || (formData.leaveType==='university'&&!evidence.length) || selectedDates.length === 0
-                  ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed" 
-                  : formData.leaveType === 'sick' 
-                    ? "bg-linear-to-r/srgb from-rose-500 to-pink-600 hover:shadow-rose-500/30"
-                    : formData.leaveType === 'personal'
-                      ? "bg-linear-to-r/srgb from-amber-500 to-orange-500 hover:shadow-amber-500/30"
-                      : "bg-linear-to-r/srgb from-sky-500 to-blue-600 hover:shadow-sky-500/30"
-                }`}
-          >
-            {isSubmitting ? (
-              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t('submitting')}</>
-            ) : (
-              t('submit_btn')
-            )}
-          </Button>
+          <div className="flex items-center gap-3">
+            {summaryText && <div className="shrink-0 leading-tight"><p className={`text-lg font-extrabold ${tone.text}`}>{summaryText.split(' · ')[0]}</p>{summaryText.includes(' · ')&&<p className="text-[11px] text-slate-500">{summaryText.split(' · ')[1]}</p>}</div>}
+            <Button
+              type="submit"
+              form="leave-form"
+              disabled={submitDisabled}
+              className={`h-12 flex-1 rounded-2xl text-base font-bold text-white shadow-md transition-all active:scale-[0.98] md:h-14 ${submitDisabled ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed" : `bg-linear-to-r/srgb ${tone.header}`}`}
+            >
+              {isSubmitting ? (
+                <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t('submitting')}</>
+              ) : (
+                <><Send className="mr-2 h-4 w-4" />{t('submit_btn')}</>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

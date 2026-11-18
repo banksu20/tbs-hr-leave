@@ -1,7 +1,8 @@
 import type {FlexBlockData} from "./flex-types";
 // Standalone Vite preview; not imported by the production app.
 import React from 'react';
-import {MemoryRouter} from 'react-router-dom';
+import {MemoryRouter,Routes,Route} from 'react-router-dom';
+import LeaveRequest from '../../src/pages/LeaveRequest';
 import Dashboard from '../../src/components/Dashboard';
 import flexCards from './flex-fixtures.json';
 import {createRoot} from 'react-dom/client';
@@ -33,11 +34,15 @@ liff.init=async()=>{};
 liff.isLoggedIn=()=>true;
 liff.getProfile=async()=>({userId:'demo',displayName:'Demo Employee'});
 const fullView=new URLSearchParams(location.search).has('full');
+const intern=new URLSearchParams(location.search).has('intern');
+const formType=new URLSearchParams(location.search).get('form');
 const cardsOnly=new URLSearchParams(location.search).has('cards');
 window.fetch=async(input,init)=>{
  const url=String(input);
  const json=(value:unknown)=>new Response(JSON.stringify(value),{status:200});
  if(url.includes('/api/notification-preferences'))return json({ok:true});
+ if(url==='/api/leave-policy'){const b=JSON.parse(String(init?.body??'{}'));const t=b.type==='vacation'?'annual':b.type;const totals:Record<string,number>={sick:intern?6:30,personal:3,annual:12};const used:Record<string,number>={sick:1,personal:1,annual:2};const requested=(b.dates?.length??0)*(b.daysPerDate??1);const uni=t==='university';const available=uni?null:totals[t]-used[t];return json({ok:true,isIntern:intern,unlimited:false,balances:[{year:2026,type:t,unlimited:uni,known:true,total:uni?null:totals[t],approved:uni?0:used[t],pending:0,requested,available,allowed:uni||requested<=(available??0)}],annualBalances:[],deadline:b.dates?.length?'2099-01-01T09:30:00Z':null,late:false,medicalCertificateRequired:false});}
+ if(url.includes('action=get-leave-history'))return json([]);
  if(url.includes('/api/company-holidays'))return json({confirmed:true,holidays:[{date:'2026-01-01',name:"New Year's Day",localName:'วันขึ้นปีใหม่'},{date:'2026-04-13',name:'Songkran Festival',localName:'วันสงกรานต์'},{date:'2026-10-13',name:'King Bhumibol Memorial Day',localName:'วันนวมินทรมหาราช'},{date:'2026-10-23',name:'Chulalongkorn Day',localName:'วันปิยมหาราช'},{date:'2026-12-07',name:'Substitution for King Bhumibol\'s Birthday',localName:'ชดเชยวันคล้ายวันพระบรมราชสมภพ ร.9'},{date:'2026-12-10',name:'Constitution Day',localName:'วันรัฐธรรมนูญ'},{date:'2026-12-31',name:"New Year's Eve",localName:'วันสิ้นปี'}]});
  if(url.includes('delivery=1'))return json({pending:0,failed:0,jobs:[]});
  if(url.includes('action=check-user'))return json({found:true,name:'Somchai|Jaidee|Demo',department:'Web Developer'});
@@ -58,5 +63,5 @@ window.fetch=async(input,init)=>{
  return new Response(JSON.stringify({ok:true,requests:boss?requests:leaves}),{status:200});
 };
 const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
-const fullEmployee=<MemoryRouter><div className="max-w-md mx-auto bg-white"><Dashboard employeePreview/></div></MemoryRouter>;
+const fullEmployee=<MemoryRouter initialEntries={[formType?`/leave-request?type=${formType}`:"/"]}><div className="max-w-md mx-auto bg-white"><Routes><Route path="/" element={<Dashboard employeePreview/>}/><Route path="/leave-request" element={<LeaveRequest userId="demo" userName="Somchai|Jaidee|Demo" department="Web Developer"/>}/></Routes></div></MemoryRouter>;
 createRoot(document.getElementById('root')!).render(<LanguageProvider><QueryClientProvider client={client}><div className="min-h-screen bg-slate-100 p-4 md:p-8"><div className="max-w-6xl mx-auto">{fullView&&<div className="mb-6 rounded-xl bg-amber-100 p-3 text-center text-sm">Full employee page · sample data · no notifications</div>}{fullView&&fullEmployee}<div style={{display:fullView?'none':undefined}}><div style={{display:cardsOnly?'none':undefined}} className="bg-slate-900 text-white rounded-2xl p-5 mb-6"><h1 className="text-2xl font-bold">Leave cancellation preview</h1><p className="mt-2 text-amber-300 font-semibold">Sample data only — no real leave, messages, or calendar events change.</p><p className="text-sm mt-2">Try requesting cancellation on the left, then approve or reject it on the right. Refresh the employee list to see the decision.</p><button className="mt-3 border rounded-lg px-3 py-1" onClick={()=>location.reload()}>Reset demo</button></div><div style={{display:cardsOnly?'none':undefined}} className="grid md:grid-cols-2 gap-6"><div><h2 className="font-bold text-xl px-4">1. Employee view</h2><EmployeeCancellations userId="demo" onChanged={()=>{}}/></div><div><h2 className="font-bold text-xl mb-6">2. Boss view</h2><CancellationRequests/></div></div><section className="mt-8"><h2 className="text-xl font-bold">LINE message scenarios</h2><p className="text-sm text-slate-600 my-3">Local layout preview using the generated Flex message data. LINE may render spacing differently. No messages are sent.</p><div className="grid md:grid-cols-2 gap-6 bg-slate-800 p-5 rounded-2xl">{flexCards.map((card,i)=><div key={i}><p className="text-white font-bold mb-2">{i+1}. {card.scenario}</p><p className="text-slate-300 text-sm mb-3">To: {card.recipient}</p><div className="bg-white rounded-3xl p-6 max-w-sm"><FlexBlock block={card.contents.body}/>{'footer' in card.contents&&<div className="mt-5"><FlexBlock block={card.contents.footer}/></div>}</div></div>)}</div></section></div></div></div><Toaster/></QueryClientProvider></LanguageProvider>);

@@ -5,7 +5,7 @@ import { useState, useEffect, type ComponentType } from "react";
 import { useNavigate } from "react-router-dom";
 import liff from "@line/liff";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Thermometer, Palmtree, CalendarDays, Users, Plus, ChevronRight, ShieldCheck } from "lucide-react";
+import { Thermometer, Palmtree, CalendarDays, Users, Plus, ChevronRight, ShieldCheck, GraduationCap } from "lucide-react";
 import HolidaysModal from "./HolidaysModal";
 import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 import tbsLogo from "@/image/TBS-Logo.png";
@@ -90,6 +90,7 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
   const year = Number(now.date.slice(0, 4));
   const [holidays, setHolidays] = useState<CompanyHoliday[] | null>(() => savedCompanyHolidays(year));
   const [offToday, setOffToday] = useState<number | null>(null);
+  const [isIntern, setIsIntern] = useState(false);
 
   const { t, language } = useLanguage();
   const th = language === 'th';
@@ -109,6 +110,25 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
   const initials = (firstName || '?').slice(0, 2).toUpperCase();
 
   useEffect(() => { if (profile?.pictureUrl) { setPictureUrl(profile.pictureUrl); setPictureFailed(false); } }, [profile?.pictureUrl]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const key = `tbs_is_intern_${userId}`;
+    try { if (localStorage.getItem(key) === '1') setIsIntern(true); } catch { void 0; }
+    let active = true;
+    const token = employeePreview ? 'preview' : liff.getAccessToken();
+    if (!token) return;
+    fetch('/api/leave-policy', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ type: 'sick', dates: [], daysPerDate: 1 }) })
+      .then(r => r.ok ? r.json() : null)
+      .then(result => {
+        if (!active || !result?.ok) return;
+        const intern = result.isIntern === true;
+        setIsIntern(intern);
+        try { if (intern) localStorage.setItem(key, '1'); else localStorage.removeItem(key); } catch { void 0; }
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [userId, employeePreview]);
 
   useEffect(() => {
     let active = true;
@@ -203,7 +223,7 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
         <section className="rounded-3xl bg-white p-4 shadow-md shadow-slate-200/60 border border-slate-100">
           <div className="mb-3 flex items-baseline justify-between px-1">
             <h2 className="text-sm font-bold text-slate-800">{th ? 'วันลาคงเหลือ' : 'Your leave balance'}</h2>
-            <span className="text-[11px] font-medium text-slate-400">{th ? `ปี ${year + 543}` : year}</span>
+            <span className="text-[11px] font-medium text-slate-400">{isIntern ? (th ? 'ตลอดการฝึกงาน' : 'Whole internship') : th ? `ปี ${year + 543}` : year}</span>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {balances.map(b => (
@@ -211,6 +231,16 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
                 remaining={b.remaining} total={b.total} th={th} onClick={() => navigate(`/leave-request?type=${b.key}`)} />
             ))}
           </div>
+          {isIntern && (
+            <button type="button" onClick={() => navigate('/leave-request?type=university')} className="group mt-2 flex w-full items-center gap-3 rounded-2xl border border-violet-100 bg-linear-to-r/srgb from-violet-50 to-white p-3 text-left shadow-xs transition active:scale-[0.98] hover:border-violet-200 hover:shadow-sm">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-600"><GraduationCap className="h-5 w-5" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold text-violet-700">{th ? 'กิจกรรมมหาวิทยาลัย' : 'University activity'}</span>
+                <span className="block text-[11px] text-slate-500">{th ? 'ไม่จำกัดวัน · แนบหลักฐานจากมหาวิทยาลัย' : 'No day limit · attach proof from your university'}</span>
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-xs"><Plus className="h-3 w-3" strokeWidth={3} />{th ? 'ขอลา' : 'Request'}</span>
+            </button>
+          )}
         </section>
 
         <div className="grid grid-cols-2 gap-3">
