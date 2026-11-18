@@ -11,6 +11,7 @@ import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 import tbsLogo from "@/image/TBS-Logo.png";
 import { useLanguage } from "@/hooks/useLanguage";
 import TeamCalendar from "./TeamCalendar";
+import { prefetchTeamMonths, teamDepartments } from "@/lib/teamCalendar";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 
 const LIFF_ID = "2008617589-89gR1Y3Y";
@@ -44,6 +45,15 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
   
   const displayDeptName = isTechTeam ? "DEV & UX/UI" : isCreativeTeam ? "Graphic & Content" : cleanDept;
   const isCeo = !employeePreview && (userId === (import.meta.env.VITE_CEO_USER_ID || "Uc229f2377a2b8839adab478d92c0c26f") || import.meta.env.DEV);
+
+  useEffect(() => {
+    if (!userDept || !userId) return;
+    const timer = window.setTimeout(() => {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date());
+      prefetchTeamMonths(teamDepartments(userDept, userId), Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1);
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [userDept, userId]);
 
   useEffect(() => {
     if (profile && registration) return;

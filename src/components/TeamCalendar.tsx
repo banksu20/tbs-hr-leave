@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
 import { Loader2, ChevronLeft, ChevronRight, Users } from "lucide-react";
-import {employeeData} from "@/lib/employeeData";
 import { useLanguage } from "@/hooks/useLanguage";
 import { loadCompanyHolidays, savedCompanyHolidays } from "@/lib/companyHolidays";
-
-interface TeamLeave {name:string;status:string;type:string;period?:string|null;}
+import { loadTeamMonth, prefetchTeamMonths, savedTeamMonth, teamDepartments, type TeamLeave } from "@/lib/teamCalendar";
 interface Holiday {date:string;name:string;localName:string;}
 
 interface CalendarProps {
@@ -42,22 +40,20 @@ export default function TeamCalendar({ department, userId }: CalendarProps) {
   const isCreativeTeam = userId === Boom_userId && (cleanDept === "Graphic" || cleanDept === "Content");
   const displayDept = isTechTeam ? "DEV & UX/UI" : isCreativeTeam ? "Graphic & Content" : cleanDept;
 
+  const departmentsKey = teamDepartments(department, userId).join('|');
   useEffect(() => {
-    if (!department) return;
-    const controller=new AbortController();
-    setIsLoading(true);setError(false);setLeaveData({});
-    const departments=isTechTeam?['Web Developer','UX/UI Designer']:isCreativeTeam?['Graphic','Content']:[department];
-    Promise.all(departments.map(dept=>employeeData('get-team-calendar',{department:dept,year:String(year),month:String(month+1)},controller.signal)))
-      .then(results=>{
-        if(controller.signal.aborted)return;
-        const merged:Record<string,TeamLeave[]>={};
-        for(const data of results)for(const [date,leaves] of Object.entries(data))if(Array.isArray(leaves))merged[date]=[...(merged[date]||[]),...leaves];
-        setLeaveData(merged);
-      })
-      .catch(()=>{if(!controller.signal.aborted)setError(true);})
-      .finally(()=>{if(!controller.signal.aborted)setIsLoading(false);});
-    return ()=>controller.abort();
-  }, [department, year, month, isTechTeam, isCreativeTeam]);
+    if (!departmentsKey) return;
+    const departments = departmentsKey.split('|');
+    let active = true;
+    const saved = savedTeamMonth(departments, year, month);
+    setLeaveData(saved ?? {});setError(false);setIsLoading(!saved);
+    loadTeamMonth(departments, year, month)
+      .then(data=>{ if(active) setLeaveData(data); })
+      .catch(()=>{ if(active&&!saved) setError(true); })
+      .finally(()=>{ if(active) setIsLoading(false); });
+    prefetchTeamMonths(departments, year, month, 1);
+    return ()=>{ active=false; };
+  }, [departmentsKey, year, month]);
 
   useEffect(() => {
     let active = true;
