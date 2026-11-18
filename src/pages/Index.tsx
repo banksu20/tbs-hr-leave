@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import Dashboard from "@/components/Dashboard";
 import { Loader2 } from "lucide-react";
 
-const Index = () => {
+type IndexProps = { profile?: { userId: string; displayName: string } | null; registration?: { name: string; department: string } | null };
+
+const Index = ({ profile, registration }: IndexProps = {}) => {
   const navigate = useNavigate();
 
   // 🔥 1. เช็คจาก URL ของ Browser โดยตรง (ทำงานทันที เร็วกว่า State)
@@ -32,7 +34,7 @@ const Index = () => {
   }
 
   // ✅ 3. ถ้าไม่มี type (คนเข้าหน้าแรกปกติ) ถึงจะยอมให้โชว์ Dashboard
-  return <Dashboard />;
+  return <Dashboard profile={profile} registration={registration} />;
 };
 
 export default Index;

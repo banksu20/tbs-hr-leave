@@ -15,17 +15,20 @@ import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/
 
 const LIFF_ID = "2008617589-89gR1Y3Y";
 
-const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = {}) => {
+type KnownProfile = { userId: string; displayName: string };
+type KnownRegistration = { name: string; department: string };
+
+const Dashboard = ({ employeePreview = false, profile, registration }: { employeePreview?: boolean; profile?: KnownProfile | null; registration?: KnownRegistration | null } = {}) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [openOnLoad] = useState(() => new URLSearchParams(window.location.search).get("open"));
   const [showHolidaysModal, setShowHolidaysModal] = useState(openOnLoad === "holidays");
   const [showTeamCalendar, setShowTeamCalendar] = useState(openOnLoad === "team");
-  const [userId, setUserId] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string>("");
-  const [registeredName, setRegisteredName] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(profile?.userId ?? null);
+  const [userName, setUserName] = useState<string>(profile?.displayName ?? "");
+  const [registeredName, setRegisteredName] = useState<string | null>(registration?.name ?? null);
   
-  const [userDept, setUserDept] = useState<string>(""); 
+  const [userDept, setUserDept] = useState<string>(registration?.department ?? ""); 
   
 
   const { t, language } = useLanguage();
@@ -43,6 +46,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
   const isCeo = !employeePreview && (userId === (import.meta.env.VITE_CEO_USER_ID || "Uc229f2377a2b8839adab478d92c0c26f") || import.meta.env.DEV);
 
   useEffect(() => {
+    if (profile && registration) return;
     const initLiff = async () => {
       try {
         await liff.init({ liffId: LIFF_ID });
@@ -62,7 +66,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
       }
     };
     initLiff();
-  }, []);
+  }, [profile, registration]);
 
   const fetchRegisteredName = async (id: string) => {
   try {

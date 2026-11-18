@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import liff from "@line/liff";
@@ -8,19 +8,22 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Loader2 } from "lucide-react"; // ไอคอนโหลด
 
-import InternDecision from '@/pages/InternDecision';
 import Index from "@/pages/Index";
-import LeaveRequest from "@/pages/LeaveRequest";
-import NotFound from "@/pages/NotFound";
-import SickAcknowledgement from "@/pages/SickAcknowledgement";
-import CancelDecision from "@/pages/CancelDecision";
-import RejectForm from "@/pages/RejectForm";
 import ProfileSetup from "@/components/ProfileSetup"; 
-import DashboardAccess from "@/components/ceo/DashboardAccess";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 import { useLanguage } from "./hooks/useLanguage";
 
+
+const loadLeaveRequest = () => import("@/pages/LeaveRequest");
+const LeaveRequest = lazy(loadLeaveRequest);
+const InternDecision = lazy(() => import('@/pages/InternDecision'));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const SickAcknowledgement = lazy(() => import("@/pages/SickAcknowledgement"));
+const CancelDecision = lazy(() => import("@/pages/CancelDecision"));
+const RejectForm = lazy(() => import("@/pages/RejectForm"));
+const DashboardAccess = lazy(() => import("@/components/ceo/DashboardAccess"));
+const pageFallback = <div className="min-h-screen grid place-items-center bg-slate-50"><Loader2 className="w-10 h-10 text-sky-500 animate-spin" /></div>;
 
 const queryClient = new QueryClient();
 const LIFF_ID = import.meta.env.VITE_LIFF_ID || "2008617589-89gR1Y3Y";
@@ -75,6 +78,12 @@ const App = () => {
     
     initializeLiffAndCheckUser();
   }, []);
+
+  useEffect(() => {
+    if (isInitializing) return;
+    const timer = window.setTimeout(() => { void loadLeaveRequest(); }, 300);
+    return () => window.clearTimeout(timer);
+  }, [isInitializing]);
 
   const handleSaveProfile = async (data: {name: string, department: string, employmentType: 'employee'|'intern'}) => {
     setIsInitializing(true);
@@ -135,6 +144,7 @@ const App = () => {
         <LanguageToggleBtn />
 
         <BrowserRouter>
+          <Suspense fallback={pageFallback}>
           <Routes>
             <Route path="/leave-decision" element={<InternDecision/>}/><Route path="/sick-acknowledge" element={<SickAcknowledgement />} />
             <Route path="/cancel-decision" element={<CancelDecision />} />
@@ -147,7 +157,7 @@ const App = () => {
                 !localUser ? (
                   <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} />
                 ) : (
-                  <Index />
+                  <Index profile={userProfile ? { userId: userProfile.userId, displayName: userProfile.displayName } : null} registration={localUser} />
                 )
               } 
             />
@@ -165,6 +175,7 @@ const App = () => {
 
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
