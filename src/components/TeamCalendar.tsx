@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Loader2, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import {employeeData} from "@/lib/employeeData";
 import { useLanguage } from "@/hooks/useLanguage";
+import { loadCompanyHolidays, savedCompanyHolidays } from "@/lib/companyHolidays";
 
 interface TeamLeave {name:string;status:string;type:string;period?:string|null;}
 interface Holiday {date:string;name:string;localName:string;}
@@ -60,10 +61,10 @@ export default function TeamCalendar({ department, userId }: CalendarProps) {
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/company-holidays?year=${year}`,{cache:'no-store'})
-      .then(r=>r.ok?r.json():null)
-      .then(data=>{ if(!active) return; const map:Record<string,Holiday>={}; if(data?.confirmed&&Array.isArray(data.holidays))for(const h of data.holidays)map[h.date]=h; setHolidays(map); })
-      .catch(()=>{ if(active) setHolidays({}); });
+    const show = (list:Holiday[]) => { if(!active) return; const map:Record<string,Holiday>={}; for(const h of list)map[h.date]=h; setHolidays(map); };
+    const saved = savedCompanyHolidays(year);
+    if (saved) show(saved);
+    loadCompanyHolidays(year).then(show).catch(()=>{ if(active&&!saved) setHolidays({}); });
     return () => { active = false; };
   }, [year]);
 

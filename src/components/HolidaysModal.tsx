@@ -7,17 +7,14 @@ import {
 } from "@/components/ui/dialog";
 import { useLanguage } from "@/hooks/useLanguage";
 import { CalendarDays, Loader2, AlertCircle, ChevronDown, PartyPopper } from "lucide-react";
+import { loadCompanyHolidays, savedCompanyHolidays, type CompanyHoliday } from "@/lib/companyHolidays";
 
 interface HolidaysModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-interface Holiday {
-  date: string;
-  localName: string;
-  name: string;
-}
+type Holiday = CompanyHoliday;
 
 const bangkokToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date());
 const dayDiff = (from: string, to: string) => Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000);
@@ -26,24 +23,23 @@ const HolidaysModal = ({ open, onOpenChange }: HolidaysModalProps) => {
   const { language } = useLanguage();
   const th = language === 'th';
   const locale = th ? 'th-TH' : 'en-GB';
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const currentYear = Number(new Intl.DateTimeFormat('en',{year:'numeric',timeZone:'Asia/Bangkok'}).format(new Date()));
+  const [holidays, setHolidays] = useState<Holiday[]>(() => savedCompanyHolidays(currentYear) ?? []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [showPast, setShowPast] = useState(false);
-  const currentYear = Number(new Intl.DateTimeFormat('en',{year:'numeric',timeZone:'Asia/Bangkok'}).format(new Date()));
   const holidayDate = (value:string) => new Date(value+'T12:00:00+07:00');
   const fmt = (value: string, options: Intl.DateTimeFormatOptions) => holidayDate(value).toLocaleDateString(locale, { ...options, timeZone: 'Asia/Bangkok' });
   const title = (h: Holiday) => th ? (h.localName || h.name) : (h.name || h.localName);
 
   const fetchHolidays = useCallback(async () => {
-    setLoading(true);
+    const saved = savedCompanyHolidays(currentYear);
+    if (saved) setHolidays(saved); else setLoading(true);
     setError(false);
     try {
-      const response=await fetch(`/api/company-holidays?year=${currentYear}`,{cache:'no-store'});
-      const data=await response.json();if(!response.ok||!data.confirmed)throw Error('Calendar not confirmed');
-      setHolidays([...data.holidays].sort((a: Holiday, b: Holiday) => a.date.localeCompare(b.date)));
+      setHolidays(await loadCompanyHolidays(currentYear));
     } catch {
-      setError(true);setHolidays([]);
+      if (!saved) { setError(true); setHolidays([]); }
     } finally {
       setLoading(false);
     }

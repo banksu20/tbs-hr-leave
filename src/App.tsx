@@ -11,6 +11,7 @@ import { Loader2 } from "lucide-react"; // ไอคอนโหลด
 import Index from "@/pages/Index";
 import ProfileSetup from "@/components/ProfileSetup"; 
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { loadCompanyHolidays } from "@/lib/companyHolidays";
 
 import { useLanguage } from "./hooks/useLanguage";
 
@@ -81,7 +82,10 @@ const App = () => {
 
   useEffect(() => {
     if (isInitializing) return;
-    const timer = window.setTimeout(() => { void loadLeaveRequest(); }, 300);
+    const timer = window.setTimeout(() => {
+      void loadLeaveRequest();
+      loadCompanyHolidays(Number(new Intl.DateTimeFormat('en', { year: 'numeric', timeZone: 'Asia/Bangkok' }).format(new Date()))).catch(() => undefined);
+    }, 300);
     return () => window.clearTimeout(timer);
   }, [isInitializing]);
 
