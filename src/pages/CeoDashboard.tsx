@@ -184,7 +184,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
       : emp.quotas.sickTotal - sTaken;
     const pRemain = emp.quotas.personalTotal - pTaken;
 
-    if (aRemain < 0 || sRemain < 0 || pRemain < 0) {
+    if (!emp.unlimitedLeave && (aRemain < 0 || sRemain < 0 || pRemain < 0)) {
       quotaAlertList.push({ emp, type: "Over Quota", remain: Math.min(aRemain, sRemain, pRemain) });
     }
   });
@@ -501,6 +501,7 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
                 onDeleteLeave={removeLeaveRecord}
                 onEditProfile={openEditQuotaModal}
                 onQuotaNoteChange={updateQuotaNote}
+                onAnnualQuotaChange={(employee, annualTotal) => leaveMutations.quota.mutateAsync({ employee, patch: { annualTotal } })}
                 onRemoveEmployee={setEmployeeToRemove}
               />
             </div>
@@ -596,9 +597,9 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
                   <tfoot>
                     <tr className="bg-slate-100 font-extrabold border-t border-slate-300">
                       <td className="py-2.5 px-3 border-r border-slate-300">{dt("All leave getting per year")}</td>
-                      <td className="py-2.5 px-3 text-center text-rose-700 border-r border-slate-300">{selectedEmployee.quotas.sickTotal??"∞"}</td>
-                      <td className="py-2.5 px-3 text-center text-amber-900 border-r border-slate-300">{selectedEmployee.quotas.annualTotal===null?"∞":selectedEmployee.quotas.annualTotal + selectedEmployee.quotas.carriedOver}</td>
-                      <td className="py-2.5 px-3 text-center text-sky-800 border-r border-slate-300">{selectedEmployee.quotas.personalTotal}</td>
+                      <td className="py-2.5 px-3 text-center text-rose-700 border-r border-slate-300">{selectedEmployee.unlimitedLeave?"∞":selectedEmployee.quotas.sickTotal??"∞"}</td>
+                      <td className="py-2.5 px-3 text-center text-amber-900 border-r border-slate-300">{selectedEmployee.unlimitedLeave||selectedEmployee.quotas.annualTotal===null?"∞":selectedEmployee.quotas.annualTotal + selectedEmployee.quotas.carriedOver}</td>
+                      <td className="py-2.5 px-3 text-center text-sky-800 border-r border-slate-300">{selectedEmployee.unlimitedLeave?"∞":selectedEmployee.quotas.personalTotal}</td>
                       <td colSpan={2} className="py-2.5 px-3 text-red-600 font-bold text-xs">
                         {selectedEmployee.quotas.carriedOver > 0 && dt("{0} extra days awarded", [selectedEmployee.quotas.carriedOver])}
                       </td>
@@ -612,9 +613,9 @@ export default function CeoDashboard({navigation, account}: {navigation?: ReactN
                     </tr>
                     <tr className="bg-slate-200 font-extrabold text-slate-900 border-t border-slate-300">
                       <td className="py-2.5 px-3 border-r border-slate-300">{dt("Total remain")}</td>
-                      <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.quotas.sickTotal===null?"∞":selectedEmployee.quotas.sickTotal - sumLeaves(selectedEmployee.leaves, "sick", selectedYear)}</td>
-                      <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.quotas.annualTotal===null?"∞":selectedEmployee.quotas.annualTotal + selectedEmployee.quotas.carriedOver - sumLeaves(selectedEmployee.leaves, "annual", selectedYear)}</td>
-                      <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.quotas.personalTotal - sumLeaves(selectedEmployee.leaves, "personal", selectedYear)}</td>
+                      <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.unlimitedLeave||selectedEmployee.quotas.sickTotal===null?"∞":selectedEmployee.quotas.sickTotal - sumLeaves(selectedEmployee.leaves, "sick", selectedYear)}</td>
+                      <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.unlimitedLeave||selectedEmployee.quotas.annualTotal===null?"∞":selectedEmployee.quotas.annualTotal + selectedEmployee.quotas.carriedOver - sumLeaves(selectedEmployee.leaves, "annual", selectedYear)}</td>
+                      <td className="py-2.5 px-3 text-center border-r border-slate-300">{selectedEmployee.unlimitedLeave?"∞":selectedEmployee.quotas.personalTotal - sumLeaves(selectedEmployee.leaves, "personal", selectedYear)}</td>
                       <td colSpan={2}></td>
                     </tr>
                   </tfoot>

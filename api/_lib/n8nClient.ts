@@ -123,6 +123,7 @@ export interface NormalizedEmployee {
   quotaNote: string;
   status: "active" | "inactive";
   pictureUrl?: string|null;
+  unlimitedLeave?: boolean;
   leaves: NormalizedLeave[];
 }
 
@@ -239,6 +240,7 @@ export function normalizeEmployee(raw: unknown, index: number): NormalizedEmploy
     quotaNote: cleanString(pick(row, ["quotaNote", "quota_note", "note"])),
     status: cleanString(pick(row, ["status", "employeeStatus"])).toLowerCase() === "inactive" ? "inactive" : "active",
     pictureUrl: /^https:\/\/[a-z0-9.-]+\.line-scdn\.net\//.test(cleanString(row.picture_url)) ? cleanString(row.picture_url) : null,
+    unlimitedLeave: row.unlimited_leave === true,
     leaves,
   };
 }

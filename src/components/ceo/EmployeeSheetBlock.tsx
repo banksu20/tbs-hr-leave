@@ -29,6 +29,7 @@ export interface EmployeeSheetBlockProps {
   onDeleteLeave: (empId: string, leaveId: string) => void;
   onEditProfile: (emp: Employee) => void;
   onQuotaNoteChange?: (empId: string, note: string) => Promise<void>;
+  onAnnualQuotaChange?: (emp: Employee, annualTotal: number) => Promise<unknown>;
   onRemoveEmployee?: (emp: Employee) => void;
 }
 
@@ -43,6 +44,7 @@ export default function EmployeeSheetBlock({
   onDeleteLeave,
   onEditProfile,
   onQuotaNoteChange,
+  onAnnualQuotaChange,
   onRemoveEmployee,
 }: EmployeeSheetBlockProps) {
  const dt = useDashboardText();
@@ -298,7 +300,27 @@ export default function EmployeeSheetBlock({
                     {key === "taken"
                       ? t.taken
                       : t.unlimited
-                        ? <span className="text-slate-400" title={dt("No limit on sick leave")}>∞</span>
+                        ? <span className="text-slate-400" title={dt("Unlimited")}>∞</span>
+                        : key === "granted" && t.type === "annual" && onAnnualQuotaChange
+                          ? <>
+                              <EditableCell
+                                gridId={`${gridId}-quota`}
+                                cellId="c:0:0"
+                                align="center"
+                                title={dt("Edit annual quota")}
+                                value={employee.quotas.annualTotal === null ? "" : String(employee.quotas.annualTotal)}
+                                placeholder="—"
+                                displayClassName="font-extrabold text-amber-800 underline decoration-dotted underline-offset-2"
+                                inputClassName="text-amber-800"
+                                onCommit={(raw) => {
+                                  const parsed = Number(raw.trim());
+                                  if (!raw.trim() || !Number.isFinite(parsed) || parsed < 0 || parsed > 365 || Math.round(parsed * 4) !== parsed * 4) return;
+                                  if (parsed === employee.quotas.annualTotal) return;
+                                  void onAnnualQuotaChange(employee, parsed).catch(() => undefined);
+                                }}
+                              />
+                              {employee.quotas.carriedOver > 0 && <span className="block text-[10px] font-bold text-slate-400">+{employee.quotas.carriedOver}</span>}
+                            </>
                         : quotasKnown
                           ? t[key]
                           : <span className="text-slate-300">—</span>}

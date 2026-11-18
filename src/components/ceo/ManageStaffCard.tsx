@@ -57,12 +57,12 @@ export default function ManageStaffCard({employee,year,usage,pending,defaultOpen
    <div className="grid gap-4 lg:grid-cols-2">
     <div className="border rounded-xl bg-white p-4 space-y-3">
      <h3 className="font-semibold">{dt("Allowances for {0}",[year])}</h3>
-     <div className="flex flex-wrap gap-3">
+     {employee.unlimitedLeave?<p className="text-sm font-semibold text-slate-700">{dt("Unlimited")} ∞</p>:<div className="flex flex-wrap gap-3">
       <QuotaField label={dt("Annual")} value={employee.quotas.annualTotal} onSave={annualTotal=>onQuotaChange({annualTotal})}/>
       <QuotaField label={dt("Carried")} value={employee.quotas.carriedOver} onSave={carriedOver=>onQuotaChange({carriedOver})}/>
       <QuotaField label={dt("Personal")} value={employee.quotas.personalTotal} onSave={personalTotal=>onQuotaChange({personalTotal})}/>
       <div className="text-sm text-slate-600">{dt("Sick")}<p className="border border-transparent p-2 mt-1 font-semibold text-slate-900">{employee.quotas.sickTotal??'—'}</p></div>
-     </div>
+     </div>}
      <label className="block text-sm text-slate-600">{dt("Quota note")}<input className="block border rounded-lg p-2 mt-1 w-full text-slate-900" placeholder={dt("Add a note")} value={note} onChange={e=>setNote(e.target.value)} onBlur={()=>{if(note!==(employee.quotaNote??''))onQuotaChange({note});}} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();e.currentTarget.blur();}}}/></label>
      <p className="text-xs text-slate-500">{dt("Changes save when you leave a field.")}</p>
     </div>

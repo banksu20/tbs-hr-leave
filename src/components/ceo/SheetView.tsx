@@ -16,6 +16,7 @@ export interface SheetViewProps {
   onDeleteLeave: (empId: string, leaveId: string) => void;
   onEditProfile: (emp: Employee) => void;
   onQuotaNoteChange?: (empId: string, note: string) => Promise<void>;
+  onAnnualQuotaChange?: (emp: Employee, annualTotal: number) => Promise<unknown>;
   onRemoveEmployee?: (emp: Employee) => void;
 }
 

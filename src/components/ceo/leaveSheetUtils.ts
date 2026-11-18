@@ -98,10 +98,11 @@ function quotaValue(emp: Employee, type: LeaveType): number | null | undefined {
 }
 
 export function needsQuotaReview(emp: Employee) {
-  return emp.quotasKnown === false;
+  return !emp.unlimitedLeave && emp.quotasKnown === false;
 }
 
 export function isUnlimited(emp: Employee, type: LeaveType) {
+  if (emp.unlimitedLeave) return true;
   const value = quotaValue(emp, type);
   return value === null || value === undefined;
 }

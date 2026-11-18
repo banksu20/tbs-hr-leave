@@ -36,6 +36,7 @@ export interface Employee {
   quotaNote?: string;
   status?: "active" | "inactive";
   pictureUrl?: string|null;
+  unlimitedLeave?: boolean;
   leaves: LeaveRecord[];
 }
 

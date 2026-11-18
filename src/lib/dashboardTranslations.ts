@@ -364,6 +364,7 @@ export const dashboardThai: Record<string, string> = {
   "30 paid days · company policy": "ลาโดยได้รับค่าจ้าง 30 วัน · ตามนโยบายบริษัท",
   "No limit on sick leave": "ไม่จำกัดวันลาป่วย",
   "Unlimited": "ไม่จำกัด",
+  "Edit annual quota": "แก้ไขโควตาลาพักร้อน",
   "Carried": "วันยกมา",
   "Carried Over": "วันลายกมา",
   "Carry over": "วันลายกมา",
