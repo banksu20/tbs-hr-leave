@@ -13,13 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Loader2, Calendar as CalendarIcon, User, FileText, ArrowLeft, AlertTriangle, Clock } from "lucide-react";
@@ -37,6 +30,7 @@ interface LeaveRequestFormProps {
   userName?: string;
   department?: string;
   initialLeaveType?: string;
+  pictureUrl?: string;
 }
 
 interface FormData {
@@ -47,7 +41,7 @@ interface FormData {
   reason: string;
 }
 
-const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: LeaveRequestFormProps) => {
+const LeaveRequestForm = ({ userId, userName, department, initialLeaveType, pictureUrl }: LeaveRequestFormProps) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { language, t } = useLanguage(); 
@@ -67,6 +61,9 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
   const [isQuotaLoading, setQuotaLoading] = useState(true);
   const [policyAttempt, setPolicyAttempt] = useState(0);
   const [emergency,setEmergency]=useState(false);
+  const [pictureFailed,setPictureFailed]=useState(false);
+  const [overview,setOverview]=useState<{type:string;available:number;total:number}[]>([]);
+  const [overviewAttempt,setOverviewAttempt]=useState(0);
   const [evidence,setEvidence]=useState<{id:string;filename:string}[]>([]);
   const [uploading,setUploading]=useState(false);
   const [reasonError, setReasonError] = useState(false);
@@ -137,6 +134,22 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     }, 200);
     return () => {active=false;controller.abort();window.clearTimeout(timer);window.clearTimeout(timeout);};
   }, [policyKey, policyAttempt, language, currentUserId, formData.leaveType, localDates, isHalfDay]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    let active = true;
+    const token = liff.getAccessToken();
+    if (!token) return;
+    Promise.all((['sick','personal','annual'] as const).map(async type => {
+      try {
+        const response = await fetch('/api/leave-policy', {method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`}, body:JSON.stringify({type,dates:[],daysPerDate:1})});
+        const result = await response.json();
+        const balance = response.ok && result.ok && !result.unlimited ? result.balances?.[0] : null;
+        return balance && balance.known && !balance.unlimited && typeof balance.total === 'number' && typeof balance.available === 'number' ? {type, available:balance.available as number, total:balance.total as number} : null;
+      } catch { return null; }
+    })).then(rows => { if (active) setOverview(rows.filter((row): row is {type:'sick'|'personal'|'annual';available:number;total:number} => !!row)); });
+    return () => { active = false; };
+  }, [currentUserId, overviewAttempt]);
 
   useEffect(() => {
     if (department) setIsDepartmentLocked(true);
@@ -288,6 +301,22 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
     localStorage.setItem("userDepartment", value); 
   };
 
+  const typeOptions = [
+    {value:'sick',label:t('sick_leave'),dot:'bg-rose-500',text:'text-rose-700',active:'border-rose-400 bg-rose-50'},
+    {value:'personal',label:t('personal_leave'),dot:'bg-amber-500',text:'text-amber-700',active:'border-amber-400 bg-amber-50'},
+    {value:'vacation',label:t('annual_leave'),dot:'bg-sky-500',text:'text-sky-700',active:'border-sky-400 bg-sky-50'},
+    ...(isIntern?[{value:'university',label:language==='th'?'กิจกรรมมหาวิทยาลัย':'University',dot:'bg-violet-500',text:'text-violet-700',active:'border-violet-400 bg-violet-50'}]:[]),
+  ];
+
+  const submitHint = selectedDates.length === 0 ? (language==='th'?'เลือกวันที่ต้องการลาก่อน':'Choose your leave date first.')
+    : uploading ? (language==='th'?'รออัปโหลดเอกสารให้เสร็จ':'Wait for the upload to finish.')
+    : policyError ? (language==='th'?'ตรวจสอบสิทธิ์ลาไม่สำเร็จ กดลองอีกครั้งด้านบน':'Your allowance could not be checked. Tap Retry above.')
+    : !policyReady ? ''
+    : formData.leaveType==='university'&&!evidence.length ? (language==='th'?'แนบหลักฐานก่อนส่งคำขอ':'Attach supporting evidence before submitting.')
+    : isOverQuota ? (language==='th'?'คำขอนี้เกินสิทธิ์ลาคงเหลือ':'This request is more than your remaining leave.')
+    : late ? (exceptionSelected ? (language==='th'?'กรอกเหตุผลก่อนส่งคำขอ':'Enter your reason before submitting.') : (language==='th'?'เลยกำหนดส่งคำขอแล้ว ดูตัวเลือกด้านบน':'The request deadline has passed. See the option above.'))
+    : '';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -347,7 +376,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       });
 
       navigate("/"); 
-      setFormData((prev) => ({ ...prev, reason: "" }));setEvidence([]);setEmergency(false);
+      setFormData((prev) => ({ ...prev, reason: "" }));setEvidence([]);setEmergency(false);setOverviewAttempt(n=>n+1);
       setSelectedDates([]);
       setIsHalfDay(false);
 
@@ -397,9 +426,10 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
       {/* Header */}
       <div className="bg-white text-slate-800 py-6 px-4 md:px-6 shadow-xs relative overflow-hidden rounded-b-3xl z-10 shrink-0">
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-linear-to-r/srgb from-sky-500 via-amber-400 to-emerald-500"></div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 md:max-w-2xl md:mx-auto">
           <button 
             type="button"
+            aria-label={language==='th'?'กลับหน้าหลัก':'Back to home'}
             onClick={() => navigate("/")} 
             className="p-2.5 -ml-1 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors text-slate-600 active:scale-95"
           >
@@ -418,15 +448,11 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
 
         <form id="leave-form" onSubmit={handleSubmit} className="space-y-4">
           
-          {/* ข้อมูลส่วนตัวพนักงาน */}
-          <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 space-y-4">
-            
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-2 text-slate-500 font-semibold text-xs uppercase tracking-wider">
-                <User className="h-4 w-4 text-sky-500" /> {t('user_name')}
-              </Label>
-
-              <div className="px-4 py-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-bold text-sm">
+          <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 space-y-3">
+            <div className="flex items-center gap-3 min-w-0">
+              {pictureUrl&&!pictureFailed?<img src={pictureUrl} alt="" aria-hidden referrerPolicy="no-referrer" onError={()=>setPictureFailed(true)} className="shrink-0 w-11 h-11 rounded-full object-cover bg-slate-100"/>:<span className="shrink-0 w-11 h-11 rounded-full bg-sky-100 text-sky-700 grid place-items-center"><User className="h-5 w-5" aria-hidden /></span>}
+              <div className="min-w-0">
+                <p className="text-slate-800 font-bold text-sm truncate" aria-label={t('user_name')}>
                 {(() => {
                   const parts = (formData.userName || "").split('|').map(p => p.trim().replace(/[()]/g, ""));
                   const validParts = parts.filter(p => p !== "");
@@ -444,15 +470,8 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                   }
                   return "Unknown User";
                 })()}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-2 text-slate-500 font-semibold text-xs uppercase tracking-wider">
-                <FileText className="h-4 w-4 text-sky-500" /> {t('department')}
-              </Label>
-              <div className="px-4 py-3 h-12 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-bold text-sm flex items-center">
-                {formData.department || t('department')}
+                </p>
+                <p className="text-xs text-slate-500 truncate" aria-label={t('department')}>{formData.department || t('department')}</p>
               </div>
             </div>
           </div>
@@ -471,22 +490,16 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 <Label className="flex items-center gap-2 text-slate-700 font-semibold text-xs uppercase tracking-wider">
                   <FileText className="h-4 w-4" /> {t('leave_type')}
                 </Label>
-                <Select disabled={uploading || evidence.length > 0 || isSubmitting} value={formData.leaveType} onValueChange={(val) => setFormData({ ...formData, leaveType: val })}>
-                  <SelectTrigger className={`h-12 rounded-xl font-bold border-white bg-white shadow-xs text-sm ${
-                    formData.leaveType === 'sick' ? 'text-rose-600 ring-1 ring-rose-100' : 
-                    formData.leaveType === 'vacation' ? 'text-sky-600 ring-1 ring-sky-100' : 
-                    formData.leaveType === 'personal' ? 'text-amber-600 ring-1 ring-amber-100' : // 🌟 เพิ่มบรรทัดนี้
-                    'text-slate-700 border-slate-200'
-                  }`}>
-                    <SelectValue placeholder={`-- ${t('leave_type')} --`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sick" className="font-bold text-rose-600">{t('sick_leave')}</SelectItem>
-                    <SelectItem value="vacation" className="font-bold text-sky-600">{t('annual_leave')}</SelectItem>
-                    <SelectItem value="personal" className="font-bold text-amber-600">{t('personal_leave')}</SelectItem>
-                  {isIntern&&<SelectItem value="university">{language==='th'?'กิจกรรมมหาวิทยาลัย':'University activities'}</SelectItem>}
-                  </SelectContent>
-                </Select>
+                <div role="radiogroup" aria-label={t('leave_type')} className={`grid gap-2 ${isIntern?'grid-cols-2 sm:grid-cols-4':'grid-cols-3'}`}>
+                  {typeOptions.map(o=>{const active=formData.leaveType===o.value;const b=overview.find(x=>x.type===(o.value==='vacation'?'annual':o.value));return (
+                    <button type="button" role="radio" aria-checked={active} key={o.value} disabled={uploading || evidence.length > 0 || isSubmitting} onClick={()=>setFormData(prev=>({...prev,leaveType:o.value}))}
+                      className={`rounded-xl border-2 bg-white p-2.5 text-left transition-colors disabled:opacity-60 ${active?o.active:'border-transparent shadow-xs hover:border-slate-200'}`}>
+                      <span className={`flex items-center gap-1.5 text-xs font-bold ${o.text}`}><span className={`h-2 w-2 shrink-0 rounded-full ${o.dot}`}/>{o.label}</span>
+                      {b?<><span className="mt-1 block leading-none"><span className={`text-xl font-extrabold ${b.available<=0?'text-amber-600':'text-slate-800'}`}>{b.available}</span><span className="text-xs font-medium text-slate-400">/{b.total}</span></span><span className="mt-0.5 block text-[10px] text-slate-500">{language==='th'?'วันคงเหลือ':'days left'}</span></>
+                        :<span className="mt-1 block text-[11px] leading-tight text-slate-400">{o.value==='university'?(language==='th'?'ต้องแนบหลักฐาน':'Needs evidence'):'\u00a0'}</span>}
+                    </button>);})}
+                </div>
+                {overview.length>0&&<p className="text-[11px] text-slate-500">{language==='th'?(isIntern?'จำนวนวันคงเหลือตลอดการฝึกงาน':'จำนวนวันคงเหลือของปีนี้'):(isIntern?'Days left for your whole internship':'Days left this year')}</p>}
                 {(uploading || evidence.length > 0) && <p className="text-xs text-slate-600">{language==='th'?'หากต้องการเปลี่ยนประเภทการลา ให้รออัปโหลดเสร็จแล้วลบไฟล์แนบด้านล่างก่อน':'To change leave type, wait for uploads to finish and remove the attachments below first.'}</p>}
               </div>
 
@@ -625,7 +638,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
                 )}
               </div>
 
-              {canEmergency&&<div className="space-y-2"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={emergency} onChange={e=>{setEmergency(e.target.checked);setReasonError(false);}}/>{isAnnual ? (language==='th'?'ขออนุมัติลาหลังเวลาที่กำหนด':'Request late approval') : (language==='th'?'เหตุฉุกเฉิน':'Emergency request')}</label>{exceptionSelected&&<p className="text-xs text-slate-500">{language==='th'?'กรอกเหตุผลในช่องด้านล่าง คำขอยังต้องได้รับการอนุมัติและมีสิทธิ์ลาคงเหลือเพียงพอ':'Use the reason box below. Your request still needs approval and enough remaining leave.'}</p>}</div>}
+              {canEmergency&&<div className="space-y-2"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={emergency} onChange={e=>{setEmergency(e.target.checked);setReasonError(false);}}/>{isAnnual ? (language==='th'?'ขออนุมัติลาหลังเวลาที่กำหนด':'Request late approval') : (language==='th'?'เหตุฉุกเฉิน':'Emergency request')}</label>{!exceptionSelected&&<p className="text-xs text-slate-500">{isAnnual ? (language==='th'?'เลือกเมื่อเลยกำหนดส่งคำขอลาพักร้อนแล้ว และต้องการให้ผู้อนุมัติพิจารณาเป็นกรณีพิเศษ':'Tick this when the annual leave deadline has passed and you want the approvers to consider it anyway.') : (language==='th'?'เลือกเมื่อเลยกำหนดส่งคำขอแล้วเพราะเหตุฉุกเฉิน เช่น ป่วยกะทันหันหรือเรื่องด่วนของครอบครัว':'Tick this when the request deadline has passed because of an emergency, such as sudden illness or an urgent family matter.')}</p>}{exceptionSelected&&<p className="text-xs text-slate-500">{language==='th'?'กรอกเหตุผลในช่องด้านล่าง คำขอยังต้องได้รับการอนุมัติและมีสิทธิ์ลาคงเหลือเพียงพอ':'Use the reason box below. Your request still needs approval and enough remaining leave.'}</p>}</div>}
               {/* กล่องเหตุผล */}
               {(
                 <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
@@ -679,6 +692,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType }: Le
         <div className="max-w-2xl mx-auto space-y-3">
           
           {isQuotaLoading && <p className="text-xs text-slate-500">{language==='th'?'กำลังตรวจสอบสิทธิ์ลา…':'Checking leave allowance…'}</p>}
+          {!isQuotaLoading && !isSubmitting && submitHint && <p role="status" className="text-xs text-amber-700 text-center">{submitHint}</p>}
 
           {/* ปุ่มกดลางาน */}
           <Button

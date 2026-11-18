@@ -5,15 +5,17 @@ interface LeaveRequestProps {
   userName?: string;
   initialLeaveType?: string;
   department?: string;
+  pictureUrl?: string;
 }
 
-const LeaveRequest = ({ userId, userName, department, initialLeaveType }: LeaveRequestProps) => {
+const LeaveRequest = ({ userId, userName, department, initialLeaveType, pictureUrl }: LeaveRequestProps) => {
   return (
     <LeaveRequestForm 
       userId={userId} 
       userName={userName} 
       initialLeaveType={initialLeaveType} 
       department={department}
+      pictureUrl={pictureUrl}
     />
   );
 };

@@ -1,42 +1,50 @@
 import { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2, X } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import {employeeData} from "@/lib/employeeData";
+import { useLanguage } from "@/hooks/useLanguage";
 
-interface TeamLeave {name:string;status:string;type:string;}
+interface TeamLeave {name:string;status:string;type:string;period?:string|null;}
+interface Holiday {date:string;name:string;localName:string;}
 
 interface CalendarProps {
   department: string;
   userId?: string;
 }
 
+const typeStyle: Record<string,{dot:string;chip:string;en:string;th:string}> = {
+  sick: {dot:'bg-rose-500',chip:'bg-rose-50 text-rose-700',en:'Sick',th:'ลาป่วย'},
+  personal: {dot:'bg-amber-500',chip:'bg-amber-50 text-amber-700',en:'Personal',th:'ลากิจ'},
+  annual: {dot:'bg-sky-500',chip:'bg-sky-50 text-sky-700',en:'Annual',th:'ลาพักร้อน'},
+  university: {dot:'bg-violet-500',chip:'bg-violet-50 text-violet-700',en:'University',th:'กิจกรรมมหาวิทยาลัย'},
+};
+const styleFor = (type:string) => typeStyle[type==='vacation'?'annual':type] ?? {dot:'bg-slate-400',chip:'bg-slate-100 text-slate-600',en:type,th:type};
+const bangkokToday = () => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date());
+const pad = (n:number) => String(n).padStart(2,'0');
+
 export default function TeamCalendar({ department, userId }: CalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const { language } = useLanguage();
+  const th = language === 'th';
+  const locale = th ? 'th-TH' : 'en-GB';
+  const today = bangkokToday();
+  const [cursor, setCursor] = useState(() => ({ year: Number(today.slice(0,4)), month: Number(today.slice(5,7)) - 1 }));
   const [leaveData, setLeaveData] = useState<Record<string,TeamLeave[]>>({});
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [holidays, setHolidays] = useState<Record<string,Holiday>>({});
+  const [selectedDay, setSelectedDay] = useState<string | null>(today);
   const [isLoading, setIsLoading] = useState(false);
   const [error,setError] = useState(false);
-
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
+  const { year, month } = cursor;
+  const monthKey = `${year}-${pad(month+1)}`;
 
   const Boom_userId = "Uc229f2377a2b8839adab478d92c0c26f";
-
   const cleanDept = department?.trim();
   const isTechTeam = cleanDept === "Web Developer" || cleanDept === "UX/UI Designer";
-
   const isCreativeTeam = userId === Boom_userId && (cleanDept === "Graphic" || cleanDept === "Content");
+  const displayDept = isTechTeam ? "DEV & UX/UI" : isCreativeTeam ? "Graphic & Content" : cleanDept;
 
-  let displayDept = cleanDept;
-  if (isTechTeam) {
-    displayDept = "DEV & UX/UI";
-  } else if (isCreativeTeam) {
-    displayDept = "Graphic & Content";
-  }
   useEffect(() => {
     if (!department) return;
     const controller=new AbortController();
-    setIsLoading(true);setError(false);setLeaveData({});setSelectedDay(null);
+    setIsLoading(true);setError(false);setLeaveData({});
     const departments=isTechTeam?['Web Developer','UX/UI Designer']:isCreativeTeam?['Graphic','Content']:[department];
     Promise.all(departments.map(dept=>employeeData('get-team-calendar',{department:dept,year:String(year),month:String(month+1)},controller.signal)))
       .then(results=>{
@@ -50,130 +58,123 @@ export default function TeamCalendar({ department, userId }: CalendarProps) {
     return ()=>controller.abort();
   }, [department, year, month, isTechTeam, isCreativeTeam]);
 
-  const getDaysInMonth = (year: number, month: number) => {
-    return new Date(year, month + 1, 0).getDate();
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/company-holidays?year=${year}`,{cache:'no-store'})
+      .then(r=>r.ok?r.json():null)
+      .then(data=>{ if(!active) return; const map:Record<string,Holiday>={}; if(data?.confirmed&&Array.isArray(data.holidays))for(const h of data.holidays)map[h.date]=h; setHolidays(map); })
+      .catch(()=>{ if(active) setHolidays({}); });
+    return () => { active = false; };
+  }, [year]);
+
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const firstDay = new Date(Date.UTC(year, month, 1)).getUTCDay();
+  const dateOf = (day:number) => `${monthKey}-${pad(day)}`;
+  const asDate = (value:string) => new Date(value+'T12:00:00+07:00');
+  const fmt = (value:string, options:Intl.DateTimeFormatOptions) => asDate(value).toLocaleDateString(locale,{...options,timeZone:'Asia/Bangkok'});
+  const weekdays = Array.from({length:7},(_,i)=>new Date(Date.UTC(2023,0,1+i)).toLocaleDateString(locale,{weekday:'narrow',timeZone:'UTC'}));
+
+  const go = (delta:number) => {
+    const next = new Date(Date.UTC(year, month + delta, 1));
+    const nextKey = `${next.getUTCFullYear()}-${pad(next.getUTCMonth()+1)}`;
+    setCursor({ year: next.getUTCFullYear(), month: next.getUTCMonth() });
+    setSelectedDay(today.startsWith(nextKey) ? today : null);
   };
-  
-  const getFirstDayOfMonth = (year: number, month: number) => {
-    return new Date(year, month, 1).getDay();
-  };
+  const goToday = () => { setCursor({ year: Number(today.slice(0,4)), month: Number(today.slice(5,7)) - 1 }); setSelectedDay(today); };
 
-  const daysInMonth = getDaysInMonth(year, month);
-  const firstDay = getFirstDayOfMonth(year, month);
+  const holidayName = (h:Holiday) => th ? (h.localName||h.name) : (h.name||h.localName);
+  const statusLabel = (s:string) => s==='Approved' ? (th?'อนุมัติแล้ว':'Approved') : (th?'รออนุมัติ':'Pending');
+  const periodLabel = (p?:string|null) => p==='morning' ? (th?'ครึ่งเช้า':'Morning') : p==='afternoon' ? (th?'ครึ่งบ่าย':'Afternoon') : '';
 
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  const blanks = Array.from({ length: firstDay }, (_, i) => i);
+  const people = (list:TeamLeave[]) => (
+    <ul className="space-y-2">
+      {list.map((l,i)=>{const s=styleFor(l.type);return (
+        <li key={i} className="flex items-center gap-2.5">
+          <span className={`h-2 w-2 shrink-0 rounded-full ${s.dot}`} />
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-700">{l.name}</span>
+          <span className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium ${s.chip}`}>{th?s.th:s.en}{periodLabel(l.period)?` · ${periodLabel(l.period)}`:''}</span>
+          {l.status!=='Approved'&&<span className="shrink-0 rounded-md border border-dashed border-amber-300 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">{statusLabel(l.status)}</span>}
+        </li>);})}
+    </ul>
+  );
 
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
+  const monthDays = Object.keys(leaveData).filter(d=>d.startsWith(monthKey)&&leaveData[d].length>0).sort();
+  const selectedLeaves = selectedDay ? leaveData[selectedDay] ?? [] : [];
+  const selectedHoliday = selectedDay ? holidays[selectedDay] : undefined;
 
   return (
-    <Card className="w-full max-w-md mx-auto shadow-2xl border-0 overflow-hidden bg-white relative">
-      <CardHeader className="bg-slate-800 pb-4 border-b border-slate-700 pt-8">
-        <div className="flex items-center justify-between">
-          <button onClick={prevMonth} className="p-2 hover:bg-slate-700 rounded-full transition-colors text-slate-300">◀</button>
-          <div className="flex flex-col items-center">
-            <CardTitle className="text-lg text-white font-bold tracking-wide">
-              {currentDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
-            </CardTitle>
-            {/* 🌟 แสดงชื่อทีมที่จัดกลุ่มแล้ว */}
-            <span className="text-[10px] text-sky-400 font-bold tracking-wider uppercase">Team: {displayDept}</span>
+    <div className="w-full max-w-md mx-auto bg-white rounded-2xl overflow-hidden shadow-2xl max-h-[85vh] flex flex-col">
+      <div className="bg-linear-to-r/srgb from-blue-500 to-indigo-500 px-4 pt-5 pb-4 text-white">
+        <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-blue-100"><Users className="h-3.5 w-3.5"/>{th?'ปฏิทินวันลาของทีม':'Team leave'} · {displayDept}</p>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <button type="button" aria-label={th?'เดือนก่อน':'Previous month'} onClick={()=>go(-1)} className="rounded-full bg-white/15 p-2 hover:bg-white/25"><ChevronLeft className="h-5 w-5"/></button>
+          <div className="text-center">
+            <h2 className="text-lg font-bold leading-tight">{fmt(`${monthKey}-15`,{month:'long',year:'numeric'})}</h2>
+            {!today.startsWith(monthKey)&&<button type="button" onClick={goToday} className="text-[11px] font-semibold text-blue-100 underline underline-offset-2">{th?'กลับไปวันนี้':'Back to today'}</button>}
           </div>
-          <button onClick={nextMonth} className="p-2 hover:bg-slate-700 rounded-full transition-colors text-slate-300">▶</button>
+          <button type="button" aria-label={th?'เดือนถัดไป':'Next month'} onClick={()=>go(1)} className="rounded-full bg-white/15 p-2 hover:bg-white/25"><ChevronRight className="h-5 w-5"/></button>
         </div>
-      </CardHeader>
-      
-      <CardContent className="p-4 bg-slate-50 relative min-h-[300px]">
-        
-        {isLoading && (
-            <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center backdrop-blur-[2px]">
-                <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
-            </div>
+      </div>
+
+      <div className="relative overflow-y-auto p-4 space-y-4 bg-slate-50">
+        {isLoading && <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70"><Loader2 className="h-8 w-8 animate-spin text-indigo-500"/></div>}
+        {error && <p role="alert" className="text-sm text-rose-600">{th?'โหลดวันลาของทีมไม่สำเร็จ กรุณาเปิดแอปใน LINE อีกครั้ง':'Unable to load team leave. Please reopen the app in LINE.'}</p>}
+
+        <div className="rounded-2xl bg-white p-3 shadow-xs border border-slate-100">
+          <div className="grid grid-cols-7 text-center text-[11px] font-bold text-slate-400 mb-1.5">
+            {weekdays.map((w,i)=><div key={i} className={i===0||i===6?'text-slate-300':''}>{w}</div>)}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {Array.from({length:firstDay},(_,i)=><div key={`b${i}`}/>)}
+            {Array.from({length:daysInMonth},(_,i)=>i+1).map(day=>{
+              const date=dateOf(day),list=leaveData[date]??[],holiday=holidays[date],weekend=[0,6].includes((firstDay+day-1)%7);
+              const selected=selectedDay===date,isToday=date===today;
+              return (
+                <button type="button" key={day} onClick={()=>setSelectedDay(date)} aria-pressed={selected} aria-label={`${fmt(date,{day:'numeric',month:'long'})}${list.length?`, ${list.length} ${th?'คนลา':'off'}`:''}${holiday?`, ${holidayName(holiday)}`:''}`}
+                  className={`relative h-12 rounded-xl flex flex-col items-center justify-center transition-colors
+                    ${selected?'bg-indigo-600 text-white':holiday?'bg-emerald-50 text-emerald-700':list.length?'bg-indigo-50 text-slate-800':'hover:bg-slate-50 text-slate-700'}
+                    ${weekend&&!selected&&!holiday?'text-slate-300':''}`}>
+                  <span className={`text-sm leading-none ${isToday?'font-extrabold':'font-medium'} ${isToday&&!selected?'text-indigo-600':''}`}>{day}</span>
+                  {isToday&&!selected&&<span className="absolute top-1 right-1.5 h-1.5 w-1.5 rounded-full bg-indigo-600"/>}
+                  <span className="mt-1 flex h-1.5 items-center gap-0.5">
+                    {holiday&&!list.length&&<span className={`h-1.5 w-1.5 rounded-full ${selected?'bg-white':'bg-emerald-500'}`}/>}
+                    {list.slice(0,3).map((l,j)=><span key={j} className={`h-1.5 w-1.5 rounded-full ${selected?'bg-white':styleFor(l.type).dot}`}/>)}
+                    {list.length>3&&<span className={`text-[9px] font-bold leading-none ${selected?'text-white':'text-slate-500'}`}>+{list.length-3}</span>}
+                  </span>
+                </button>);
+            })}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-500">
+            {(['sick','personal','annual'] as const).map(k=><span key={k} className="flex items-center gap-1"><span className={`h-1.5 w-1.5 rounded-full ${typeStyle[k].dot}`}/>{th?typeStyle[k].th:typeStyle[k].en}</span>)}
+            <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500"/>{th?'วันหยุดบริษัท':'Company holiday'}</span>
+          </div>
+        </div>
+
+        {selectedDay&&selectedDay.startsWith(monthKey)&&(
+          <div className="rounded-2xl bg-white p-4 shadow-xs border border-slate-100">
+            <h3 className="text-sm font-bold text-slate-800">{selectedDay===today?(th?'วันนี้ · ':'Today · '):''}{fmt(selectedDay,{weekday:'long',day:'numeric',month:'long'})}</h3>
+            {selectedHoliday&&<p className="mt-1 text-xs font-semibold text-emerald-700">🎉 {holidayName(selectedHoliday)}</p>}
+            <div className="mt-3">{selectedLeaves.length?people(selectedLeaves):<p className="text-xs text-slate-500">{th?'ไม่มีใครในทีมลาวันนี้':'Everyone in the team is in.'}</p>}</div>
+          </div>
         )}
 
-        {error && <p role="alert" className="mb-3 text-sm text-rose-600">Unable to load team leave. Please reopen the app in LINE.</p>}
-        {/* หัวตาราง จ-อา */}
-        <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-slate-400 mb-3">
-          <div className="text-rose-400">Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div className="text-rose-400">Sa</div>
-        </div>
-
-        {/* ตัวปฏิทิน */}
-        <div className="grid grid-cols-7 gap-1.5">
-          {blanks.map(blank => <div key={`blank-${blank}`} className="p-2"></div>)}
-          
-          {days.map(day => {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            
-            // ตรวจสอบว่ามีคนลาในวันนี้ไหม
-            const dayLeaves = leaveData[dateStr] || [];
-            const leaveCount = dayLeaves.length;
-            
-            let bgClass = "bg-white hover:bg-slate-100 text-slate-700 border-slate-200/60";
-            let indicatorClass = "";
-
-            if (leaveCount >= 3) {
-                bgClass = "bg-rose-50 border-rose-200 text-rose-700 font-bold";
-                indicatorClass = "bg-rose-500";
-            } else if (leaveCount > 0) {
-                bgClass = "bg-sky-50 border-sky-200 text-sky-700 font-bold";
-                indicatorClass = "bg-sky-500";
-            }
-
-            const isSelected = selectedDay === dateStr;
-
-            return (
-              <div 
-                key={day} 
-                onClick={() => setSelectedDay(dateStr)}
-                className={`p-1.5 h-12 rounded-xl border flex flex-col items-center justify-center cursor-pointer transition-all shadow-xs ${bgClass} ${isSelected ? 'ring-2 ring-blue-500 shadow-md scale-105' : ''}`}
-              >
-                <span className="text-sm">{day}</span>
-                
-                {/* จุดกลมๆ บอกจำนวนคนลา */}
-                {leaveCount > 0 && (
-                  <div className="flex gap-0.5 mt-1">
-                    {Array.from({ length: Math.min(leaveCount, 3) }).map((_, i) => (
-                      <div key={i} className={`w-1.5 h-1.5 rounded-full ${indicatorClass}`}></div>
-                    ))}
+        <div>
+          <h3 className="px-1 pb-2 text-xs font-bold uppercase tracking-wide text-slate-400">{th?'ใครลาบ้างเดือนนี้':"Who's off this month"}</h3>
+          {monthDays.length===0?<p className="px-1 text-xs text-slate-500">{isLoading?'':(th?'ยังไม่มีใครลาในเดือนนี้':'No one has leave this month.')}</p>:(
+            <div className="rounded-2xl bg-white shadow-xs border border-slate-100 divide-y divide-slate-100">
+              {monthDays.map(date=>(
+                <button type="button" key={date} onClick={()=>setSelectedDay(date)} className={`flex w-full gap-3 p-3 text-left ${date<today?'opacity-50':''} ${selectedDay===date?'bg-indigo-50/60':''}`}>
+                  <div className="w-10 shrink-0 text-center">
+                    <div className="text-base font-extrabold leading-none text-slate-800">{Number(date.slice(-2))}</div>
+                    <div className="text-[10px] font-semibold uppercase text-slate-400 mt-0.5">{fmt(date,{weekday:'short'})}</div>
                   </div>
-                )}
-              </div>
-            );
-          })}
+                  <div className="min-w-0 flex-1">{people(leaveData[date])}</div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-
-        {selectedDay && (
-          <div className="mt-5 p-4 bg-white rounded-xl border border-slate-200 shadow-xs animate-in fade-in slide-in-from-bottom-2">
-            <h4 className="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2 flex items-center gap-2">
-              <span className="bg-slate-100 p-1.5 rounded-md text-slate-600">📅</span> 
-              วันที่ {new Date(selectedDay).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-            </h4>
-            
-            {leaveData[selectedDay] && leaveData[selectedDay].length > 0 ? (
-              <ul className="space-y-2.5">
-                {leaveData[selectedDay].map((l, idx) => (
-                  <li key={idx} className="flex items-center justify-between group">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-2 h-2 rounded-full ${l.status === 'Approved' ? 'bg-emerald-500' : 'bg-amber-400'}`}></div>
-                      <span className="text-sm text-slate-700 font-semibold">{l.name}</span> 
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] px-2 py-1 bg-slate-100 text-slate-500 rounded-md font-medium">{{sick:'Sick',annual:'Annual',vacation:'Annual',personal:'Personal',university:'University'}[l.type as string]||l.type}</span>
-                        <span className={`text-[10px] px-2 py-1 rounded-md font-bold ${l.status === 'Approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                            {l.status === 'Approved' ? 'Approved' : 'Pending'}
-                        </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="text-center py-4 flex flex-col items-center justify-center opacity-60">
-                  <p className="text-xs text-slate-500 font-medium">ไม่มีใครลาในวันนี้</p>
-              </div>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

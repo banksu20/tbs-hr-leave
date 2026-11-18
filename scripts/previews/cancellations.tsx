@@ -42,7 +42,8 @@ window.fetch=async(input,init)=>{
  if(url.includes('delivery=1'))return json({pending:0,failed:0,jobs:[]});
  if(url.includes('action=check-user'))return json({found:true,name:'Demo Employee',department:'Web Developer'});
  if(url.includes('action=get-quota'))return json({remainingDays:10,annualTotal:12,sickTaken:1,sickTotal:30,sickRemaining:29,personalRemaining:2,personalTotal:3,personalTaken:1});
- if(url.includes('action=get-team-calendar')||url.includes('/publicholidays/'))return json([]);
+ if(url.includes('action=get-team-calendar')){const q=new URL(url,location.origin).searchParams,m=`${q.get('year')}-${String(q.get('month')).padStart(2,'0')}`;if(q.get('department')!=='Web Developer')return json({});return json({[`${m}-03`]:[{name:'Ploy (UX)',status:'Approved',type:'annual'}],[`${m}-18`]:[{name:'Demo Employee',status:'Approved',type:'sick'},{name:'Mint',status:'Pending',type:'personal',period:'morning'}],[`${m}-20`]:[{name:'Ploy (UX)',status:'Approved',type:'annual'},{name:'Bank',status:'Approved',type:'annual'},{name:'Mint',status:'Approved',type:'sick'},{name:'Tee',status:'Pending',type:'annual'}],[`${m}-26`]:[{name:'Bank',status:'Pending',type:'personal'}]});}
+ if(url.includes('/publicholidays/'))return json([]);
  if(!url.startsWith('/api/cancellations'))throw new Error('Live requests are disabled in this demo');
  const boss=url.includes('view=boss');
  if(init?.method==='POST'){

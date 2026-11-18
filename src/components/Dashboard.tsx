@@ -84,7 +84,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
       <div className="bg-white py-6 px-5 shadow-xs relative rounded-b-3xl">
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-linear-to-r/srgb from-sky-500 via-amber-400 to-emerald-500"></div>
         
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between md:max-w-2xl md:mx-auto">
           <div className="flex flex-col">
             <p className="text-[13px] font-semibold text-slate-400 tracking-wider uppercase mb-1">
               TBS Employee System
@@ -130,7 +130,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
       </div>
 
       {/* Quota & Holiday Grid */}
-      <div className="px-4 mt-6 flex flex-col gap-3">
+      <div className="px-4 mt-6 flex flex-col gap-3 w-full md:max-w-2xl md:mx-auto">
         {isCeo && (
           <button
             onClick={() => navigate("/ceo")}

@@ -101,6 +101,7 @@ const App = () => {
       userId={userProfile?.userId} 
       userName={localUser?.name || userProfile?.displayName} 
       department={localUser?.department} 
+      pictureUrl={userProfile?.pictureUrl}
     />
   );
 
