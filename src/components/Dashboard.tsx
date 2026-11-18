@@ -153,7 +153,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
         <div className="grid grid-cols-2 gap-3">
           
           {/* Sick Quota Card */}
-          <div className="bg-white p-4 rounded-2xl shadow-xs border border-rose-100 relative overflow-hidden flex flex-col justify-between">
+          <button type="button" onClick={() => navigate("/leave-request?type=sick")} className="bg-white p-4 rounded-2xl shadow-xs border border-rose-100 relative overflow-hidden flex flex-col justify-between active:scale-[0.98] transition-transform text-left w-full hover:shadow-sm">
             <div className="absolute -right-4 -top-4 opacity-[0.03]">
               <Thermometer className="w-24 h-24 text-rose-500" />
             </div>
@@ -171,10 +171,10 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
               )}
             </div>
             <OverQuotaNotice remaining={sickRemaining} configured={policyConfigured} unlimited={unlimitedLeave} loading={isQuotaLoading} language={language}/>
-          </div>
+          </button>
 
           {/* Annual Quota Card  */}
-          <div className="bg-white p-4 rounded-2xl shadow-xs border border-sky-100 relative overflow-hidden flex flex-col justify-between">
+          <button type="button" onClick={() => navigate("/leave-request?type=vacation")} className="bg-white p-4 rounded-2xl shadow-xs border border-sky-100 relative overflow-hidden flex flex-col justify-between active:scale-[0.98] transition-transform text-left w-full hover:shadow-sm">
             <div className="absolute -right-4 -top-4 opacity-[0.03]">
               <Palmtree className="w-24 h-24 text-sky-500" />
             </div>
@@ -197,11 +197,11 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
                 )}
             </div>
             <OverQuotaNotice remaining={remainingDays} configured={policyConfigured} unlimited={unlimitedLeave} loading={isQuotaLoading} language={language}/>
-          </div>
+          </button>
         </div>
 
         {/* Personal Quota Card */}
-        <div className="bg-white p-4 rounded-2xl shadow-xs border border-amber-100 relative overflow-hidden flex items-center justify-between">
+        <button type="button" onClick={() => navigate("/leave-request?type=personal")} className="bg-white p-4 rounded-2xl shadow-xs border border-amber-100 relative overflow-hidden flex items-center justify-between active:scale-[0.98] transition-transform text-left w-full hover:shadow-sm">
           <div className="absolute -right-2 -top-8 opacity-[0.03]">
             <CalendarDays className="w-32 h-32 text-amber-500" />
           </div>
@@ -220,7 +220,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
                 <span className="text-sm font-medium text-slate-400">{policyConfigured && !unlimitedLeave && personalTotal !== null && personalTotal !== undefined ? (language==='th'?'วันที่ใช้':'days used') : t('days')}{!policyConfigured ? (language==='th'?' · ยังไม่กำหนด':' · Not set') : unlimitedLeave ? (language==='th'?' · ไม่จำกัด':' · No limit') : ''}</span></>
             )}
           </div><OverQuotaNotice remaining={personalRemaining} configured={policyConfigured} unlimited={unlimitedLeave} loading={isQuotaLoading} language={language}/></div>
-        </div>
+        </button>
 
 
         {/* Full width Company Holiday Button */}

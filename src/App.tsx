@@ -35,9 +35,6 @@ const App = () => {
   const [profileError,setProfileError] = useState('');
   const [isInitializing, setIsInitializing] = useState(true); // สถานะรอโหลดข้อมูล
 
-  const params = new URLSearchParams(window.location.search);
-  const typeFromUrl = params.get("type");
-
   const { language, toggleLanguage } = useLanguage();
 
   useEffect(() => {
@@ -99,12 +96,11 @@ const App = () => {
     }
   };
 
-  const LeaveRequestPage = () => (
+  const leaveRequestPage = (
     <LeaveRequest 
       userId={userProfile?.userId} 
       userName={localUser?.name || userProfile?.displayName} 
       department={localUser?.department} 
-      initialLeaveType={typeFromUrl || ""} 
     />
   );
 
@@ -149,8 +145,6 @@ const App = () => {
               element={
                 !localUser ? (
                   <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} />
-                ) : typeFromUrl ? (
-                  <LeaveRequestPage />
                 ) : (
                   <Index />
                 )
@@ -163,7 +157,7 @@ const App = () => {
                 !localUser ? (
                   <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} />
                 ) : (
-                  <LeaveRequestPage />
+                  leaveRequestPage
                 )
               } 
             />

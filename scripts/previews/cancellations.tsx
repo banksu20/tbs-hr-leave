@@ -38,7 +38,7 @@ window.fetch=async(input,init)=>{
  const url=String(input);
  const json=(value:unknown)=>new Response(JSON.stringify(value),{status:200});
  if(url.includes('/api/notification-preferences'))return json({ok:true});
- if(url.includes('/api/company-holidays'))return json({confirmed:true,holidays:[{date:'2026-10-13',name:'King Bhumibol Memorial Day',localName:'วันนวมินทรมหาราช'},{date:'2026-10-23',name:'Chulalongkorn Day',localName:'วันปิยมหาราช'}]});
+ if(url.includes('/api/company-holidays'))return json({confirmed:true,holidays:[{date:'2026-01-01',name:"New Year's Day",localName:'วันขึ้นปีใหม่'},{date:'2026-04-13',name:'Songkran Festival',localName:'วันสงกรานต์'},{date:'2026-10-13',name:'King Bhumibol Memorial Day',localName:'วันนวมินทรมหาราช'},{date:'2026-10-23',name:'Chulalongkorn Day',localName:'วันปิยมหาราช'},{date:'2026-12-07',name:'Substitution for King Bhumibol\'s Birthday',localName:'ชดเชยวันคล้ายวันพระบรมราชสมภพ ร.9'},{date:'2026-12-10',name:'Constitution Day',localName:'วันรัฐธรรมนูญ'},{date:'2026-12-31',name:"New Year's Eve",localName:'วันสิ้นปี'}]});
  if(url.includes('delivery=1'))return json({pending:0,failed:0,jobs:[]});
  if(url.includes('action=check-user'))return json({found:true,name:'Demo Employee',department:'Web Developer'});
  if(url.includes('action=get-quota'))return json({remainingDays:10,annualTotal:12,sickTaken:1,sickTotal:30,sickRemaining:29,personalRemaining:2,personalTotal:3,personalTaken:1});
