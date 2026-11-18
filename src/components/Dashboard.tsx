@@ -18,7 +18,9 @@ const LIFF_ID = "2008617589-89gR1Y3Y";
 const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = {}) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [showHolidaysModal, setShowHolidaysModal] = useState(false);
+  const [openOnLoad] = useState(() => new URLSearchParams(window.location.search).get("open"));
+  const [showHolidaysModal, setShowHolidaysModal] = useState(openOnLoad === "holidays");
+  const [showTeamCalendar, setShowTeamCalendar] = useState(openOnLoad === "team");
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("");
   const [registeredName, setRegisteredName] = useState<string | null>(null);
@@ -241,7 +243,7 @@ const Dashboard = ({ employeePreview = false }: { employeePreview?: boolean } = 
         </button>
 
         {/* ปุ่ม Team Leave Calendar */}
-        <Dialog>
+        <Dialog open={showTeamCalendar} onOpenChange={setShowTeamCalendar}>
           <DialogTrigger asChild>
             <button 
               className="col-span-2 bg-linear-to-r/srgb from-blue-500 to-indigo-500 p-4 rounded-2xl shadow-xs flex items-center justify-between active:scale-[0.98] transition-transform mt-[-4px]"
