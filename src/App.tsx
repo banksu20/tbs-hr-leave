@@ -32,6 +32,19 @@ const LIFF_ID = import.meta.env.VITE_LIFF_ID || "2008617589-89gR1Y3Y";
 const WEBHOOK_CHECK_USER = "https://n8n.womenrefugeeroute.org/webhook/check-user";
 const WEBHOOK_REGISTER_USER = "https://n8n.womenrefugeeroute.org/webhook/register-user";
 
+const PROFILE_KEY = "tbs_user_profile";
+type SavedProfile = { userId: string; displayName: string; pictureUrl?: string; name: string; department: string };
+const readSavedProfile = (): SavedProfile | null => {
+  try {
+    const value = JSON.parse(localStorage.getItem(PROFILE_KEY) || "null");
+    return value && typeof value.userId === "string" && typeof value.name === "string" && typeof value.department === "string" ? value : null;
+  } catch {
+    return null;
+  }
+};
+const saveProfile = (profile: SavedProfile) => { try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); } catch { void 0; } };
+const clearSavedProfile = () => { try { localStorage.removeItem(PROFILE_KEY); } catch { void 0; } };
+
 const App = () => {
   const [userProfile, setUserProfile] = useState<Awaited<ReturnType<typeof liff.getProfile>> | null>(null);
   const [localUser, setLocalUser] = useState<{name: string, department: string} | null>(null);
@@ -44,36 +57,48 @@ const App = () => {
   useEffect(() => {
     // Reminder links verify LINE identity on their own; they do not need Sheets/profile lookup.
     if(window.location.pathname==='/leave-decision'||window.location.pathname==='/sick-acknowledge'||window.location.pathname==='/ceo'){setIsInitializing(false);return;}
+    let shownFromSaved = false;
     const initializeLiffAndCheckUser = async () => {
       try {
         await liff.init({ liffId: LIFF_ID });
         if (liff.isLoggedIn()) {
-          const profile = await liff.getProfile();
-          setUserProfile(profile);
+          const contextUserId = liff.getContext()?.userId;
+          const saved = readSavedProfile();
+          if (saved && contextUserId && saved.userId === contextUserId) {
+            shownFromSaved = true;
+            setUserProfile({ userId: saved.userId, displayName: saved.displayName, pictureUrl: saved.pictureUrl });
+            setLocalUser({ name: saved.name, department: saved.department });
+            setIsInitializing(false);
+          }
 
-          const res = await fetch('/api/registration', {
-            headers: { Authorization: `Bearer ${liff.getAccessToken()}` }
-          });
+          const token = liff.getAccessToken();
+          const [profile, res] = await Promise.all([
+            liff.getProfile(),
+            fetch('/api/registration', { headers: { Authorization: `Bearer ${token}` } }),
+          ]);
+          setUserProfile(profile);
           if (!res.headers.get("content-type")?.includes("application/json")) {
             throw Error("The profile service is temporarily unavailable. Please try again shortly.");
           }
           const data = await res.json();
           if(!res.ok)throw Error(data.error);
           setPendingRegistration(Boolean(data.pending));
-          if(data.inactive)throw Error("This profile is inactive. Please contact HR.");
+          if (data.pending || data.inactive) clearSavedProfile();
+          if(data.inactive){ shownFromSaved = false; throw Error("This profile is inactive. Please contact HR."); }
 
           if (data.found) {
             setLocalUser({ name: data.name, department: data.department });
-            localStorage.setItem("tbs_user_profile", JSON.stringify({ name: data.name, department: data.department })); // เซฟลงเครื่องไว้ใช้เป็น Cache เร็วๆ
+            if (!data.pending) saveProfile({ userId: profile.userId, displayName: profile.displayName, pictureUrl: profile.pictureUrl, name: data.name, department: data.department });
           } else {
             setLocalUser(null);
+            clearSavedProfile();
           }
         }
       } catch (error) {
-        setProfileError((error as Error).message);
         console.error("Initialization Error:", error);
+        if (!shownFromSaved) setProfileError((error as Error).message);
       } finally {
-        setIsInitializing(false); // ปิดหน้าจอโหลด
+        setIsInitializing(false);
       }
     };
     
@@ -97,9 +122,8 @@ const App = () => {
       const result=await response.json();if(!response.ok)throw Error(result.error);
       setPendingRegistration(Boolean(result.pending));
       if(result.found){
-        const profile={name:result.name,department:result.department};
-        setLocalUser(profile);
-        localStorage.setItem("tbs_user_profile",JSON.stringify(profile));
+        setLocalUser({name:result.name,department:result.department});
+        if(userProfile)saveProfile({userId:userProfile.userId,displayName:userProfile.displayName,pictureUrl:userProfile.pictureUrl,name:result.name,department:result.department});
       }
     } catch (error) {
       alert("Failed to save profile. / ไม่สามารถบันทึกข้อมูลได้");
@@ -161,7 +185,7 @@ const App = () => {
                 !localUser ? (
                   <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} />
                 ) : (
-                  <Index profile={userProfile ? { userId: userProfile.userId, displayName: userProfile.displayName } : null} registration={localUser} />
+                  <Index profile={userProfile ? { userId: userProfile.userId, displayName: userProfile.displayName, pictureUrl: userProfile.pictureUrl } : null} registration={localUser} />
                 )
               } 
             />
