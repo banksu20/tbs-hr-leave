@@ -7,9 +7,9 @@ import {formatSheetDate} from './leaveSheetUtils';
 import {useEffect,useState} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 import {RotateCw} from 'lucide-react';
+import PersonAvatar from './PersonAvatar';
 
-type Registration={user_id:string;first_name:string;last_name:string;nickname?:string|null;department:string;employment_type:'intern'|'employee';created_at?:string|null};
-const initials=(r:Registration)=>`${r.first_name[0]??''}${r.last_name[0]??''}`.toUpperCase();
+type Registration={user_id:string;first_name:string;last_name:string;nickname?:string|null;department:string;employment_type:'intern'|'employee';created_at?:string|null;picture_url?:string|null};
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date());
 
 export default function RegistrationReview(){
@@ -51,7 +51,7 @@ export default function RegistrationReview(){
    const intern=r.employment_type==='intern',active=selected===r.user_id;
    return <article key={r.user_id} className={`border rounded-xl bg-white overflow-hidden ${active?'border-cyan-300 shadow-md':''}`}>
     <div className="p-4 flex flex-wrap items-center gap-3">
-     <span aria-hidden className="shrink-0 w-11 h-11 rounded-full grid place-items-center font-semibold bg-cyan-100 text-cyan-800">{initials(r)}</span>
+     <PersonAvatar name={`${r.first_name} ${r.last_name}`} pictureUrl={r.picture_url}/>
      <div className="min-w-0 flex-1">
       <h3 className="font-semibold truncate">{r.first_name} {r.last_name}{r.nickname?` (${r.nickname})`:''}</h3>
       <p className="text-sm text-slate-500 truncate">{r.department}{r.created_at?` · ${dt("Registered {0}",[formatSheetDate(r.created_at.slice(0,10),language)])}`:''}</p>

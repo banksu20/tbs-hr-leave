@@ -1,7 +1,7 @@
 import type {VercelRequest,VercelResponse} from '../_lib/platform.js';
 import {z} from 'zod';
 import {headerValue,json} from '../_lib/http.js';
-import {verifyLineIdentity} from '../_lib/lineIdentity.js';
+import {verifyLineProfile} from '../_lib/lineIdentity.js';
 import {dashboardSession,tokenHash,sameOrigin} from '../_lib/dashboardAuth.js';
 import {n8nPost} from '../_lib/n8nClient.js';
 import {isPlainDate} from '../_lib/date.js';
@@ -18,8 +18,8 @@ export default async function handler(req:VercelRequest,res:VercelResponse){
    payload={action:'list',sessionHash:tokenHash(req)};
    if(req.method==='PATCH'){if(!sameOrigin(req))return json(res,403,{error:'Access denied'});const p=activation.safeParse(req.body);if(!p.success)return json(res,422,{error:'Choose valid start and end dates.'});payload={...payload,...p.data,action:'activate'};}
   }else{
-   let accountId:string;try{accountId=await verifyLineIdentity(headerValue(req,'authorization'));}catch{return json(res,401,{error:'Please sign in through LINE.'});}
-   payload={accountId,action:'status'};
+   let accountId:string,pictureUrl:string|null;try{({userId:accountId,pictureUrl}=await verifyLineProfile(headerValue(req,'authorization')));}catch{return json(res,401,{error:'Please sign in through LINE.'});}
+   payload={accountId,pictureUrl,action:'status'};
    if(req.method==='POST'){const p=registration.safeParse(req.body);if(!p.success)return json(res,422,{error:'Complete your name, department and employment type.'});payload={...payload,...p.data,action:'submit'};}
   }
   const result=await n8nPost('employee-cancellations',{operation:'registration',payload});return json(res,200,Array.isArray(result)?result[0]:result);

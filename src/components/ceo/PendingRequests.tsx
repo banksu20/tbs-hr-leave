@@ -10,8 +10,8 @@ import { Check, X } from 'lucide-react';
 import type { Employee, LeaveRecord } from '@/data/mockEmployees';
 import { approveLeave, rejectLeave } from '@/lib/api';
 import { LEAVE_META, formatSheetDate, grantedFor, isUnlimited, sumLeavesByType } from './leaveSheetUtils';
+import PersonAvatar from './PersonAvatar';
 
-const initials=(name:string)=>name.split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]?.toUpperCase()??'').join('');
 const round=(value:number)=>Math.round(value*100)/100;
 const day=(value:string)=>Date.parse(value+'T00:00:00Z')/86400000;
 
@@ -56,7 +56,7 @@ export default function PendingRequests({employees,ready,cohort="employee"}: {em
    const run=(action:'approve'|'reject')=>{if(leave.requestId&&leave.requestRevision)decide.mutate({id:leave.requestId,revision:leave.requestRevision,action,...(action==='reject'?{reason:reasons[reasonKey]}:{})});};
    return <article className="border rounded-xl bg-white overflow-hidden lg:sticky lg:top-24" aria-live="polite">
     <header className="p-5 flex flex-wrap items-center gap-4 border-b">
-     <span aria-hidden className="shrink-0 w-14 h-14 rounded-full grid place-items-center text-lg font-semibold bg-cyan-100 text-cyan-800">{initials(employee.name)}</span>
+     <PersonAvatar name={employee.name} pictureUrl={employee.pictureUrl} className="w-14 h-14 text-lg"/>
      <div className="min-w-0 flex-1">
       <h3 className="text-lg font-bold truncate">{employee.name}{employee.nickname?` (${employee.nickname})`:''}</h3>
       <p className="text-sm text-slate-500 truncate">{employee.empCode} · {employee.department}</p>
@@ -126,7 +126,7 @@ export default function PendingRequests({employees,ready,cohort="employee"}: {em
     {!requests.length?<p className="border border-dashed rounded-xl bg-white p-10 text-center text-slate-500">{dt("Nothing is waiting for a decision.")}</p>
     :<div className="grid gap-4 items-start lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]">
       <ul className="space-y-2" aria-label={dt("Pending requests")}>{shown.map(r=><li key={r.key}><button type="button" aria-current={selected?.key===r.key} onClick={()=>select(r.key)} className={`w-full text-left rounded-xl border p-3 flex items-center gap-3 transition ${selected?.key===r.key?'border-cyan-500 ring-2 ring-cyan-100 bg-white':'bg-white hover:border-slate-300'}`}>
-        <span aria-hidden className="shrink-0 w-10 h-10 rounded-full grid place-items-center font-semibold bg-cyan-100 text-cyan-800">{initials(r.employee.name)}</span>
+        <PersonAvatar name={r.employee.name} pictureUrl={r.employee.pictureUrl} className="w-10 h-10"/>
         <span className="min-w-0 flex-1">
          <span className="block font-semibold truncate">{r.employee.nickname||r.employee.name}</span>
          <span className="block text-sm text-slate-500 truncate">{range(r.dates)} · {daysText(r.total)}</span>

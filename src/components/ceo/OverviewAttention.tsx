@@ -3,8 +3,8 @@ import {useLanguage} from '@/hooks/useLanguage';
 import {useDashboardText} from '@/hooks/useDashboardText';
 import {LEAVE_META,formatSheetDate} from './leaveSheetUtils';
 import type {Employee,LeaveRecord} from '@/data/mockEmployees';
+import PersonAvatar from './PersonAvatar';
 
-const initials=(name:string)=>name.split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]?.toUpperCase()??'').join('');
 const shortName=(employee:Employee)=>employee.nickname||employee.name.split(' ')[0];
 const plusDays=(date:string,days:number)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
 
@@ -29,7 +29,7 @@ export default function OverviewAttention({employees,onSelectEmployee,onOpenAppr
  const pending=new Map<string,Employee>();
  for(const employee of employees)for(const leave of employee.leaves)if(leave.status==='Pending')pending.set(`${employee.id}:${leave.requestId??leave.id}`,employee);
  const pendingPeople=[...new Set([...pending.values()].map(shortName))];
- const person=(employee:Employee)=><><span aria-hidden className="shrink-0 w-8 h-8 rounded-full grid place-items-center text-xs font-semibold bg-cyan-100 text-cyan-800">{initials(employee.name)}</span><span className="font-medium text-slate-800 truncate">{shortName(employee)}</span></>;
+ const person=(employee:Employee)=><><PersonAvatar name={employee.name} pictureUrl={employee.pictureUrl} className="w-8 h-8 text-xs"/><span className="font-medium text-slate-800 truncate">{shortName(employee)}</span></>;
  const typeChip=(leave:LeaveRecord)=><span className={`text-[11px] font-semibold rounded-full px-2 py-0.5 ${LEAVE_META[leave.type]?.chip??'bg-slate-200'}`}>{dt(LEAVE_META[leave.type]?.short??leave.type)}</span>;
  return <div className="grid gap-3 lg:grid-cols-3">
   <Panel title={dt("Off today")} count={offToday.length}>

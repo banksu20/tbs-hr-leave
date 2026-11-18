@@ -8,12 +8,12 @@ import InternTerms from './InternTerms';
 import {supervisorLabel,type Supervisor} from './supervisorLabel';
 import LeaveEvidence from '../LeaveEvidence';
 import type {Employee,LeaveRecord} from '@/data/mockEmployees';
+import PersonAvatar from './PersonAvatar';
 
 export type InternTermRow={user_id:string;months:number;start_date:string;end_date:string;universityApproved?:number;internshipBalances?:{type:string;total:number;approved:number;pending:number}[]};
 export type InternTimeline={progress:number;daysToStart:number;daysToEnd:number};
 
 const statusTone:Record<string,string>={Approved:'bg-emerald-50 text-emerald-800 border-emerald-200',Pending:'bg-amber-50 text-amber-800 border-amber-200',Rejected:'bg-red-50 text-red-800 border-red-200'};
-const initials=(name:string)=>name.split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]?.toUpperCase()??'').join('');
 
 export default function ManageInternCard({employee,term,timeline,pending,supervisors,supervisorIds,defaultOpen,busy,removing,onArchiveToggle,onDelete,onEditLeave,onCancelLeave}:{employee:Employee;term?:InternTermRow;timeline?:InternTimeline;pending:number;supervisors:Supervisor[];supervisorIds:string[];defaultOpen:boolean;busy:boolean;removing:boolean;onArchiveToggle:()=>void;onDelete:()=>void;onEditLeave:(leave:LeaveRecord)=>void;onCancelLeave:(leave:LeaveRecord)=>void}){
  const dt=useDashboardText(),{language}=useLanguage();
@@ -25,7 +25,7 @@ export default function ManageInternCard({employee,term,timeline,pending,supervi
  return <section className={`border rounded-xl bg-white overflow-hidden transition-shadow ${open?'shadow-md border-cyan-300':'hover:shadow-sm'} ${archived?'bg-slate-50':''}`}>
   <button type="button" aria-expanded={open} className="w-full text-left p-4 grid gap-4 items-center lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_auto] hover:bg-slate-50/70" onClick={()=>setOpen(!open)}>
    <div className="flex items-center gap-3 min-w-0">
-    <span aria-hidden className={`shrink-0 w-11 h-11 rounded-full grid place-items-center font-semibold ${archived?'bg-slate-200 text-slate-600':'bg-cyan-100 text-cyan-800'}`}>{initials(employee.name)}</span>
+    <PersonAvatar name={employee.name} pictureUrl={employee.pictureUrl} tone={archived?'bg-slate-200 text-slate-600':'bg-cyan-100 text-cyan-800'}/>
     <div className="min-w-0">
      <p className="font-semibold truncate">{employee.name}</p>
      <p className="text-sm text-slate-500 truncate">{employee.empCode} · {employee.department}</p>

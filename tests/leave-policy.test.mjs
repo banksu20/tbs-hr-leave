@@ -270,7 +270,7 @@ test('intern personal reminder is once for the entire internship, including a ne
 test('server handlers join registration, HR activation, verified intern submission and decision without live calls',async()=>{
  const hr=await session('hr');const id='integration-intern';
  const mock=loadTS({
-  '../_lib/lineIdentity.js':{verifyLineIdentity:async auth=>{if(!auth?.startsWith('Bearer '))throw Error('Unauthorized');return auth.slice(7);}},
+  '../_lib/lineIdentity.js':{verifyLineIdentity:async auth=>{if(!auth?.startsWith('Bearer '))throw Error('Unauthorized');return auth.slice(7);},verifyLineProfile:async auth=>{if(!auth?.startsWith('Bearer '))throw Error('Unauthorized');return {userId:auth.slice(7),pictureUrl:null};}},
   '../_lib/dashboardAuth.js':{dashboardSession:async()=>({role:'hr'}),tokenHash:()=>hr,sameOrigin:()=>true},
   '../_lib/n8nClient.js':{n8nPost:async(_endpoint,{operation,payload})=>{const fn={'registration':'tbs_registration','employee-submit':'tbs_employee_request','intern-decision':'tbs_intern_decision'}[operation];assert.ok(fn);const r=await rpc(fn,payload);if(!r.ok){const e=Error(r.error);e.status=r.statusCode;throw e;}return r;}}
  });

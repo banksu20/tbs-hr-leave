@@ -7,11 +7,11 @@ import EditableStartDate from './EditableStartDate';
 import {LEAVE_META,formatSheetDate} from './leaveSheetUtils';
 import type {Employee} from '@/data/mockEmployees';
 import type {QuotaEdit} from './ManageRoster';
+import PersonAvatar from './PersonAvatar';
 
 export type StaffUsage={type:'sick'|'annual'|'personal';used:number;total:number|null};
 
 const statusTone:Record<string,string>={Approved:'bg-emerald-50 text-emerald-800 border-emerald-200',Pending:'bg-amber-50 text-amber-800 border-amber-200',Rejected:'bg-red-50 text-red-800 border-red-200'};
-const initials=(name:string)=>name.split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]?.toUpperCase()??'').join('');
 
 function QuotaField({label,value,onSave}:{label:string;value:number|null|undefined;onSave:(next:number)=>void}){
  const [draft,setDraft]=useState(value===null||value===undefined?'':String(value));
@@ -29,7 +29,7 @@ export default function ManageStaffCard({employee,year,usage,pending,defaultOpen
  return <section className={`border rounded-xl bg-white overflow-hidden transition-shadow ${open?'shadow-md border-cyan-300':'hover:shadow-sm'}`}>
   <button type="button" aria-expanded={open} className="w-full text-left p-4 grid gap-4 items-center lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,1.6fr)_auto] hover:bg-slate-50/70" onClick={()=>setOpen(!open)}>
    <div className="flex items-center gap-3 min-w-0">
-    <span aria-hidden className="shrink-0 w-11 h-11 rounded-full grid place-items-center font-semibold bg-cyan-100 text-cyan-800">{initials(employee.name)}</span>
+    <PersonAvatar name={employee.name} pictureUrl={employee.pictureUrl}/>
     <div className="min-w-0">
      <p className="font-semibold truncate">{employee.name}{employee.nickname?<span className="text-amber-600"> ({employee.nickname})</span>:null}</p>
      <p className="text-sm text-slate-500 truncate">{employee.empCode||'—'} · {employee.department}</p>
