@@ -379,7 +379,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType, pict
       await Swal.fire({
         icon: "success",
         title: result.selfRecorded ? (language === 'th' ? "บันทึกการลาแล้ว" : "Leave Recorded") : (language === 'th' ? "ส่งคำขอสำเร็จ!" : "Request Submitted!"),
-        text: result.selfRecorded ? (language === 'th' ? "บันทึกการลาของคุณเป็นอนุมัติแล้ว ไม่ต้องรอการอนุมัติ" : "Your leave is saved as approved. No approval needed.") : (language === 'th' ? "คำขอลางานของคุณถูกส่งเรียบร้อยแล้ว" : "Your leave request has been sent successfully."),
+        text: result.selfRecorded ? (language === 'th' ? "บันทึกการลาของคุณเป็นอนุมัติแล้ว ไม่ต้องรอการอนุมัติ" : "Your leave is saved as approved. No approval needed.")+(result.ceoNotified?(language==='th'?" แจ้งให้ Dan ทราบแล้ว":" Dan has been notified."):"") : (language === 'th' ? "คำขอลางานของคุณถูกส่งเรียบร้อยแล้ว" : "Your leave request has been sent successfully."),
         confirmButtonColor: "#00B5E2",
       });
 
