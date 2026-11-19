@@ -33,7 +33,7 @@ test('bundled policy router uses the URL path and preserves query parameters wit
 });
 test('employee submission rejects backdating before workflow calls and uses Bangkok day boundaries',async()=>{
  let forwarded=0;
- const handler=loadTS({'../_lib/lineIdentity.js':{verifyLineIdentity:async()=> 'verified'},'../_lib/n8nClient.js':{n8nPost:async()=>{forwarded++;return {ok:true};}}})('api/_handlers/employee-request.ts').default;
+ const handler=loadTS({'../_lib/lineIdentity.js':{verifyLineIdentity:async()=> 'verified'},'../_lib/n8nClient.js':{n8nPost:async(_,body)=>{if(body.operation==='employee-submit')forwarded++;return {ok:true};}}})('api/_handlers/employee-request.ts').default;
  const response=()=>({statusCode:200,setHeader(){},status(n){this.statusCode=n;return this;},send(v){this.body=JSON.parse(v);return this;}});
  for(const type of ['sick','personal','annual','university']){const res=response();await handler({method:'POST',headers:{authorization:'Bearer valid'},body:{leaveType:type,selectedDates:['2001-01-01'],leaveDays:1,reason:'Test',emergencyReason:'Emergency'}},res);assert.equal(res.statusCode,422);assert.match(res.body.error,/past dates/);}
  assert.equal(forwarded,0);
@@ -41,11 +41,17 @@ test('employee submission rejects backdating before workflow calls and uses Bang
  const {todayInBangkok}=loadTS()('api/_lib/date.ts');assert.equal(todayInBangkok(new Date('2026-10-13T16:59:59Z')),'2026-10-13');assert.equal(todayInBangkok(new Date('2026-10-13T17:00:00Z')),'2026-10-14');
 });
 test('employee request API accepts optional annual reasons but requires personal, sick and university reasons',async()=>{
- const calls=[];const handler=loadTS({'../_lib/lineIdentity.js':{verifyLineIdentity:async()=> 'verified'},'../_lib/n8nClient.js':{n8nPost:async(...args)=>{calls.push(args);return {ok:true};}}})('api/_handlers/employee-request.ts').default;
+ const calls=[];const handler=loadTS({'../_lib/lineIdentity.js':{verifyLineIdentity:async()=> 'verified'},'../_lib/n8nClient.js':{n8nPost:async(...args)=>{if(args[1].operation==='employee-submit')calls.push(args);return {ok:true};}}})('api/_handlers/employee-request.ts').default;
  for(const leaveType of ['annual','vacation','personal','sick','university']){
  const res={statusCode:200,setHeader(){},status(n){this.statusCode=n;return this;},send(v){this.body=JSON.parse(v);return this;}};
  await handler({method:'POST',headers:{authorization:'Bearer valid'},body:{leaveType,selectedDates:['2099-10-15'],leaveDays:1}},res);
  assert.equal(res.statusCode,['personal','sick','university'].includes(leaveType)?422:200,leaveType);
  }
  assert.equal(calls.length,2);for(const [,data] of calls)assert.equal(data.payload.reason,'');
+});
+test('self-recorded staff can submit past dates without a reason',async()=>{
+ const ops=[];const handler=loadTS({'../_lib/lineIdentity.js':{verifyLineIdentity:async()=> 'verified'},'../_lib/n8nClient.js':{n8nPost:async(_,body)=>{ops.push(body.operation);return body.operation==='leave-policy'?{ok:true,selfRecorded:true}:{ok:true,selfRecorded:true,status:'Approved'};}}})('api/_handlers/employee-request.ts').default;
+ const res={statusCode:200,setHeader(){},status(n){this.statusCode=n;return this;},send(v){this.body=JSON.parse(v);return this;}};
+ await handler({method:'POST',headers:{authorization:'Bearer valid'},body:{leaveType:'sick',selectedDates:['2001-01-01'],leaveDays:1}},res);
+ assert.equal(res.statusCode,200);assert.deepEqual(ops,['leave-policy','employee-submit']);assert.equal(res.body.selfRecorded,true);
 });

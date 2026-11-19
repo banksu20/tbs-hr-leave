@@ -63,6 +63,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType, pict
   useNotificationLanguage(currentUserId || null);
   const [isIntern,setIsIntern]=useState(false);
   const [policy, setPolicy] = useState<LeavePolicy | null>(null);
+  const [selfRecorded, setSelfRecorded] = useState(false);
   const [uploadError,setUploadError]=useState('');
   const [policyError, setPolicyError] = useState("");
   const [isQuotaLoading, setQuotaLoading] = useState(true);
@@ -110,9 +111,9 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType, pict
   const isOverQuota = exceedsBalance(policy, formData.leaveType);
   const deadlinePassed = !!policy?.deadline && clock>=Date.parse(policy.deadline);
   const isAnnual=['annual','vacation'].includes(formData.leaveType);
-  const canEmergency=['sick','personal'].includes(formData.leaveType) || (isAnnual && deadlinePassed);
+  const canEmergency=!selfRecorded && (['sick','personal'].includes(formData.leaveType) || (isAnnual && deadlinePassed));
   const exceptionSelected=canEmergency && emergency;
-  const reasonRequired=!isAnnual || exceptionSelected;
+  const reasonRequired=!selfRecorded && (!isAnnual || exceptionSelected);
   const reasonLabel=exceptionSelected ? (isAnnual ? (language==='th'?'เหตุผลที่ขอลาหลังเวลาที่กำหนด':'Why you are requesting leave after the deadline') : (language==='th'?'เหตุผลในการลาและเหตุที่ต้องขอลาฉุกเฉิน':'Reason for leave and why it is urgent')) : t('reason');
   const late = (deadlinePassed && !(canEmergency&&emergency&&formData.reason.trim())) || (canEmergency&&emergency&&!formData.reason.trim());
   const canSwitchAnnual = formData.leaveType === 'personal' && isOverQuota && !!policy?.annualBalances.length && policy.annualBalances.every(b => b.allowed);
@@ -135,7 +136,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType, pict
           body:JSON.stringify({type:formData.leaveType||'annual',dates:localDates,daysPerDate:isHalfDay&&localDates.length===1?0.5:1})});
         const result = await response.json();
         if (!response.ok || !result.ok) throw new Error(result.error || 'Could not check your leave balance.');
-        if (active) {setPolicy(result);setIsIntern(Boolean(result.isIntern));setCheckedPolicyKey(policyKey);}
+        if (active) {setPolicy(result);setIsIntern(Boolean(result.isIntern));setSelfRecorded(result.selfRecorded===true);setCheckedPolicyKey(policyKey);}
       } catch (e) {if(active)setPolicyError((e as Error).message);}
       finally {window.clearTimeout(timeout);if(active)setQuotaLoading(false);}
     }, 200);
@@ -328,7 +329,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType, pict
     e.preventDefault();
 
     const today = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date());
-    if(localDates.some(date=>date<today)){await Swal.fire({icon:'warning',text:language==='th'?'ไม่สามารถขอลาย้อนหลังได้':'Leave cannot be requested for past dates.',confirmButtonColor:'#00B5E2'});return;}
+    if(!selfRecorded&&localDates.some(date=>date<today)){await Swal.fire({icon:'warning',text:language==='th'?'ไม่สามารถขอลาย้อนหลังได้':'Leave cannot be requested for past dates.',confirmButtonColor:'#00B5E2'});return;}
     setReasonError(reasonRequired && !formData.reason.trim());
     if (!formData.department || !formData.leaveType || selectedDates.length === 0 || (reasonRequired && !formData.reason.trim())) {
       Swal.fire({
@@ -377,8 +378,8 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType, pict
 
       await Swal.fire({
         icon: "success",
-        title: language === 'th' ? "ส่งคำขอสำเร็จ!" : "Request Submitted!",
-        text: (language === 'th' ? "คำขอลางานของคุณถูกส่งเรียบร้อยแล้ว" : "Your leave request has been sent successfully."),
+        title: result.selfRecorded ? (language === 'th' ? "บันทึกการลาแล้ว" : "Leave Recorded") : (language === 'th' ? "ส่งคำขอสำเร็จ!" : "Request Submitted!"),
+        text: result.selfRecorded ? (language === 'th' ? "บันทึกการลาของคุณเป็นอนุมัติแล้ว ไม่ต้องรอการอนุมัติ" : "Your leave is saved as approved. No approval needed.") : (language === 'th' ? "คำขอลางานของคุณถูกส่งเรียบร้อยแล้ว" : "Your leave request has been sent successfully."),
         confirmButtonColor: "#00B5E2",
       });
 
@@ -508,7 +509,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType, pict
                 selected={selectedDates}
                 onSelect={handleDateSelect}
                 disabled={(date) => {
-                  const isPastDisabled = toLocalDateString(date) < new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date(clock));
+                  const isPastDisabled = toLocalDateString(date) < (selfRecorded ? `${new Date(clock).getFullYear()-1}-01-01` : new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date(clock)));
                   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                   const { isFullyTaken } = getDateLeaveStatus(date);
                   return isPastDisabled || isWeekend || isFullyTaken;
@@ -613,7 +614,7 @@ const LeaveRequestForm = ({ userId, userName, department, initialLeaveType, pict
             {policyReady && late && <p role="alert" className="rounded-2xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">{exceptionSelected ? (thai?'กรุณากรอกเหตุผลในช่องด้านบน':'Please enter your explanation in the box above.') : canEmergency ? (isAnnual ? (thai?'เลยกำหนดส่งคำขอแล้ว เลือก “ขออนุมัติลาหลังเวลาที่กำหนด” และอธิบายเหตุผลเพื่อส่งให้ผู้อนุมัติพิจารณา':'The deadline has passed. Select “Request late approval” and explain why to send it for approval.') : (thai?'เลยกำหนดส่งคำขอแล้ว หากเป็นเหตุฉุกเฉิน ให้เลือก “เหตุฉุกเฉิน” และอธิบายเหตุผล':'The deadline has passed. For an urgent request, select “Emergency request” and explain why.')) : (thai?'เลยกำหนดส่งคำขอสำหรับวันที่เลือก กรุณาเลือกวันใหม่':'The deadline for these dates has passed. Please choose later dates.')}</p>}
           </section>
 
-          {['sick','university'].includes(formData.leaveType)&&<section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-xs space-y-3">
+          {!selfRecorded&&['sick','university'].includes(formData.leaveType)&&<section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-xs space-y-3">
             <div className="flex items-center gap-2.5">
               <span className={`grid h-7 w-7 place-items-center rounded-full ${tone.soft} ${tone.text}`}><Paperclip className="h-3.5 w-3.5"/></span>
               <h2 className="text-sm font-bold text-slate-800">{formData.leaveType==='university'?(thai?'หลักฐานกิจกรรม *':'Activity evidence *'):(thai?'ใบรับรองแพทย์ (แนบภายหลังได้)':'Medical certificate (can be supplied later)')}</h2>
