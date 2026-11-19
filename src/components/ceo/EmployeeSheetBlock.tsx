@@ -5,6 +5,7 @@ import {useDashboardText} from "@/hooks/useDashboardText";
 import {halfDayLabel} from '@/lib/halfDayLabel';
 import { useEffect, useMemo, useState } from "react";
 import { Edit, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Employee, LeaveRecord } from "@/data/mockEmployees";
 import EditableCell from "./EditableCell";
 import {
@@ -314,7 +315,7 @@ export default function EmployeeSheetBlock({
                                 inputClassName="text-amber-800"
                                 onCommit={(raw) => {
                                   const parsed = Number(raw.trim());
-                                  if (!raw.trim() || !Number.isFinite(parsed) || parsed < 0 || parsed > 365 || Math.round(parsed * 4) !== parsed * 4) return;
+                                  if (!raw.trim() || !Number.isFinite(parsed) || parsed < 0 || parsed > 365 || Math.round(parsed * 4) !== parsed * 4) { toast.error(dt("Enter 0–365 days in quarter-day steps.")); return; }
                                   if (parsed === employee.quotas.annualTotal) return;
                                   void onAnnualQuotaChange(employee, parsed).catch(() => undefined);
                                 }}

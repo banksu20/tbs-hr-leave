@@ -1,5 +1,5 @@
 import { Employee } from "@/data/mockEmployees";
-import { LEAVE_TYPES, LeaveType, grantedFor, isUnlimited, leavesForYear, sumLeavesByType } from "./leaveSheetUtils";
+import { LEAVE_TYPES, LeaveType, grantedFor, isUnlimited, leavesForYear, needsQuotaReview, sumLeavesByType } from "./leaveSheetUtils";
 
 export const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -96,7 +96,7 @@ export function annualQuotaUsage(employees: Employee[], year: string, limit = 8)
     .map((emp) => {
       const granted = grantedFor(emp, "annual");
       const used = sumLeavesByType(emp.leaves, "annual", year);
-      if (emp.quotas.annualTotal === null || emp.quotas.annualTotal === undefined) {
+      if (isUnlimited(emp, "annual")) {
         return { name: emp.nickname || emp.name, empCode: emp.empCode, used, granted: 0, remaining: 0, percent: 0 };
       }
       return {
@@ -137,7 +137,7 @@ export function overQuotaList(employees: Employee[], year: string): OverQuotaRow
 }
 
 export function awaitingQuota(employees: Employee[]): Employee[] {
-  return employees.filter((emp) => emp.quotasKnown === false);
+  return employees.filter(needsQuotaReview);
 }
 
 export function busiestMonth(rows: MonthRow[]): MonthRow | null {

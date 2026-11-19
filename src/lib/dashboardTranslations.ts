@@ -365,6 +365,7 @@ export const dashboardThai: Record<string, string> = {
   "No limit on sick leave": "ไม่จำกัดวันลาป่วย",
   "Unlimited": "ไม่จำกัด",
   "Edit annual quota": "แก้ไขโควตาลาพักร้อน",
+  "Enter 0–365 days in quarter-day steps.": "กรอก 0–365 วัน ทีละ 0.25 วัน",
   "Carried": "วันยกมา",
   "Carried Over": "วันลายกมา",
   "Carry over": "วันลายกมา",
