@@ -82,6 +82,7 @@ export interface ApiEmployee {
   quotaNote?: string;
   status?: "active" | "inactive";
   pictureUrl?: string|null;
+  unlimitedLeave?: boolean;
   leaves: ApiLeaveRecord[];
 }
 
@@ -131,6 +132,7 @@ export function toEmployee(api: ApiEmployee): Employee {
     quotaNote: api.quotaNote ?? "",
     status: api.status ?? "active",
     pictureUrl: api.pictureUrl ?? null,
+    unlimitedLeave: api.unlimitedLeave === true,
     leaves: api.leaves.map((l) => ({
       id: l.id,
       requestId: l.requestId,
