@@ -12,3 +12,16 @@ export const saveSop=(body:{id?:number;version?:number;titleEn:string;titleTh:st
 export const setSopActive=(id:number,active:boolean)=>call<{sops:HrSop[]}>({body:{action:'hr-sop-active',id,active}}).then(b=>b.sops);
 export const loadPeople=()=>call<{people:HrPerson[]}>({view:'people'}).then(b=>b.people.map(p=>({...p,roles:p.roles.map(r=>({...r,timeShare:Number(r.timeShare)}))})));
 export const savePerson=(body:{userId:string;careerLevel:string;managerId:string;roles:HrRole[]})=>call<{people:HrPerson[]}>({body:{action:'hr-people-save',...body}}).then(b=>b.people.map(p=>({...p,roles:p.roles.map(r=>({...r,timeShare:Number(r.timeShare)}))})));
+export interface TravelSettings {officeLat:number|null;officeLng:number|null;radius:number;rate:number;homeCutoff:string;tripKmCap:number;accountingEmail:string|null;departments:string[]}
+export interface TravelPerson {id:string;name:string;nickname:string|null;department:string|null;eligible:boolean;override:boolean|null}
+export type AdminTrip=import('./travel').TripDetail&{employee:string;department:string|null};
+export type AdminTripRow=import('./travel').TripSummary&{employee:string;department:string|null};
+export const loadTravelSettings=()=>call<{settings:TravelSettings;people:TravelPerson[]}>({view:'travel'});
+export const saveTravelSettings=(body:Partial<Omit<TravelSettings,'accountingEmail'>>&{accountingEmail?:string})=>call<{settings:TravelSettings;people:TravelPerson[]}>({body:{action:'travel-settings-save',...body}});
+export const saveTravelAccess=(userId:string,allowed:boolean|null)=>call<{people:TravelPerson[]}>({body:{action:'travel-access-save',userId,allowed}}).then(b=>b.people);
+export const findOffice=(query:string)=>call<{places:import('./travel').Place[]}>({body:{action:'travel-place',query}}).then(b=>b.places);
+export const loadTrips=(status:string)=>call<{trips:AdminTripRow[]}>({view:`trips&status=${encodeURIComponent(status)}`}).then(b=>b.trips);
+export const loadTrip=(id:number)=>call<{trip:AdminTrip}>({view:`trip&id=${id}`}).then(b=>b.trip);
+export const decideTrip=(id:number,decision:'approve'|'reject',note:string)=>call<{trip:AdminTrip}>({body:{action:'travel-decide',id,decision,note}}).then(b=>b.trip);
+export const markTrip=(id:number,mark:'paid'|'received')=>call<{trip:AdminTrip}>({body:{action:'travel-mark',id,mark}}).then(b=>b.trip);
+export const adminReceiptUrl=(id:string)=>`/api/hr-admin?view=receipt&id=${encodeURIComponent(id)}`;

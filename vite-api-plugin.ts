@@ -31,7 +31,7 @@ export function apiDevServer(): Plugin {
         });
 
         try {
-          const bundled = new Set(['email-decision','sop','hr-admin','employee-data','company-holidays','employee-request','intern-decision','intern-terms','leave-evidence','leave-policy','registration']);
+          const bundled = new Set(['email-decision','sop','hr-admin','travel','travel-review','employee-data','company-holidays','employee-request','intern-decision','intern-terms','leave-evidence','leave-policy','registration']);
           if (!/^[a-z-]+$/.test(route)) { res.statusCode=404; res.end(); return; }
           const mod = await server.ssrLoadModule(bundled.has(route) ? '/api/[policy].ts' : `/api/${route}.ts`);
           const handler = mod.default;

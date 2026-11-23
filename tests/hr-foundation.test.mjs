@@ -63,8 +63,8 @@ test('other dashboard and employee operations still reach the earlier handlers',
 
 test('SOP and HR admin endpoints are routed and the API stays within 12 functions',()=>{
  const read=f=>readFileSync(f,'utf8');
- assert.match(JSON.parse(read('vercel.json')).routes[0].src,/\|sop\|hr-admin\)/);
- assert.match(read('api/[policy].ts'),/registration,sop,'hr-admin':hrAdmin/);
+ assert.match(JSON.parse(read('vercel.json')).routes[0].src,/\|sop\|hr-admin[|)]/);
+ assert.match(read('api/[policy].ts'),/registration,sop,'hr-admin':hrAdmin,/);
  assert.match(read('vite-api-plugin.ts'),/'email-decision','sop','hr-admin'/);
  assert.match(read('api/_handlers/sop.ts'),/verifyLineIdentity/);
  assert.match(read('api/_handlers/hr-admin.ts'),/dashboardSession\(req\)/);

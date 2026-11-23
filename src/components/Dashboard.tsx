@@ -5,8 +5,9 @@ import { useState, useEffect, type ComponentType } from "react";
 import { useNavigate } from "react-router-dom";
 import liff from "@line/liff";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Thermometer, Palmtree, CalendarDays, Users, Plus, ChevronRight, ShieldCheck, GraduationCap, FileCheck2 } from "lucide-react";
+import { Thermometer, Palmtree, CalendarDays, Users, Plus, ChevronRight, ShieldCheck, GraduationCap, FileCheck2, Car } from "lucide-react";
 import { fetchSops } from "@/lib/sop";
+import { loadTravel } from "@/lib/travel";
 import HolidaysModal from "./HolidaysModal";
 import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 import tbsLogo from "@/image/TBS-Logo.png";
@@ -93,6 +94,7 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
   const [offToday, setOffToday] = useState<number | null>(null);
   const [isIntern, setIsIntern] = useState(false);
   const [sopPending, setSopPending] = useState<number | null>(null);
+  const [travel, setTravel] = useState<{ open: boolean; configured: boolean } | null>(null);
 
   const { t, language } = useLanguage();
   const th = language === 'th';
@@ -115,6 +117,7 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
     if (employeePreview || !liff.getAccessToken()) return;
     let active = true;
     fetchSops().then(docs => { if (active) setSopPending(docs.filter(d => !d.acceptedAt).length); }).catch(() => undefined);
+    loadTravel().then(t => { if (active) setTravel(t.eligible ? { open: !!t.trip, configured: t.configured } : null); }).catch(() => undefined);
     return () => { active = false; };
   }, [employeePreview]);
 
@@ -287,6 +290,17 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
           {!!sopPending && <span className="grid h-6 min-w-6 place-items-center rounded-full bg-amber-500 px-1.5 text-xs font-bold text-white">{sopPending}</span>}
           <ChevronRight className="h-5 w-5 text-slate-400" />
         </button>
+
+        {travel?.configured && (
+          <button type="button" onClick={() => navigate("/travel")} className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left shadow-xs transition active:scale-[0.98] ${travel.open ? 'border-cyan-200 bg-cyan-50' : 'border-slate-100 bg-white hover:border-cyan-200'}`}>
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-cyan-50 text-cyan-600"><Car className="h-5 w-5" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-slate-800">{th ? 'เบิกค่าเดินทาง' : 'Travel claims'}</span>
+              <span className={`block text-[11px] font-medium ${travel.open ? 'text-cyan-700' : 'text-slate-500'}`}>{travel.open ? (th ? 'มีทริปที่กำลังเดินทาง' : 'Trip in progress') : (th ? 'ไปพบลูกค้า บันทึกระยะทางและใบเสร็จ' : 'Client visits, distance and receipts')}</span>
+            </span>
+            <ChevronRight className="h-5 w-5 text-slate-400" />
+          </button>
+        )}
 
         {isCeo && (
           <button type="button" onClick={() => navigate("/ceo")} className="flex w-full items-center gap-3 rounded-2xl bg-slate-900 p-4 text-left shadow-xs transition active:scale-[0.98]">

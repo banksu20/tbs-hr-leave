@@ -21,6 +21,8 @@ const LeaveRequest = lazy(loadLeaveRequest);
 const InternDecision = lazy(() => import('@/pages/InternDecision'));
 const EmailDecision = lazy(() => import('@/pages/EmailDecision'));
 const SopCenter = lazy(() => import('@/pages/SopCenter'));
+const TravelClaims = lazy(() => import('@/pages/TravelClaims'));
+const TravelReview = lazy(() => import('@/pages/TravelReview'));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const SickAcknowledgement = lazy(() => import("@/pages/SickAcknowledgement"));
 const CancelDecision = lazy(() => import("@/pages/CancelDecision"));
@@ -176,7 +178,7 @@ const App = () => {
         <BrowserRouter>
           <Suspense fallback={pageFallback}>
           <Routes>
-            <Route path="/leave-decision" element={<InternDecision/>}/><Route path="/email-decision" element={<EmailDecision/>}/><Route path="/sick-acknowledge" element={<SickAcknowledgement />} />
+            <Route path="/leave-decision" element={<InternDecision/>}/><Route path="/email-decision" element={<EmailDecision/>}/><Route path="/travel-review" element={<TravelReview/>}/><Route path="/sick-acknowledge" element={<SickAcknowledgement />} />
             <Route path="/cancel-decision" element={<CancelDecision />} />
             <Route path="/reject-form" element={<RejectForm />} />
             <Route path="/ceo" element={<ErrorBoundary><DashboardAccess /></ErrorBoundary>} />
@@ -204,6 +206,7 @@ const App = () => {
             />
 
             <Route path="/sops" element={!localUser ? <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} /> : <SopCenter />} />
+            <Route path="/travel" element={!localUser ? <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} /> : <TravelClaims />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
