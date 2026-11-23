@@ -1,5 +1,6 @@
 import type {VercelRequest,VercelResponse} from './_lib/platform.js';
 import companyHolidays from './_handlers/company-holidays.js';
+import emailDecision from './_handlers/email-decision.js';
 import employeeRequest from './_handlers/employee-request.js';
 import internDecision from './_handlers/intern-decision.js';
 import internTerms from './_handlers/intern-terms.js';
@@ -9,7 +10,7 @@ import employeeData from './_handlers/employee-data.js';
 import registration from './_handlers/registration.js';
 import {json} from './_lib/http.js';
 const handlers:Record<string,(req:VercelRequest,res:VercelResponse)=>Promise<unknown>>={
- 'employee-data':employeeData,'company-holidays':companyHolidays,'employee-request':employeeRequest,
+ 'email-decision':emailDecision,'employee-data':employeeData,'company-holidays':companyHolidays,'employee-request':employeeRequest,
  'intern-decision':internDecision,'intern-terms':internTerms,
  'leave-evidence':leaveEvidence,'leave-policy':leavePolicy,registration,
 };

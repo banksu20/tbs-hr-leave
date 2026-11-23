@@ -19,6 +19,7 @@ import { useLanguage } from "./hooks/useLanguage";
 const loadLeaveRequest = () => import("@/pages/LeaveRequest");
 const LeaveRequest = lazy(loadLeaveRequest);
 const InternDecision = lazy(() => import('@/pages/InternDecision'));
+const EmailDecision = lazy(() => import('@/pages/EmailDecision'));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const SickAcknowledgement = lazy(() => import("@/pages/SickAcknowledgement"));
 const CancelDecision = lazy(() => import("@/pages/CancelDecision"));
@@ -56,7 +57,7 @@ const App = () => {
 
   useEffect(() => {
     // Reminder links verify LINE identity on their own; they do not need Sheets/profile lookup.
-    if(window.location.pathname==='/leave-decision'||window.location.pathname==='/sick-acknowledge'||window.location.pathname==='/ceo'){setIsInitializing(false);return;}
+    if(window.location.pathname==='/email-decision'||window.location.pathname==='/leave-decision'||window.location.pathname==='/sick-acknowledge'||window.location.pathname==='/ceo'){setIsInitializing(false);return;}
     let shownFromSaved = false;
     const initializeLiffAndCheckUser = async () => {
       try {
@@ -174,7 +175,7 @@ const App = () => {
         <BrowserRouter>
           <Suspense fallback={pageFallback}>
           <Routes>
-            <Route path="/leave-decision" element={<InternDecision/>}/><Route path="/sick-acknowledge" element={<SickAcknowledgement />} />
+            <Route path="/leave-decision" element={<InternDecision/>}/><Route path="/email-decision" element={<EmailDecision/>}/><Route path="/sick-acknowledge" element={<SickAcknowledgement />} />
             <Route path="/cancel-decision" element={<CancelDecision />} />
             <Route path="/reject-form" element={<RejectForm />} />
             <Route path="/ceo" element={<ErrorBoundary><DashboardAccess /></ErrorBoundary>} />

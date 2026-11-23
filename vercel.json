@@ -2,7 +2,7 @@
   "regions": ["sin1"],
   "routes": [
     {
-      "src": "/api/(employee-data|company-holidays|employee-request|intern-decision|intern-terms|leave-evidence|leave-policy|registration)/?",
+      "src": "/api/(email-decision|employee-data|company-holidays|employee-request|intern-decision|intern-terms|leave-evidence|leave-policy|registration)/?",
       "dest": "/api/[policy]"
     },
     {
