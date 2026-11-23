@@ -20,6 +20,7 @@ const loadLeaveRequest = () => import("@/pages/LeaveRequest");
 const LeaveRequest = lazy(loadLeaveRequest);
 const InternDecision = lazy(() => import('@/pages/InternDecision'));
 const EmailDecision = lazy(() => import('@/pages/EmailDecision'));
+const SopCenter = lazy(() => import('@/pages/SopCenter'));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const SickAcknowledgement = lazy(() => import("@/pages/SickAcknowledgement"));
 const CancelDecision = lazy(() => import("@/pages/CancelDecision"));
@@ -201,6 +202,8 @@ const App = () => {
                 )
               } 
             />
+
+            <Route path="/sops" element={!localUser ? <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} /> : <SopCenter />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

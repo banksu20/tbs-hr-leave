@@ -8,11 +8,13 @@ import leaveEvidence from './_handlers/leave-evidence.js';
 import leavePolicy from './_handlers/leave-policy.js';
 import employeeData from './_handlers/employee-data.js';
 import registration from './_handlers/registration.js';
+import sop from './_handlers/sop.js';
+import hrAdmin from './_handlers/hr-admin.js';
 import {json} from './_lib/http.js';
 const handlers:Record<string,(req:VercelRequest,res:VercelResponse)=>Promise<unknown>>={
  'email-decision':emailDecision,'employee-data':employeeData,'company-holidays':companyHolidays,'employee-request':employeeRequest,
  'intern-decision':internDecision,'intern-terms':internTerms,
- 'leave-evidence':leaveEvidence,'leave-policy':leavePolicy,registration,
+ 'leave-evidence':leaveEvidence,'leave-policy':leavePolicy,registration,sop,'hr-admin':hrAdmin,
 };
 export default async function handler(req:VercelRequest,res:VercelResponse){
  const name=new URL(req.url??'','https://local.invalid').pathname.match(/^\/api\/([a-z-]+)\/?$/)?.[1];

@@ -12,6 +12,6 @@ window.fetch=async(_input,init)=>{
  if(used)return json({ok:false,statusCode:409,error:'This link was already used.'},409);
  used=body.action;return json({ok:true,action:body.action,request:{...request,status:used==='approve'?'Approved':'Rejected'}});
 };
-function Preview(){const {toggleLanguage,language}=useLanguage();return <><div className="bg-amber-100 p-3 text-sm flex justify-between"><span>Local demo · no live changes</span><button onClick={toggleLanguage} className="underline">{language==='en'?'ภาษาไทย':'English'}</button></div><EmailDecision/></>;}
+export function Preview(){const {toggleLanguage,language}=useLanguage();return <><div className="bg-amber-100 p-3 text-sm flex justify-between"><span>Local demo · no live changes</span><button onClick={toggleLanguage} className="underline">{language==='en'?'ภาษาไทย':'English'}</button></div><EmailDecision/></>;}
 if(!location.search)history.replaceState(null,'','?id=1302&t=11111111-2222-4333-8444-555555555555&action=approve');
 createRoot(document.getElementById('root')!).render(<LanguageProvider><Preview/></LanguageProvider>);

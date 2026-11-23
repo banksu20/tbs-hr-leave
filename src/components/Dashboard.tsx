@@ -5,7 +5,8 @@ import { useState, useEffect, type ComponentType } from "react";
 import { useNavigate } from "react-router-dom";
 import liff from "@line/liff";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Thermometer, Palmtree, CalendarDays, Users, Plus, ChevronRight, ShieldCheck, GraduationCap } from "lucide-react";
+import { Thermometer, Palmtree, CalendarDays, Users, Plus, ChevronRight, ShieldCheck, GraduationCap, FileCheck2 } from "lucide-react";
+import { fetchSops } from "@/lib/sop";
 import HolidaysModal from "./HolidaysModal";
 import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 import tbsLogo from "@/image/TBS-Logo.png";
@@ -91,6 +92,7 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
   const [holidays, setHolidays] = useState<CompanyHoliday[] | null>(() => savedCompanyHolidays(year));
   const [offToday, setOffToday] = useState<number | null>(null);
   const [isIntern, setIsIntern] = useState(false);
+  const [sopPending, setSopPending] = useState<number | null>(null);
 
   const { t, language } = useLanguage();
   const th = language === 'th';
@@ -108,6 +110,13 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
   const firstName = nick || userName || (th ? 'คุณ' : 'there');
   const greeting = now.hour < 12 ? (th ? 'สวัสดีตอนเช้า' : 'Good morning') : now.hour < 17 ? (th ? 'สวัสดีตอนบ่าย' : 'Good afternoon') : (th ? 'สวัสดีตอนเย็น' : 'Good evening');
   const initials = (firstName || '?').slice(0, 2).toUpperCase();
+
+  useEffect(() => {
+    if (employeePreview || !liff.getAccessToken()) return;
+    let active = true;
+    fetchSops().then(docs => { if (active) setSopPending(docs.filter(d => !d.acceptedAt).length); }).catch(() => undefined);
+    return () => { active = false; };
+  }, [employeePreview]);
 
   useEffect(() => { if (profile?.pictureUrl) { setPictureUrl(profile.pictureUrl); setPictureFailed(false); } }, [profile?.pictureUrl]);
 
@@ -268,6 +277,16 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
             </DialogContent>
           </Dialog>
         </div>
+
+        <button type="button" onClick={() => navigate("/sops")} className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left shadow-xs transition active:scale-[0.98] ${sopPending ? 'border-amber-200 bg-amber-50' : 'border-slate-100 bg-white hover:border-cyan-200'}`}>
+          <span className={`grid h-10 w-10 place-items-center rounded-xl ${sopPending ? 'bg-amber-100 text-amber-700' : 'bg-cyan-50 text-cyan-600'}`}><FileCheck2 className="h-5 w-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-slate-800">{th ? 'ระเบียบบริษัท' : 'Company SOPs'}</span>
+            <span className={`block text-[11px] font-medium ${sopPending ? 'text-amber-700' : 'text-slate-500'}`}>{sopPending ? (th ? `รออ่านและกดยอมรับ ${sopPending} เรื่อง` : `${sopPending} to read and accept`) : (th ? 'วัฒนธรรม วิธีทำงาน และกติกาข้อมูล' : 'Culture, how we work and data rules')}</span>
+          </span>
+          {!!sopPending && <span className="grid h-6 min-w-6 place-items-center rounded-full bg-amber-500 px-1.5 text-xs font-bold text-white">{sopPending}</span>}
+          <ChevronRight className="h-5 w-5 text-slate-400" />
+        </button>
 
         {isCeo && (
           <button type="button" onClick={() => navigate("/ceo")} className="flex w-full items-center gap-3 rounded-2xl bg-slate-900 p-4 text-left shadow-xs transition active:scale-[0.98]">

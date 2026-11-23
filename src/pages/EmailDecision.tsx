@@ -15,7 +15,7 @@ function readLink(){
  let token=params.get('t')??'';
  try{
   if(token)sessionStorage.setItem(`email-decision:${id}`,token);else token=sessionStorage.getItem(`email-decision:${id}`)??'';
- }catch{}
+ }catch{void 0;}
  if(params.has('t')){params.delete('t');history.replaceState(null,'',`${location.pathname}?${params.toString()}`);}
  return {id,token,preset:preset==='approve'||preset==='reject'?preset as Action:null};
 }
