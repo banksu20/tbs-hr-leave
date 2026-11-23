@@ -42,31 +42,77 @@ CREATE OR REPLACE FUNCTION tbs_email_request_details(r leave_requests) RETURNS j
   'balance',tbs_request_balance_line(r))
  FROM (SELECT 1) one LEFT JOIN tbs_employees e ON e.user_id=r.user_id;
 $$;
+DROP FUNCTION IF EXISTS tbs_email_field(text,text);
+CREATE OR REPLACE FUNCTION tbs_email_leave_color(kind text) RETURNS text LANGUAGE sql IMMUTABLE AS $$
+ SELECT CASE lower(COALESCE(kind,'')) WHEN 'sick' THEN '#e11d48' WHEN 'annual' THEN '#0284c7' WHEN 'vacation' THEN '#0284c7' WHEN 'personal' THEN '#d97706' WHEN 'university' THEN '#7c3aed' ELSE '#0891b2' END;
+$$;
+CREATE OR REPLACE FUNCTION tbs_email_leave_tint(kind text) RETURNS text LANGUAGE sql IMMUTABLE AS $$
+ SELECT CASE lower(COALESCE(kind,'')) WHEN 'sick' THEN '#ffe4e6' WHEN 'annual' THEN '#e0f2fe' WHEN 'vacation' THEN '#e0f2fe' WHEN 'personal' THEN '#fef3c7' WHEN 'university' THEN '#ede9fe' ELSE '#cffafe' END;
+$$;
+CREATE OR REPLACE FUNCTION tbs_email_label(t text) RETURNS text LANGUAGE sql IMMUTABLE AS $$
+ SELECT '<div style="font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#94a3b8">'||tbs_html(t)||'</div>';
+$$;
 CREATE OR REPLACE FUNCTION tbs_email_approval_payload(r leave_requests,recipient jsonb,token text,expires timestamptz) RETURNS jsonb LANGUAGE plpgsql STABLE AS $$
-DECLARE d jsonb:=tbs_email_request_details(r); base text; link text; type_label text; dates text; days text; period text; rows text; BEGIN
+DECLARE d jsonb:=tbs_email_request_details(r); kind text:=CASE WHEN r.leave_type='vacation' THEN 'annual' ELSE r.leave_type END;
+ base text; link text; color text:=tbs_email_leave_color(kind); tint text:=tbs_email_leave_tint(kind); type_label text; tiles text; days text; period text;
+ balance text; bars text:=''; part text; m text[]; pct numeric; bar_color text; initial text; submitted text; rows text; BEGIN
  SELECT app_url INTO base FROM tbs_email_fallback_settings WHERE singleton;
  link:=base||'/email-decision?id='||r.id||'&t='||token;
- type_label:=CASE WHEN r.leave_type IN ('annual','vacation') THEN 'Annual leave / ลาพักร้อน' WHEN r.leave_type='sick' THEN 'Sick leave / ลาป่วย'
-  WHEN r.leave_type='personal' THEN 'Personal leave / ลากิจ' WHEN r.leave_type='university' THEN 'University activity / กิจกรรมมหาวิทยาลัย' ELSE initcap(COALESCE(r.leave_type,'')) END;
- SELECT string_agg(to_char(x::date,'FMDD Mon YYYY'),', ' ORDER BY x::date) INTO dates FROM jsonb_array_elements_text(d->'dates') x;
+ type_label:=CASE kind WHEN 'annual' THEN 'Annual leave · ลาพักร้อน' WHEN 'sick' THEN 'Sick leave · ลาป่วย' WHEN 'personal' THEN 'Personal leave · ลากิจ'
+  WHEN 'university' THEN 'University activity · กิจกรรมมหาวิทยาลัย' ELSE initcap(COALESCE(kind,'')) END;
+ SELECT string_agg('<div style="display:inline-block;width:76px;margin:0 8px 8px 0;vertical-align:top;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;text-align:center;overflow:hidden">'
+   ||'<div style="padding:5px 0;background:'||color||';color:#ffffff;font-size:10px;font-weight:bold;letter-spacing:1px">'||upper(to_char(x::date,'Mon YYYY'))||'</div>'
+   ||'<div style="padding:8px 0 0;font-size:26px;line-height:1;font-weight:bold;color:#0f172a">'||to_char(x::date,'FMDD')||'</div>'
+   ||'<div style="padding:4px 0 9px;font-size:12px;color:#64748b">'||to_char(x::date,'Dy')||'</div></div>','' ORDER BY x::date) INTO tiles
+  FROM jsonb_array_elements_text(d->'dates') x;
  days:=CASE WHEN position('.' IN r.leave_days::text)>0 THEN rtrim(rtrim(r.leave_days::text,'0'),'.') ELSE r.leave_days::text END;
- period:=CASE WHEN r.half_day_period='morning' THEN ' · Morning / ช่วงเช้า' WHEN r.half_day_period='afternoon' THEN ' · Afternoon / ช่วงบ่าย' ELSE '' END;
- rows:='<tr><td style="padding:6px 12px 6px 0;color:#64748b;white-space:nowrap">Team / แผนก</td><td style="padding:6px 0">'||tbs_html(r.department)||'</td></tr>'
-  ||'<tr><td style="padding:6px 12px 6px 0;color:#64748b;white-space:nowrap">Type / ประเภท</td><td style="padding:6px 0">'||tbs_html(type_label)||'</td></tr>'
-  ||'<tr><td style="padding:6px 12px 6px 0;color:#64748b;white-space:nowrap">Dates / วันที่</td><td style="padding:6px 0">'||tbs_html(dates)||'</td></tr>'
-  ||'<tr><td style="padding:6px 12px 6px 0;color:#64748b;white-space:nowrap">Days / จำนวนวัน</td><td style="padding:6px 0">'||tbs_html(days||period)||'</td></tr>'
-  ||CASE WHEN COALESCE(r.reason,'')<>'' THEN '<tr><td style="padding:6px 12px 6px 0;color:#64748b;white-space:nowrap;vertical-align:top">Reason / เหตุผล</td><td style="padding:6px 0">'||tbs_html(r.reason)||'</td></tr>' ELSE '' END
-  ||CASE WHEN d->>'balance' IS NOT NULL THEN '<tr><td style="padding:6px 12px 6px 0;color:#64748b;white-space:nowrap">Balance / คงเหลือ</td><td style="padding:6px 0">'||tbs_html(d->>'balance')||'</td></tr>' ELSE '' END;
+ days:=days||CASE WHEN days='1' THEN ' day · วัน' ELSE ' days · วัน' END;
+ period:=CASE WHEN r.half_day_period='morning' THEN ' · Morning ช่วงเช้า' WHEN r.half_day_period='afternoon' THEN ' · Afternoon ช่วงบ่าย' ELSE '' END;
+ initial:=upper(left(COALESCE(NULLIF(substring(d->>'name' from '\(([^)]+)\)$'),''),d->>'name',''),1));
+ submitted:=to_char(((to_jsonb(r)->>'created_at')::timestamp AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Bangkok','FMDD Mon YYYY, HH24:MI');
+ balance:=NULLIF(regexp_replace(COALESCE(d->>'balance',''),'^[^:]*:\s*',''),'');
+ IF balance IS NOT NULL THEN
+  FOREACH part IN ARRAY string_to_array(balance,' · ') LOOP
+   m:=regexp_match(part,'^(.*?)\s*([0-9]+(?:\.[0-9]+)?)/([0-9]+(?:\.[0-9]+)?)$');
+   IF m IS NULL THEN
+    bars:=bars||'<tr><td colspan="2" style="padding:8px 0 0;font-size:13px;color:#334155">'||tbs_html(part)||'</td></tr>';
+    CONTINUE;
+   END IF;
+   bar_color:=tbs_email_leave_color(CASE WHEN part ILIKE '%sick%' THEN 'sick' WHEN part ILIKE '%annual%' THEN 'annual' WHEN part ILIKE '%personal%' THEN 'personal' WHEN part ILIKE '%university%' THEN 'university' ELSE '' END);
+   pct:=CASE WHEN m[3]::numeric>0 THEN greatest(0,least(100,round(m[2]::numeric*100/m[3]::numeric))) ELSE 0 END;
+   bars:=bars||'<tr><td style="padding:10px 12px 4px 0;font-size:13px;color:#334155">'||tbs_html(m[1])||'</td>'
+    ||'<td align="right" style="padding:10px 0 4px;font-size:13px;color:#64748b;white-space:nowrap"><b style="color:#0f172a">'||tbs_html(m[2])||'</b> / '||tbs_html(m[3])||'</td></tr>'
+    ||'<tr><td colspan="2"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse"><tr>'
+    ||CASE WHEN pct>0 THEN '<td width="'||pct||'%" style="height:6px;background:'||bar_color||';font-size:0;line-height:0">&nbsp;</td>' ELSE '' END
+    ||CASE WHEN pct<100 THEN '<td style="height:6px;background:#e2e8f0;font-size:0;line-height:0">&nbsp;</td>' ELSE '' END
+    ||'</tr></table></td></tr>';
+  END LOOP;
+ END IF;
+ rows:='<tr><td bgcolor="#0e7490" style="padding:24px 24px 22px;background:#0e7490;background-image:linear-gradient(135deg,#06b6d4,#0e7490);border-radius:19px 19px 0 0">'
+   ||'<div style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#cffafe">TBS HR · LEAVE APPROVAL</div>'
+   ||'<div style="margin-top:8px;font-size:22px;line-height:1.3;font-weight:bold;color:#ffffff">A leave request needs you</div>'
+   ||'<div style="margin-top:2px;font-size:14px;color:#e0f2fe">มีคำขอลารอคุณอนุมัติ</div></td></tr>'
+  ||'<tr><td style="padding:22px 24px 6px"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>'
+   ||'<td width="52" valign="middle"><div style="width:52px;height:52px;border-radius:26px;background:'||tint||';color:'||color||';font-size:22px;font-weight:bold;line-height:52px;text-align:center">'||tbs_html(initial)||'</div></td>'
+   ||'<td valign="middle" style="padding-left:14px"><div style="font-size:19px;line-height:1.3;font-weight:bold;color:#0f172a">'||tbs_html(d->>'name')||'</div>'
+   ||'<div style="margin-top:2px;font-size:13px;color:#64748b">'||tbs_html(r.department)||COALESCE(' · Requested '||submitted,'')||'</div></td></tr></table>'
+   ||'<div style="margin-top:16px"><span style="display:inline-block;margin:0 6px 6px 0;padding:7px 14px;border-radius:999px;background:'||tint||';color:'||color||';font-size:13px;font-weight:bold">'||tbs_html(type_label)||'</span>'
+   ||'<span style="display:inline-block;margin:0 6px 6px 0;padding:7px 14px;border-radius:999px;background:#f1f5f9;color:#334155;font-size:13px;font-weight:bold">'||tbs_html(days||period)||'</span></div></td></tr>'
+  ||'<tr><td style="padding:12px 24px 0">'||tbs_email_label('Dates · วันที่')||'<div style="margin-top:10px">'||COALESCE(tiles,'')||'</div></td></tr>'
+  ||CASE WHEN COALESCE(r.reason,'')<>'' THEN '<tr><td style="padding:10px 24px 0">'||tbs_email_label('Reason · เหตุผล')
+   ||'<div style="margin-top:10px;padding:14px 16px;border-left:4px solid '||color||';border-radius:10px;background:#f8fafc;font-size:15px;line-height:1.6;color:#1e293b">'||tbs_html(r.reason)||'</div></td></tr>' ELSE '' END
+  ||CASE WHEN bars<>'' THEN '<tr><td style="padding:20px 24px 0">'||tbs_email_label('Left after this request · คงเหลือหลังคำขอนี้')
+   ||'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%">'||bars||'</table></td></tr>' ELSE '' END
+  ||'<tr><td style="padding:26px 24px 0"><a href="'||tbs_html(link||'&action=approve')||'" style="display:block;padding:16px;background:#0891b2;background-image:linear-gradient(135deg,#06b6d4,#0e7490);border-radius:14px;color:#ffffff;font-size:17px;font-weight:bold;text-align:center;text-decoration:none">&#10003;&nbsp; Approve · อนุมัติ</a></td></tr>'
+  ||'<tr><td style="padding:10px 24px 0"><a href="'||tbs_html(link||'&action=reject')||'" style="display:block;padding:15px;background:#ffffff;border:2px solid #fecdd3;border-radius:14px;color:#be123c;font-size:16px;font-weight:bold;text-align:center;text-decoration:none">&#10005;&nbsp; Reject · ไม่อนุมัติ</a></td></tr>'
+  ||'<tr><td style="padding:20px 24px 24px"><div style="padding:12px 14px;border-radius:12px;background:#f8fafc;font-size:12px;line-height:1.6;color:#64748b">&#128274; You will confirm on the next page. This link is only for you, works once and expires on '
+   ||to_char(expires AT TIME ZONE 'Asia/Bangkok','FMDD Mon YYYY')||'.<br>กดยืนยันในหน้าถัดไป ลิงก์นี้ใช้ได้ครั้งเดียวสำหรับคุณเท่านั้น</div></td></tr>';
  RETURN jsonb_build_object('to',recipient->>'email','requestId',r.id,
   'subject','Leave approval needed / คำขอลารออนุมัติ: '||(d->>'name'),
-  'html','<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0f172a;font-size:15px;line-height:1.5">'
-   ||'<p style="margin:0 0 4px;color:#0e7490;font-weight:bold">TBS HR · Leave approval</p>'
-   ||'<h2 style="margin:0 0 16px;font-size:22px">'||tbs_html(d->>'name')||'</h2>'
-   ||'<table style="border-collapse:collapse;width:100%;font-size:14px">'||rows||'</table>'
-   ||'<p style="margin:24px 0 8px"><a href="'||tbs_html(link||'&action=approve')||'" style="display:inline-block;background:#0891b2;color:#ffffff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:bold">Approve / อนุมัติ</a>'
-   ||'&nbsp;&nbsp;<a href="'||tbs_html(link||'&action=reject')||'" style="display:inline-block;border:1px solid #e11d48;color:#be123c;padding:11px 24px;border-radius:10px;text-decoration:none;font-weight:bold">Reject / ไม่อนุมัติ</a></p>'
-   ||'<p style="margin:16px 0 0;font-size:12px;color:#64748b">You will confirm on the next page. This link is only for you, works once and expires on '||to_char(expires AT TIME ZONE 'Asia/Bangkok','FMDD Mon YYYY')||'. It came by email because LINE''s monthly message limit has been reached.<br>กดยืนยันในหน้าถัดไป ลิงก์นี้ใช้ได้ครั้งเดียวสำหรับคุณเท่านั้น ส่งทางอีเมลเพราะข้อความ LINE เดือนนี้เต็มแล้ว</p>'
-   ||'</div>');
+  'html','<div style="margin:0;padding:28px 12px;background:#eef2f7;font-family:Arial,Helvetica,sans-serif">'
+   ||'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:20px;border-collapse:separate;box-shadow:0 8px 28px rgba(15,23,42,0.08);color:#0f172a">'
+   ||rows||'</table>'
+   ||'<div style="max-width:560px;margin:14px auto 0;text-align:center;font-size:11px;line-height:1.6;color:#94a3b8">Sent by TBS HR by email because LINE''s monthly message limit has been reached.<br>ส่งทางอีเมลเพราะข้อความ LINE เดือนนี้เต็มแล้ว</div></div>');
 END $$;
 CREATE OR REPLACE FUNCTION tbs_queue_email_approval(job_payload jsonb) RETURNS boolean LANGUAGE plpgsql AS $$
 DECLARE rid integer:=tbs_approval_request_id(job_payload); r leave_requests%ROWTYPE; people jsonb; p jsonb; token text; expires timestamptz:=now()+interval '14 days'; BEGIN

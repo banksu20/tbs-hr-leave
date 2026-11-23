@@ -2,7 +2,7 @@ import {createRoot} from 'react-dom/client';
 import EmailDecision from '../../src/pages/EmailDecision';
 import {LanguageProvider,useLanguage} from '../../src/hooks/useLanguage';
 import '../../src/index.css';
-const request={id:1302,name:'Phoo Pyae Thaw (Emily)',department:'SEO',type:'annual',dates:['2026-12-16','2026-12-17'],days:2,period:null,reason:'Family trip to Chiang Mai',status:'Pending',balance:'คงเหลือหลังคำขอนี้ / Left after this request: ลาพักร้อน Annual 4/8'};
+const request={id:1302,name:'Somchai Jaidee (Mint)',department:'SEO',type:'annual',dates:['2026-12-16','2026-12-17'],days:2,period:null,reason:'Family trip to Chiang Mai',status:'Pending',balance:'คงเหลือหลังคำขอนี้ / Left after this request: ลาป่วย Sick 30/30 · ลาพักร้อน Annual 8/10 · ลากิจ Personal 3/3'};
 let used:string|null=null;
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json'}});
 window.fetch=async(_input,init)=>{
