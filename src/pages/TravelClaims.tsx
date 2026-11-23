@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {useNavigate} from 'react-router-dom';
-import {ArrowLeft,Building2,Camera,Car,CheckCircle2,Flag,Home,Loader2,MapPin,Navigation,Plus,Receipt,Search,Trash2,X} from 'lucide-react';
+import {ArrowLeft,Building2,Camera,Car,Check,CheckCircle2,Flag,Home,Link2,Loader2,MapPin,Navigation,Plus,Receipt,Search,Trash2,X} from 'lucide-react';
 import {useLanguage} from '@/hooks/useLanguage';
 import {currentPosition,findPlaces,loadTravel,money,prepareFile,readReceipt,receiptUrl,travelAction,TravelError,type Fix,type Place,type ReceiptKind,type TravelState,type TripDetail,type TripSummary,flagLabel,statusLabel} from '@/lib/travel';
 
@@ -11,14 +11,20 @@ const primary='w-full rounded-xl bg-cyan-600 py-3.5 font-bold text-white disable
 const kinds:[ReceiptKind,string,string][]=[['toll','Toll','ค่าทางด่วน'],['parking','Parking','ค่าจอดรถ'],['grab','Grab','Grab'],['taxi','Taxi','แท็กซี่'],['other','Other','อื่นๆ']];
 
 function PlacePicker({text,value,onChange}:{text:T;value:Place|null;onChange:(p:Place|null)=>void}){
- const [query,setQuery]=useState(''),[places,setPlaces]=useState<Place[]|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
- const search=async()=>{if(query.trim().length<2)return;setBusy(true);setError('');setPlaces(null);try{const p=await findPlaces(query);setPlaces(p);if(p.length===1)onChange(p[0]);}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
+ const [way,setWay]=useState<'link'|'search'>('link'),[query,setQuery]=useState(''),[places,setPlaces]=useState<Place[]|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const isLink=/^https?:\/\//i.test(query.trim());
+ const canFind=way==='link'?isLink:query.trim().length>=2;
+ const switchWay=(w:'link'|'search')=>{setWay(w);setQuery('');setPlaces(null);setError('');};
+ const search=async()=>{if(!canFind)return;setBusy(true);setError('');setPlaces(null);try{const p=await findPlaces(query);setPlaces(p);if(p.length===1)onChange(p[0]);}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
  if(value)return <div className="flex items-start gap-2 rounded-xl border border-cyan-200 bg-cyan-50 p-3 text-sm"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-700"/><span className="min-w-0 flex-1 text-slate-800">{value.label}</span><button type="button" aria-label={text('Change place','เปลี่ยนสถานที่')} onClick={()=>{onChange(null);setPlaces(null);}} className="rounded-lg p-1 text-slate-500"><X className="h-4 w-4"/></button></div>;
  return <div className="space-y-2">
-  <div className="flex gap-2"><input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void search();}}} placeholder={text('Address, place name or Google Maps link','ที่อยู่ ชื่อสถานที่ หรือลิงก์ Google Maps')} className={input}/>
-   <button type="button" onClick={()=>void search()} disabled={busy||query.trim().length<2} aria-label={text('Find','ค้นหา')} className="shrink-0 rounded-xl bg-slate-900 px-4 text-white disabled:opacity-50">{busy?<Loader2 className="h-5 w-5 animate-spin"/>:<Search className="h-5 w-5"/>}</button></div>
+  <Choice<'link'|'search'> value={way} onChange={switchWay} options={[['link',text('Google Maps link','ลิงก์ Google Maps'),<Link2 key="l" className="h-4 w-4"/>],['search',text('Search by name','ค้นหาด้วยชื่อ'),<Search key="s" className="h-4 w-4"/>]]}/>
+  <div className="flex gap-2"><input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void search();}}} inputMode={way==='link'?'url':undefined} placeholder={way==='link'?text('Paste the Google Maps link','วางลิงก์ Google Maps'):text('Place name or address','ชื่อสถานที่หรือที่อยู่')} className={input}/>
+   <button type="button" onClick={()=>void search()} disabled={busy||!canFind} aria-label={way==='link'?text('Use link','ใช้ลิงก์'):text('Find','ค้นหา')} className="shrink-0 rounded-xl bg-slate-900 px-4 text-white disabled:opacity-50">{busy?<Loader2 className="h-5 w-5 animate-spin"/>:way==='link'?<Check className="h-5 w-5"/>:<Search className="h-5 w-5"/>}</button></div>
+  {way==='link'&&!error&&<p className="text-xs text-slate-500">{text('In Google Maps, open the place, tap Share, then Copy link.','ใน Google Maps เปิดสถานที่ กด แชร์ แล้วกด คัดลอกลิงก์')} <a href="https://maps.google.com" target="_blank" rel="noreferrer" className="font-semibold text-cyan-700">{text('Open Google Maps','เปิด Google Maps')}</a></p>}
+  {way==='link'&&query.trim()&&!isLink&&<p className="text-sm text-amber-700">{text('This is not a link. Use Search by name for names and addresses.','นี่ไม่ใช่ลิงก์ ใช้ ค้นหาด้วยชื่อ สำหรับชื่อหรือที่อยู่')}</p>}
   {error&&<p className="text-sm text-rose-700">{error}</p>}
-  {places?.length===0&&<p className="text-sm text-slate-500">{text('No place found. Try the full address or paste a Google Maps link.','ไม่พบสถานที่ ลองพิมพ์ที่อยู่เต็ม หรือวางลิงก์ Google Maps')}</p>}
+  {places?.length===0&&<p className="text-sm text-slate-500">{way==='link'?text('No place found in this link. Try Search by name.','ไม่พบสถานที่ในลิงก์นี้ ลอง ค้นหาด้วยชื่อ'):text('No place found. Try the full address or a Google Maps link.','ไม่พบสถานที่ ลองพิมพ์ที่อยู่เต็ม หรือใช้ลิงก์ Google Maps')}</p>}
   {places&&places.length>1&&<ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">{places.map(p=><li key={`${p.lat},${p.lng}`}><button type="button" onClick={()=>onChange(p)} className="flex w-full gap-2 p-3 text-left text-sm"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-400"/>{p.label}</button></li>)}</ul>}
  </div>;
 }
