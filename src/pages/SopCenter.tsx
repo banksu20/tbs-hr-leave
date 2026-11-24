@@ -2,12 +2,13 @@ import {useEffect,useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {ArrowLeft,CheckCircle2,ChevronDown,FileText,Loader2,RefreshCw} from 'lucide-react';
 import {useLanguage} from '@/hooks/useLanguage';
-import {acceptSop,fetchSops,sopTitle,type SopDoc} from '@/lib/sop';
+import {acceptSop,fetchSops,sopBody,sopTitle,type SopDoc} from '@/lib/sop';
 
 export default function SopCenter(){
  const navigate=useNavigate();
  const {language}=useLanguage();const th=language==='th';
  const text=(en:string,thai:string)=>th?thai:en;
+ const [other,setOther]=useState<Record<number,boolean>>({});
  const [docs,setDocs]=useState<SopDoc[]|null>(null),[open,setOpen]=useState<number|null>(null),[read,setRead]=useState<Record<number,boolean>>({}),[busy,setBusy]=useState<number|null>(null),[error,setError]=useState('');
  useEffect(()=>{let active=true;fetchSops().then(d=>{if(!active)return;setDocs(d);const first=d.find(x=>!x.acceptedAt);if(first)setOpen(first.id);}).catch(e=>{if(active)setError((e as Error).message);});return()=>{active=false;};},[]);
  const accept=async(d:SopDoc)=>{
@@ -39,7 +40,8 @@ export default function SopCenter(){
      <ChevronDown className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${isOpen?'rotate-180':''}`}/>
     </button>
     {isOpen&&<div className="border-t border-slate-100 p-4">
-     <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-800">{d.body}</div>
+     {!!d.bodyEn&&!!d.body&&<div className="mb-3 flex justify-end"><button type="button" onClick={()=>setOther(o=>({...o,[d.id]:!o[d.id]}))} className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-cyan-700">{th!==!!other[d.id]?'Read in English':'อ่านภาษาไทย'}</button></div>}
+     <div lang={th!==!!other[d.id]?'th':'en'} className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-800">{sopBody(d,th!==!!other[d.id])}</div>
      <p className="mt-4 text-xs text-slate-400">{text(`Version ${d.version} · updated ${formatDate(d.updatedAt)}`,`ฉบับที่ ${d.version} · แก้ไขล่าสุด ${formatDate(d.updatedAt)}`)}</p>
      {!d.acceptedAt&&<div className="mt-4 space-y-3">
       <label className="flex items-start gap-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-700"><input type="checkbox" className="mt-0.5 h-5 w-5 accent-cyan-600" checked={!!read[d.id]} onChange={e=>setRead(r=>({...r,[d.id]:e.target.checked}))}/>{text('I have read and understood this document.','ฉันอ่านและเข้าใจเอกสารนี้แล้ว')}</label>

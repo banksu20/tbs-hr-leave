@@ -3,8 +3,8 @@ import {Archive,FileText,Loader2,Pencil,Plus,RotateCcw} from 'lucide-react';
 import {useDashboardText} from '@/hooks/useDashboardText';
 import {loadSops,saveSop,setSopActive,type HrSop} from '@/lib/hrAdmin';
 
-type Draft={id?:number;version?:number;titleEn:string;titleTh:string;body:string;notify:boolean};
-const empty:Draft={titleEn:'',titleTh:'',body:'',notify:true};
+type Draft={id?:number;version?:number;titleEn:string;titleTh:string;body:string;bodyEn:string;notify:boolean};
+const empty:Draft={titleEn:'',titleTh:'',body:'',bodyEn:'',notify:true};
 
 export default function SopManager(){
  const dt=useDashboardText();
@@ -30,7 +30,10 @@ export default function SopManager(){
     <label className="block text-sm font-medium">{dt('Title (English)')}<input required maxLength={120} value={draft.titleEn} onChange={e=>setDraft({...draft,titleEn:e.target.value})} className={field}/></label>
     <label className="block text-sm font-medium">{dt('Title (Thai)')}<input maxLength={120} value={draft.titleTh} onChange={e=>setDraft({...draft,titleTh:e.target.value})} className={field}/></label>
    </div>
-   <label className="block text-sm font-medium">{dt('Document text')}<textarea required maxLength={20000} rows={12} value={draft.body} onChange={e=>setDraft({...draft,body:e.target.value})} className={field+' font-sans leading-relaxed'}/></label>
+   <div className="grid gap-3 lg:grid-cols-2">
+    <label className="block text-sm font-medium">{dt('Document text (Thai)')}<textarea required maxLength={20000} rows={14} lang="th" value={draft.body} onChange={e=>setDraft({...draft,body:e.target.value})} className={field+' font-sans leading-relaxed'}/></label>
+    <label className="block text-sm font-medium">{dt('Document text (English)')}<textarea maxLength={20000} rows={14} lang="en" value={draft.bodyEn} onChange={e=>setDraft({...draft,bodyEn:e.target.value})} className={field+' font-sans leading-relaxed'}/></label>
+   </div>
    <label className="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" className="mt-0.5 h-4 w-4 accent-cyan-600" checked={draft.notify} onChange={e=>setDraft({...draft,notify:e.target.checked})}/>{dt('Send everyone a LINE message to read and accept it')}</label>
    {draft.id&&<p className="text-xs text-amber-700">{dt('Changing the title or text creates a new version. Everyone must accept it again.')}</p>}
    <div className="flex gap-2"><button disabled={busy} className="rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy?dt('Saving…'):dt('Save')}</button><button type="button" disabled={busy} onClick={()=>setDraft(null)} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600">{dt('Cancel')}</button></div>
@@ -41,7 +44,7 @@ export default function SopManager(){
     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-cyan-50 text-cyan-700"><FileText className="h-5 w-5"/></span>
     <div className="min-w-0 flex-1">
      <h3 className="font-bold leading-snug">{s.titleTh?`${s.titleTh} · ${s.titleEn}`:s.titleEn}</h3>
-     <p className="text-xs text-slate-500">{dt('Version {0}',[s.version])}{s.active?'':` · ${dt('Archived')}`}</p>
+     <p className="text-xs text-slate-500">{dt('Version {0}',[s.version])}{s.bodyEn?'':` · ${dt('No English text yet')}`}{s.active?'':` · ${dt('Archived')}`}</p>
      {s.active&&<div className="mt-2">
       <div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-emerald-500" style={{width:`${total(s)?Math.round(s.accepted*100/total(s)):0}%`}}/></div>
       <button type="button" onClick={()=>setShowMissing(showMissing===s.id?null:s.id)} className="mt-1 text-xs font-medium text-slate-600 underline-offset-2 hover:underline">{dt('{0} of {1} accepted',[s.accepted,total(s)])}{s.missing.length?` · ${dt('{0} waiting',[s.missing.length])}`:''}</button>
@@ -49,7 +52,7 @@ export default function SopManager(){
      </div>}
     </div>
     <div className="flex shrink-0 gap-1">
-     {s.active&&<button type="button" title={dt('Edit')} aria-label={dt('Edit')} onClick={()=>{setDraft({id:s.id,version:s.version,titleEn:s.titleEn,titleTh:s.titleTh,body:s.body,notify:true});setNotice('');window.scrollTo({top:0,behavior:'smooth'});}} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><Pencil className="h-4 w-4"/></button>}
+     {s.active&&<button type="button" title={dt('Edit')} aria-label={dt('Edit')} onClick={()=>{setDraft({id:s.id,version:s.version,titleEn:s.titleEn,titleTh:s.titleTh,body:s.body,bodyEn:s.bodyEn??'',notify:true});setNotice('');window.scrollTo({top:0,behavior:'smooth'});}} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><Pencil className="h-4 w-4"/></button>}
      <button type="button" disabled={busy} title={s.active?dt('Archive'):dt('Restore')} aria-label={s.active?dt('Archive'):dt('Restore')} onClick={()=>void toggle(s)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">{s.active?<Archive className="h-4 w-4"/>:<RotateCcw className="h-4 w-4"/>}</button>
     </div>
    </div>
