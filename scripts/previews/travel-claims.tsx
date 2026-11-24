@@ -16,22 +16,22 @@ const svg=(label:string,amount:string)=>'data:image/svg+xml;base64,'+btoa(`<svg 
 const now=()=>new Date().toISOString();
 const ago=(m:number)=>new Date(Date.now()-m*60000).toISOString();
 const settings={officeLat:office.lat,officeLng:office.lng,radius:200,rate:7,homeCutoff:'10:00',tripKmCap:200,accountingEmail:'accounting@example.com',departments:['Sale']};
-type R={id:string;kind:string;mime:string;readAmount:number|null;readDate:string|null;amount:number;edited:boolean;needsOriginal:boolean;originalReceivedAt:string|null;createdAt:string;img:string};
+type R={id:string;kind:string;mime:string;readAmount:number|null;readDate:string|null;readTime?:string|null;readIsReceipt?:boolean|null;readMerchant?:string|null;readRef?:string|null;duplicate?:boolean;wrongTime?:boolean;wrongKind?:boolean;amount:number;edited:boolean;needsOriginal:boolean;originalReceivedAt:string|null;createdAt:string;img:string};
 type Trip={id:number;date:string;purpose:'deal'|'care';dealRef:string|null;mode:'car'|'grab'|'taxi';startFrom:'office'|'home';appointment:string;rate:number;status:string;flags:string[];autoClosed:boolean;submittedAt:string|null;decidedAt:string|null;decidedBy:string|null;decisionNote:string|null;paidAt:string|null;
  stops:{id:number;seq:number;clientName:string;label:string;lat:number;lng:number;arrivedAt:string|null}[];points:{id:number;kind:string;stopId:number|null;lat:number;lng:number;accuracy:number|null;at:string}[];legs:{id:number;from:number;to:number;routeKm:number;km:number;amount:number;capped:boolean}[];receipts:R[];user:string;employee:string;department:string};
 let seq=100;
 const today=new Date().toISOString().slice(0,10),yesterday=new Date(Date.now()-864e5).toISOString().slice(0,10);
 const trips:Trip[]=[
- {id:41,date:yesterday,purpose:'deal',dealRef:'QT-2026-118',mode:'car',startFrom:'home',appointment:'09:00',rate:7,status:'flagged',flags:['gps_weak','far_from_client'],autoClosed:false,submittedAt:ago(1200),decidedAt:null,decidedBy:null,decisionNote:null,paidAt:null,user:'other',employee:'Boonsri Dee (Bee)',department:'Sale',
+ {id:41,date:yesterday,purpose:'deal',dealRef:'QT-2026-118',mode:'car',startFrom:'home',appointment:'09:00',rate:7,status:'flagged',flags:['gps_weak','far_from_client','receipt_time','receipt_duplicate'],autoClosed:false,submittedAt:ago(1200),decidedAt:null,decidedBy:null,decisionNote:null,paidAt:null,user:'other',employee:'Boonsri Dee (Bee)',department:'Sale',
   stops:[{id:1,seq:1,clientName:'Siam Paragon Office',label:'991 Rama I Rd, Pathum Wan',lat:13.746,lng:100.535,arrivedAt:ago(1260)}],
   points:[{id:1,kind:'start_home',stopId:null,lat:13.8,lng:100.6,accuracy:180,at:ago(1320)},{id:2,kind:'arrive',stopId:1,lat:13.758,lng:100.535,accuracy:40,at:ago(1260)},{id:3,kind:'return_office',stopId:null,lat:office.lat,lng:office.lng,accuracy:10,at:ago(1200)}],
   legs:[{id:1,from:1,to:2,routeKm:18.4,km:3.1,amount:21.7,capped:true},{id:2,from:2,to:3,routeKm:3.4,km:3.4,amount:23.8,capped:false}],
-  receipts:[{id:'aaaaaaaa-0000-4000-8000-000000000001',kind:'parking',mime:'image/svg+xml',readAmount:40,readDate:yesterday,amount:60,edited:true,needsOriginal:true,originalReceivedAt:null,createdAt:ago(1200),img:svg('Parking','40.00')}]},
+  receipts:[{id:'aaaaaaaa-0000-4000-8000-000000000001',kind:'parking',mime:'image/svg+xml',readAmount:40,readDate:yesterday,readTime:'06:12',readIsReceipt:true,readMerchant:'Siam Paragon car park',readRef:'P-20431',duplicate:true,wrongTime:true,amount:60,edited:true,needsOriginal:true,originalReceivedAt:null,createdAt:ago(1200),img:svg('Parking','40.00')}]},
  {id:40,date:yesterday,purpose:'care',dealRef:null,mode:'car',startFrom:'office',appointment:'14:00',rate:7,status:'submitted',flags:[],autoClosed:false,submittedAt:ago(1100),decidedAt:null,decidedBy:null,decisionNote:null,paidAt:null,user:'me',employee:'Somchai Jaidee (Som)',department:'Sale',
   stops:[{id:2,seq:1,clientName:'Central World',label:'4 Ratchadamri Rd',lat:13.7466,lng:100.5393,arrivedAt:ago(1150)}],
   points:[{id:4,kind:'start_office',stopId:null,lat:office.lat,lng:office.lng,accuracy:null,at:ago(1200)},{id:5,kind:'arrive',stopId:2,lat:13.7247,lng:100.5786,accuracy:15,at:ago(1150)},{id:6,kind:'return_office',stopId:null,lat:office.lat,lng:office.lng,accuracy:9,at:ago(1100)}],
   legs:[{id:3,from:4,to:5,routeKm:6.2,km:6.2,amount:43.4,capped:false},{id:4,from:5,to:6,routeKm:6.8,km:6.8,amount:47.6,capped:false}],
-  receipts:[{id:'aaaaaaaa-0000-4000-8000-000000000002',kind:'toll',mime:'image/svg+xml',readAmount:50,readDate:yesterday,amount:50,edited:false,needsOriginal:true,originalReceivedAt:null,createdAt:ago(1100),img:svg('Expressway toll','50.00')}]},
+  receipts:[{id:'aaaaaaaa-0000-4000-8000-000000000002',kind:'toll',mime:'image/svg+xml',readAmount:50,readDate:yesterday,readTime:'13:52',readIsReceipt:true,readMerchant:'Sukhumvit 62 plaza',readRef:'TX-558812',amount:50,edited:false,needsOriginal:true,originalReceivedAt:null,createdAt:ago(1100),img:svg('Expressway toll','50.00')}]},
 ];
 const sum=(t:Trip)=>{const km=t.legs.reduce((s,l)=>s+l.km,0),kmAmount=t.legs.reduce((s,l)=>s+l.amount,0),receiptAmount=t.receipts.reduce((s,r)=>s+r.amount,0);
  return {...t,clients:t.stops.map(s=>s.clientName),km:Math.round(km*100)/100,kmAmount:Math.round(kmAmount*100)/100,receiptAmount,total:Math.round((kmAmount+receiptAmount)*100)/100,originalsWaiting:t.receipts.filter(r=>r.needsOriginal&&!r.originalReceivedAt).length,receipts:t.receipts.map(r=>({...r,img:undefined}))};};
@@ -59,8 +59,8 @@ window.fetch=async(input,init)=>{
     if(b.stopId)t!.stops.find(s=>s.id===b.stopId)!.arrivedAt=now();
     const km=dist(last,here)||6.4;t!.legs.push({id:++seq,from:last.id,to:p.id,routeKm:km,km,amount:t!.mode==='car'?Math.round(km*7*100)/100:0,capped:false});
     fix=b.action==='arrive'?{...office,accuracy:11}:fix;return json(state());}
-   case 'receipt-read':return json({ok:true,read:{amount:65,date:today,kind:t?.mode==='grab'?'grab':'toll'}});
-   case 'receipt-add':t!.receipts.push({id:crypto.randomUUID(),kind:b.kind,mime:b.mime,readAmount:b.readAmount,readDate:b.readDate,amount:b.amount,edited:b.readAmount!==b.amount,needsOriginal:['toll','parking','other'].includes(b.kind),originalReceivedAt:null,createdAt:now(),img:`data:${b.mime};base64,${b.content}`});return json(state());
+   case 'receipt-read':return json({ok:true,read:{amount:65,date:yesterday,kind:t?.mode==='grab'?'grab':'toll',time:'09:41',isReceipt:true,merchant:'Sukhumvit 62 plaza',ref:'TX-771203'},readSig:'demo'});
+   case 'receipt-add':t!.receipts.push({id:crypto.randomUUID(),kind:b.kind,mime:b.mime,readAmount:b.read?.amount??null,readDate:b.read?.date??null,readTime:b.read?.time??null,readIsReceipt:b.read?.isReceipt??null,readMerchant:b.read?.merchant??null,readRef:b.read?.ref??null,amount:b.amount,edited:b.read?.amount!==b.amount,needsOriginal:['toll','parking','other'].includes(b.kind),originalReceivedAt:null,createdAt:now(),img:`data:${b.mime};base64,${b.content}`});return json(state());
    case 'receipt-remove':t!.receipts=t!.receipts.filter(r=>r.id!==b.receiptId);return json(state());
    case 'submit':t!.status=t!.points.some(p=>(p.accuracy??0)>100)?'flagged':'submitted';t!.submittedAt=now();return json(state({submitted:sum(t!)}));
    case 'cancel':t!.status='cancelled';fix={...office,accuracy:12};return json(state());

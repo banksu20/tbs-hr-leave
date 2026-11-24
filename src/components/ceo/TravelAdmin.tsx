@@ -11,6 +11,7 @@ const filters=['flagged','submitted','approved','paid','rejected',''] as const;
 const card='rounded-2xl border border-slate-200 bg-white p-5 shadow-xs';
 const tones:Record<string,string>={open:'bg-sky-100 text-sky-800',submitted:'bg-sky-100 text-sky-800',flagged:'bg-amber-100 text-amber-800',approved:'bg-indigo-100 text-indigo-800',rejected:'bg-rose-100 text-rose-800',paid:'bg-emerald-100 text-emerald-800',cancelled:'bg-slate-100 text-slate-600'};
 const initials=(n:string)=>n.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'?';
+const receiptIssues=(r:AdminTrip['receipts'][number],date:string,dt:(s:string)=>string)=>[r.readIsReceipt===false&&dt('Not a receipt'),r.readDate&&r.readDate!==date&&dt('Other day'),r.wrongTime&&dt('Outside trip time'),r.duplicate&&dt('Used before'),r.wrongKind&&dt('Wrong type')].filter(Boolean) as string[];
 const clock=(v:string)=>new Date(v).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
 
 function TripDetailView({id,onBack,onChanged}:{id:number;onBack:()=>void;onChanged:()=>void}){
@@ -51,7 +52,9 @@ function TripDetailView({id,onBack,onChanged}:{id:number;onBack:()=>void;onChang
      {trip.receipts.length?<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">{trip.receipts.map(r=><a key={r.id} href={adminReceiptUrl(r.id)} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-xl border border-slate-100 bg-slate-50 transition hover:border-sky-300">
       {r.mime==='application/pdf'?<span className="grid aspect-[4/3] place-items-center bg-slate-100 text-slate-500"><FileText className="h-6 w-6"/></span>:<img src={adminReceiptUrl(r.id)} alt="" className="aspect-[4/3] w-full object-cover"/>}
       <span className="block space-y-0.5 p-2.5 text-xs"><span className="block text-sm font-extrabold text-slate-900">฿{money(r.amount)}</span>
+       {(r.readMerchant||r.readTime||r.readRef)&&<span className="block truncate text-slate-500">{[r.readMerchant,r.readTime,r.readRef&&`#${r.readRef}`].filter(Boolean).join(' · ')}</span>}
        {r.edited&&r.readAmount!=null&&<span className="block font-medium text-amber-700">{dt('Photo read ฿{0}',[money(r.readAmount)])}</span>}
+       {receiptIssues(r,trip.date,dt).map(x=><span key={x} className="mr-1 mt-1 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800"><Flag className="h-2.5 w-2.5"/>{x}</span>)}
        {r.needsOriginal&&<span className={`block font-medium ${r.originalReceivedAt?'text-emerald-700':'text-amber-700'}`}>{r.originalReceivedAt?dt('Original received'):dt('Original pending')}</span>}</span></a>)}</div>:<p className="text-sm text-slate-500">{dt('No receipts.')}</p>}
     </div>
    </div>

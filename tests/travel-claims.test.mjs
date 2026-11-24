@@ -50,7 +50,7 @@ test('an office trip records legs, receipts and goes straight to accounting',asy
  assert.equal(Number(st.trip.km),23.35);
  assert.equal((await emp('travel-receipt-add',{accountId:S,tripId:trip.id,kind:'toll',mime:'image/png',content:img,amount:'abc'})).statusCode,422);
  st=await emp('travel-receipt-add',{accountId:S,tripId:trip.id,kind:'toll',mime:'image/png',content:img,amount:'50',readAmount:'50'});
- st=await emp('travel-receipt-add',{accountId:S,tripId:trip.id,kind:'parking',mime:'image/jpeg',content:img,amount:'40',readAmount:'30'});
+ st=await emp('travel-receipt-add',{accountId:S,tripId:trip.id,kind:'parking',mime:'image/jpeg',content:Buffer.from('fake-parking-image').toString('base64'),amount:'40',readAmount:'30'});
  const [toll,park]=st.trip.receipts;
  assert.equal(toll.edited,false);assert.equal(park.edited,true);assert.equal(park.needsOriginal,true);
  assert.equal((await emp('travel-receipt-image',{accountId:O,receiptId:toll.id})).statusCode,404);
@@ -133,4 +133,32 @@ test('earlier operations still route and leave the 12-function limit intact',asy
  assert.equal((await dash('session')).session.username,'hr');
  assert.equal((await emp('sop-list',{accountId:S})).ok,true);
  assert.ok(readdirSync('api').filter(f=>/\.ts$/.test(f)).length<=12);
+});
+
+test('receipt checks flag non-receipts, wrong day or time, reuse and wrong type, but not clean receipts',async()=>{
+ const [{today,now,late,yesterday}]=await q("SELECT to_char(now() AT TIME ZONE 'Asia/Bangkok','YYYY-MM-DD') today,to_char(now() AT TIME ZONE 'Asia/Bangkok','HH24:MI') now,to_char((now() AT TIME ZONE 'Asia/Bangkok')-interval '5 hours','HH24:MI') late,to_char((now() AT TIME ZONE 'Asia/Bangkok')::date-1,'YYYY-MM-DD') yesterday");
+ const pic=s=>Buffer.from('receipt-'+s).toString('base64');
+ const run=async receipts=>{
+  let st=await emp('travel-start',{accountId:S,purpose:'deal',mode:'car',startFrom:'office',clientName:'Check Co',destLat:13.8,destLng:100.6,appointment:'14:00'});
+  const t=st.trip;
+  await q("UPDATE tbs_trip_points SET recorded_at=recorded_at-interval '1 hour' WHERE trip_id=$1",[t.id]);
+  st=await emp('travel-arrive',{accountId:S,tripId:t.id,stopId:t.stops[0].id,prevPointId:t.points[0].id,lat:13.8,lng:100.6,accuracy:10,km:3});
+  for(const r of receipts)st=await emp('travel-receipt-add',{accountId:S,tripId:t.id,mime:'image/jpeg',amount:'50',readAmount:'50',readIsReceipt:'true',readDate:today,readTime:now,...r});
+  const receipts_=st.trip.receipts;
+  return {receipts:receipts_,done:(await emp('travel-submit',{accountId:S,tripId:t.id})).submitted};
+ };
+ const clean=await run([{kind:'toll',content:pic('clean-1'),readKind:'toll',readRef:'C-1',readMerchant:'Plaza 1'},{kind:'parking',content:pic('clean-2'),readKind:'parking'}]);
+ assert.deepEqual(clean.done.flags,[]);assert.equal(clean.receipts[0].readRef,'C-1');assert.equal(clean.receipts[0].readTime,now);
+ const bad=await run([
+  {kind:'toll',content:pic('cat'),readIsReceipt:'false'},
+  {kind:'toll',content:pic('old'),readDate:yesterday},
+  {kind:'parking',content:pic('late'),readTime:late},
+  {kind:'toll',content:pic('clean-1'),readRef:'C-9'},
+  {kind:'toll',content:pic('copy'),readRef:'C-1',readKind:'toll'},
+  {kind:'grab',content:pic('grab'),readKind:'grab'},
+ ]);
+ for(const f of ['receipt_not_receipt','receipt_date','receipt_time','receipt_duplicate','receipt_kind'])assert.ok(bad.done.flags.includes(f),f);
+ assert.equal(bad.done.status,'flagged');
+ assert.equal(bad.receipts[0].readIsReceipt,false);assert.equal(bad.receipts[3].duplicate,true);assert.equal(bad.receipts[4].duplicate,true);
+ assert.equal(bad.receipts[2].wrongTime,true);assert.equal(bad.receipts[5].wrongKind,true);
 });

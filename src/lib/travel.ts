@@ -3,13 +3,13 @@ export type TripStatus='open'|'submitted'|'flagged'|'approved'|'rejected'|'paid'
 export interface TripStop {id:number;seq:number;clientName:string;label:string;lat:number;lng:number;arrivedAt:string|null}
 export interface TripPoint {id:number;kind:'start_office'|'start_home'|'arrive'|'return_office';stopId:number|null;lat:number;lng:number;accuracy:number|null;at:string}
 export interface TripLeg {id:number;from:number;to:number;routeKm:number;km:number;amount:number;capped:boolean}
-export interface TripReceipt {id:string;kind:ReceiptKind;mime:string;readAmount:number|null;readDate:string|null;amount:number;edited:boolean;needsOriginal:boolean;originalReceivedAt:string|null;createdAt:string}
+export interface TripReceipt {id:string;kind:ReceiptKind;mime:string;readAmount:number|null;readDate:string|null;readTime?:string|null;readIsReceipt?:boolean|null;readKind?:ReceiptKind|null;readMerchant?:string|null;readRef?:string|null;duplicate?:boolean;wrongTime?:boolean;wrongKind?:boolean;amount:number;edited:boolean;needsOriginal:boolean;originalReceivedAt:string|null;createdAt:string}
 export type ReceiptKind='toll'|'parking'|'grab'|'taxi'|'other';
 export interface TripSummary {id:number;date:string;purpose:'deal'|'care';dealRef:string|null;mode:'car'|'grab'|'taxi';startFrom:'office'|'home';appointment:string|null;rate:number;status:TripStatus;flags:string[];autoClosed:boolean;submittedAt:string|null;decidedAt:string|null;decidedBy:string|null;decisionNote:string|null;paidAt:string|null;clients:string[];km:number;kmAmount:number;receiptAmount:number;total:number;originalsWaiting:number}
 export interface TripDetail extends TripSummary {stops:TripStop[];points:TripPoint[];legs:TripLeg[];receipts:TripReceipt[]}
 export interface TravelState {eligible:boolean;configured:boolean;settings:{officeLat:number|null;officeLng:number|null;radius:number;rate:number;homeCutoff:string};trip:TripDetail|null;recent:TripSummary[];submitted?:TripSummary}
 export interface Place {lat:number;lng:number;label:string}
-export interface ReceiptRead {amount:number|null;date:string|null;kind:ReceiptKind|null}
+export interface ReceiptRead {amount:number|null;date:string|null;kind:ReceiptKind|null;time:string|null;isReceipt:boolean|null;merchant:string|null;ref:string|null}
 export class TravelError extends Error {constructor(message:string,public status:number,public state?:TravelState,public distanceM?:number){super(message);}}
 
 const token=()=>{const t=liff.getAccessToken();if(!t)throw new TravelError('Please open this page in LINE.',401);return t;};
@@ -22,7 +22,7 @@ async function call<T>(body?:Record<string,unknown>):Promise<T>{
 export const loadTravel=()=>call<TravelState>();
 export const travelAction=(action:string,body:Record<string,unknown>={})=>call<TravelState>({action,...body});
 export const findPlaces=async(query:string)=>(await call<{places:Place[]}>({action:'place',query})).places;
-export const readReceipt=async(mime:string,content:string)=>(await call<{read:ReceiptRead}>({action:'receipt-read',mime,content})).read;
+export const readReceipt=async(mime:string,content:string)=>{const r=await call<{read:ReceiptRead;readSig:string}>({action:'receipt-read',mime,content});return {read:r.read,sig:r.readSig};};
 export async function receiptUrl(id:string){
  const r=await fetch(`/api/travel?receipt=${encodeURIComponent(id)}`,{headers:{Authorization:`Bearer ${token()}`}});
  if(!r.ok)throw new TravelError('Receipt not found.',r.status);
@@ -62,6 +62,6 @@ export function statusLabel(s:TripStatus,text:T){
  return ({open:text('In progress','กำลังเดินทาง'),submitted:text('Sent to accounting','ส่งบัญชีแล้ว'),flagged:text('Waiting for review','รอตรวจสอบ'),approved:text('Approved','อนุมัติแล้ว'),rejected:text('Rejected','ไม่อนุมัติ'),paid:text('Paid','จ่ายแล้ว'),cancelled:text('Cancelled','ยกเลิก')} as const)[s];
 }
 export function flagLabel(f:string,text:T){
- return ({gps_weak:text('Weak GPS','GPS ไม่แม่น'),too_fast:text('Too fast for the distance','เร็วผิดปกติ'),over_cap:text('Over the daily km limit','เกินระยะต่อวัน'),far_from_client:text('Checked in far from the client','เช็กอินห่างจากลูกค้า'),fare_high:text('Fare looks high','ค่าโดยสารสูงผิดปกติ'),no_checkin:text('No client check-in','ไม่ได้เช็กอินที่ลูกค้า')} as Record<string,string>)[f]??f;
+ return ({gps_weak:text('Weak GPS','GPS ไม่แม่น'),too_fast:text('Too fast for the distance','เร็วผิดปกติ'),over_cap:text('Over the daily km limit','เกินระยะต่อวัน'),far_from_client:text('Checked in far from the client','เช็กอินห่างจากลูกค้า'),fare_high:text('Fare looks high','ค่าโดยสารสูงผิดปกติ'),no_checkin:text('No client check-in','ไม่ได้เช็กอินที่ลูกค้า'),receipt_not_receipt:text('Photo is not a receipt','รูปไม่ใช่ใบเสร็จ'),receipt_date:text('Receipt from another day','ใบเสร็จคนละวัน'),receipt_time:text('Receipt time outside the trip','เวลาใบเสร็จไม่อยู่ในช่วงทริป'),receipt_duplicate:text('Receipt used before','ใบเสร็จถูกใช้ซ้ำ'),receipt_kind:text('Receipt does not match the trip','ใบเสร็จไม่ตรงกับการเดินทาง')} as Record<string,string>)[f]??f;
 }
 

@@ -1,9 +1,11 @@
 import type {VercelRequest,VercelResponse} from '../_lib/platform.js';import {z} from 'zod';
 import {headerValue,json} from '../_lib/http.js';import {verifyLineIdentity} from '../_lib/lineIdentity.js';import {n8nPost} from '../_lib/n8nClient.js';
-import {findPlaces,MapsError,routeKm} from '../_lib/maps.js';import {readReceipt} from '../_lib/readReceipt.js';
+import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
+import {findPlaces,MapsError,routeKm} from '../_lib/maps.js';import {readReceipt,type ReceiptRead} from '../_lib/readReceipt.js';import {webhookSecret} from '../_lib/webhookSecret.js';
 const lat=z.number().min(-90).max(90),lng=z.number().min(-180).max(180),acc=z.number().min(0).max(100000).optional();
 const time=z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const id=z.number().int().positive();
+const readShape=z.object({amount:z.number().positive().max(100000).nullable(),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),kind:z.enum(['toll','parking','grab','taxi','other']).nullable(),time:z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).nullable(),isReceipt:z.boolean().nullable(),merchant:z.string().max(120).nullable(),ref:z.string().max(60).nullable()});
 const file={mime:z.enum(['image/jpeg','image/png','application/pdf']),content:z.string().min(10).max(2800000)};
 const schema=z.discriminatedUnion('action',[
  z.object({action:z.literal('place'),query:z.string().trim().min(2).max(2000)}),
@@ -12,7 +14,7 @@ const schema=z.discriminatedUnion('action',[
  z.object({action:z.literal('arrive'),tripId:id,stopId:id,prevPointId:id,lat,lng,accuracy:acc}),
  z.object({action:z.literal('return'),tripId:id,prevPointId:id,lat,lng,accuracy:acc}),
  z.object({action:z.literal('receipt-read'),...file}),
- z.object({action:z.literal('receipt-add'),tripId:id,kind:z.enum(['toll','parking','grab','taxi','other']),...file,amount:z.number().positive().max(100000),readAmount:z.number().positive().max(100000).nullable().optional(),readDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional()}),
+ z.object({action:z.literal('receipt-add'),tripId:id,kind:z.enum(['toll','parking','grab','taxi','other']),...file,amount:z.number().positive().max(100000),read:readShape.optional(),readSig:z.string().max(128).optional()}),
  z.object({action:z.literal('receipt-remove'),tripId:id,receiptId:z.string().uuid()}),
  z.object({action:z.literal('submit'),tripId:id}),
  z.object({action:z.literal('cancel'),tripId:id}),
@@ -20,6 +22,9 @@ const schema=z.discriminatedUnion('action',[
 type Point={id:number;kind:string;lat:number;lng:number};
 type State={ok?:boolean;statusCode?:number;error?:string;settings?:{officeLat:number|null;officeLng:number|null;radius?:number};trip?:{id:number;points:Point[];stops?:{id:number;lat:number;lng:number}[]}|null};
 const CLIENT_RADIUS_M=1000;
+const tidy=(r:ReceiptRead):ReceiptRead=>({amount:r.amount??null,date:r.date??null,kind:r.kind??null,time:r.time??null,isReceipt:r.isReceipt??null,merchant:r.merchant??null,ref:r.ref??null});
+const signRead=(content:string,r:ReceiptRead)=>createHmac('sha256',webhookSecret()??'').update(createHash('sha256').update(content).digest('hex')+'|'+JSON.stringify(tidy(r))).digest('hex');
+const signedRead=(content:string,r:ReceiptRead|undefined,sig:string|undefined)=>{if(!r||!sig||!webhookSecret())return null;const a=Buffer.from(signRead(content,r)),b=Buffer.from(sig);return a.length===b.length&&timingSafeEqual(a,b)?tidy(r):null;};
 const metres=(a:{lat:number;lng:number},b:{lat:number;lng:number})=>{const r=Math.PI/180,x=Math.sin((b.lat-a.lat)*r/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin((b.lng-a.lng)*r/2)**2;return Math.round(12742000*Math.asin(Math.sqrt(x)));};
 const one=(r:unknown)=>(Array.isArray(r)?r[0]:r) as State|undefined;
 const call=async(operation:string,payload:Record<string,unknown>)=>one(await n8nPost('employee-cancellations',{operation,payload}));
@@ -53,7 +58,8 @@ export default async function handler(req:VercelRequest,res:VercelResponse){
   if(b.action==='place')return json(res,200,{ok:true,places:await findPlaces(b.query)});
   if(b.action==='receipt-read'){
    const content=fileOk(b.mime,b.content);if(!content)return json(res,422,{error:'Use a photo or PDF up to 2 MB.'});
-   return json(res,200,{ok:true,read:await readReceipt(b.mime,content)});
+   const read=tidy(await readReceipt(b.mime,content));
+   return json(res,200,{ok:true,read,readSig:signRead(content,read)});
   }
   let out:State|undefined;
   if(b.action==='arrive'||b.action==='return'){
@@ -76,7 +82,9 @@ export default async function handler(req:VercelRequest,res:VercelResponse){
    out=await call(b.action==='arrive'?'travel-arrive':'travel-return',{...b,accountId,km,...extra});
   }else if(b.action==='receipt-add'){
    const content=fileOk(b.mime,b.content);if(!content)return json(res,422,{error:'Use a photo or PDF up to 2 MB.'});
-   out=await call('travel-receipt-add',{...b,accountId,content,amount:b.amount.toFixed(2),readAmount:b.readAmount!=null?b.readAmount.toFixed(2):'',readDate:b.readDate??''});
+   const read=signedRead(content,b.read as ReceiptRead|undefined,b.readSig)??tidy(await readReceipt(b.mime,content));
+   const {read:_read,readSig:_sig,...rest}=b;void _read;void _sig;
+   out=await call('travel-receipt-add',{...rest,accountId,content,amount:b.amount.toFixed(2),readAmount:read.amount!=null?read.amount.toFixed(2):'',readDate:read.date??'',readTime:read.time??'',readKind:read.kind??'',readMerchant:read.merchant??'',readRef:read.ref??'',readIsReceipt:read.isReceipt==null?'':String(read.isReceipt)});
   }else{
    out=await call(`travel-${b.action}`,{...b,accountId});
   }

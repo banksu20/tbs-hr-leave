@@ -2,7 +2,7 @@ import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {ArrowLeft,Briefcase,Building2,Camera,Car,CarTaxiFront,Check,CheckCircle2,ChevronRight,Clock,ExternalLink,Flag,Home,ImagePlus,Link2,Loader2,MapPin,Navigation,Plus,Receipt,Search,Smartphone,Trash2,X} from 'lucide-react';
 import {useLanguage} from '@/hooks/useLanguage';
-import {currentPosition,findPlaces,loadTravel,money,prepareFile,readReceipt,receiptUrl,travelAction,TravelError,type Fix,type Place,type ReceiptKind,type TravelState,type TripDetail,type TripStatus,type TripSummary,flagLabel,statusLabel} from '@/lib/travel';
+import {currentPosition,findPlaces,loadTravel,money,prepareFile,readReceipt,receiptUrl,travelAction,TravelError,type Fix,type Place,type ReceiptKind,type ReceiptRead,type TravelState,type TripDetail,type TripStatus,type TripSummary,flagLabel,statusLabel} from '@/lib/travel';
 
 import type {T} from '@/lib/travel';
 type Run=(fn:()=>Promise<TravelState>)=>Promise<void>;
@@ -83,15 +83,23 @@ function StartForm({state,text,run}:{state:TravelState;text:T;run:Run}){
 
 function AddReceipt({trip,text,run}:{trip:TripDetail;text:T;run:Run}){
  const ref=useRef<HTMLInputElement>(null),library=useRef<HTMLInputElement>(null);
- const [file,setFile]=useState<{mime:string;content:string;preview:string}|null>(null),[reading,setReading]=useState(false),[kind,setKind]=useState<ReceiptKind>(trip.mode==='car'?'toll':trip.mode),[amount,setAmount]=useState(''),[read,setRead]=useState<{amount:number|null;date:string|null}|null>(null),[error,setError]=useState('');
+ const [file,setFile]=useState<{mime:string;content:string;preview:string}|null>(null),[reading,setReading]=useState(false),[kind,setKind]=useState<ReceiptKind>(trip.mode==='car'?'toll':trip.mode),[amount,setAmount]=useState(''),[read,setRead]=useState<{read:ReceiptRead;sig:string}|null>(null),[error,setError]=useState('');
  const pick=async(f:File|undefined)=>{
   if(!f)return;setError('');setReading(true);
-  try{const p=await prepareFile(f);setFile(p);const r=await readReceipt(p.mime,p.content).catch(()=>({amount:null,date:null,kind:null}));setRead(r);if(r.amount)setAmount(String(r.amount));if(r.kind)setKind(r.kind);}
+  try{const p=await prepareFile(f);setFile(p);const r=await readReceipt(p.mime,p.content).catch(()=>null);setRead(r);if(r?.read.amount)setAmount(String(r.read.amount));if(r?.read.kind)setKind(r.read.kind);}
   catch(e){setError((e as Error).message);}finally{setReading(false);if(ref.current)ref.current.value='';if(library.current)library.current.value='';}
  };
  const clear=()=>{if(file?.preview)URL.revokeObjectURL(file.preview);setFile(null);setAmount('');setRead(null);};
  const value=Number(amount);
- const save=()=>run(async()=>{const s=await travelAction('receipt-add',{tripId:trip.id,kind,mime:file!.mime,content:file!.content,amount:value,readAmount:read?.amount??null,readDate:read?.date??null});clear();return s;});
+ const got=read?.read;
+ const today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Bangkok'});
+ const wrongType=(k:ReceiptKind)=>(trip.mode==='car'&&['grab','taxi'].includes(k))||(trip.mode==='grab'&&['taxi','parking'].includes(k))||(trip.mode==='taxi'&&['grab','parking'].includes(k));
+ const warnings=[
+  got?.isReceipt===false&&text("This doesn't look like a receipt. If you save it, HR will check the trip.",'รูปนี้ดูไม่ใช่ใบเสร็จ ถ้าบันทึก HR จะตรวจทริปนี้'),
+  got?.date&&got.date!==trip.date&&text(`This receipt is dated ${got.date}, not the trip day. HR will check it.`,`ใบเสร็จนี้ลงวันที่ ${got.date} ไม่ใช่วันเดินทาง HR จะตรวจ`),
+  wrongType(kind)&&text('This type of receipt does not match how you travelled. HR will check it.','ประเภทใบเสร็จไม่ตรงกับการเดินทาง HR จะตรวจ'),
+ ].filter(Boolean) as string[];
+ const save=()=>run(async()=>{const s=await travelAction('receipt-add',{tripId:trip.id,kind,mime:file!.mime,content:file!.content,amount:value,...(read?{read:read.read,readSig:read.sig}:{})});clear();return s;});
  return <>
   <input ref={ref} type="file" accept="image/*" capture="environment" className="hidden" onChange={e=>void pick(e.target.files?.[0])}/>
   <input ref={library} type="file" accept="image/*,application/pdf" className="hidden" onChange={e=>void pick(e.target.files?.[0])}/>
@@ -108,7 +116,9 @@ function AddReceipt({trip,text,run}:{trip:TripDetail;text:T;run:Run}){
      <div className="flex flex-wrap gap-1.5">{kinds.map(([v,en,th])=><button key={v} type="button" aria-pressed={kind===v} onClick={()=>setKind(v)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${kind===v?'bg-sky-600 text-white':'bg-white text-slate-600 ring-1 ring-slate-200'}`}>{text(en,th)}</button>)}</div>
      <label className="relative block"><span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-lg font-bold text-slate-400">฿</span><input inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value.replace(/[^0-9.]/g,''))} placeholder="0.00" aria-label={text('Amount','จำนวนเงิน')} className={input+' bg-white py-2.5 pl-9 text-right text-xl font-bold'}/></label>
     </div></div>
-   <p className="text-xs text-slate-500">{read?.amount?<span className="font-semibold text-emerald-700">{text('Amount read from the photo. ','อ่านยอดจากรูปแล้ว ')}</span>:null}{read?.amount?text('Fix it if it is wrong.','แก้ได้ถ้าไม่ถูก'):text('Type the amount on the receipt.','พิมพ์ยอดเงินตามใบเสร็จ')}{['toll','parking','other'].includes(kind)?' '+text('Keep the paper receipt for accounting.','เก็บใบเสร็จตัวจริงไว้ส่งบัญชี'):''}</p>
+   {(got?.merchant||got?.time||got?.ref)&&<p className="text-xs text-slate-500">{[got.merchant,got.date&&got.time?`${got.date} ${got.time}`:got.time,got.ref&&`#${got.ref}`].filter(Boolean).join(' · ')}</p>}
+   {warnings.map(w=><p key={w} className="flex items-start gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800"><Flag className="mt-0.5 h-3 w-3 shrink-0"/>{w}</p>)}
+   <p className="text-xs text-slate-500">{got?.amount?<span className="font-semibold text-emerald-700">{text('Amount read from the photo. ','อ่านยอดจากรูปแล้ว ')}</span>:null}{got?.amount?text('Fix it if it is wrong.','แก้ได้ถ้าไม่ถูก'):text('Type the amount on the receipt.','พิมพ์ยอดเงินตามใบเสร็จ')}{['toll','parking','other'].includes(kind)?' '+text('Keep the paper receipt for accounting.','เก็บใบเสร็จตัวจริงไว้ส่งบัญชี'):''}</p>
    <div className="flex gap-2"><button type="button" disabled={!(value>0&&value<=100000)} onClick={()=>void save()} className="flex-1 rounded-2xl bg-sky-600 py-3 text-sm font-bold text-white disabled:bg-slate-300">{text('Save receipt','บันทึกใบเสร็จ')}</button><button type="button" onClick={clear} className="rounded-2xl bg-white px-5 text-sm font-semibold text-slate-600 ring-1 ring-slate-200">{text('Cancel','ยกเลิก')}</button></div>
   </div>}
  </>;

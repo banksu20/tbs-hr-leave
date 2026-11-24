@@ -8,22 +8,29 @@ const {readReceipt}=loadTS({'./n8nClient.js':{N8N_BASE:'https://n8n.test'}})('ap
 
 test('receipt photos are read through the secured n8n route',async()=>{
  sent=[];
- assert.deepEqual(await readReceipt('image/jpeg','abc'),{amount:65,date:'2026-11-23',kind:'toll'});
+ assert.deepEqual(await readReceipt('image/jpeg','abc'),{amount:65,date:'2026-11-23',kind:'toll',time:null,isReceipt:null,merchant:null,ref:null});
  assert.equal(sent[0].url,'https://n8n.test/webhook/read-receipt');
  assert.equal(sent[0].init.headers['x-ceo-webhook-secret'],'test-secret');
  assert.deepEqual(sent[0].body,{mime:'image/jpeg',content:'abc'});
  reply=()=>({ok:true,json:async()=>[{amount:120.456,date:'23/11/2569',kind:'boat'}]});
- assert.deepEqual(await readReceipt('image/png','abc'),{amount:120.46,date:null,kind:null});
+ assert.deepEqual(await readReceipt('image/png','abc'),{amount:120.46,date:null,kind:null,time:null,isReceipt:null,merchant:null,ref:null});
 });
 
 test('PDFs, failures and nonsense fall back to typing the amount',async()=>{
  sent=[];
- assert.deepEqual(await readReceipt('application/pdf','abc'),{amount:null,date:null,kind:null});
+ assert.deepEqual(await readReceipt('application/pdf','abc'),{amount:null,date:null,kind:null,time:null,isReceipt:null,merchant:null,ref:null});
  assert.equal(sent.length,0);
  reply=()=>({ok:false,status:500,json:async()=>({})});
- assert.deepEqual(await readReceipt('image/jpeg','abc'),{amount:null,date:null,kind:null});
+ assert.deepEqual(await readReceipt('image/jpeg','abc'),{amount:null,date:null,kind:null,time:null,isReceipt:null,merchant:null,ref:null});
  reply=()=>{throw new Error('offline');};
- assert.deepEqual(await readReceipt('image/jpeg','abc'),{amount:null,date:null,kind:null});
+ assert.deepEqual(await readReceipt('image/jpeg','abc'),{amount:null,date:null,kind:null,time:null,isReceipt:null,merchant:null,ref:null});
  reply=()=>({ok:true,json:async()=>({amount:-5})});
- assert.deepEqual(await readReceipt('image/jpeg','abc'),{amount:null,date:null,kind:null});
+ assert.deepEqual(await readReceipt('image/jpeg','abc'),{amount:null,date:null,kind:null,time:null,isReceipt:null,merchant:null,ref:null});
+});
+
+test('receipt check details are kept and cleaned',async()=>{
+ reply=()=>({ok:true,json:async()=>({isReceipt:false,amount:50,date:'2026-11-23',time:'14:37',kind:'toll',merchant:'  Plaza 62  ',ref:'TX-1'})});
+ assert.deepEqual(await readReceipt('image/jpeg','abc'),{amount:50,date:'2026-11-23',kind:'toll',time:'14:37',isReceipt:false,merchant:'Plaza 62',ref:'TX-1'});
+ reply=()=>({ok:true,json:async()=>({isReceipt:'yes',time:'25:00',merchant:'',ref:7})});
+ assert.deepEqual(await readReceipt('image/jpeg','abc'),{amount:null,date:null,kind:null,time:null,isReceipt:null,merchant:null,ref:null});
 });
