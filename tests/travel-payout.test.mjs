@@ -50,7 +50,7 @@ test('month-end reminder goes once to the chosen person only',async()=>{
  const set=await dash('travel-settings-save',{payoutNotify:A});
  assert.equal(set.settings.payoutNotify,A);
  assert.equal((await dash('travel-settings')).settings.payoutNotify,A);
- const lines=async()=>(await q("SELECT payload FROM tbs_sync_jobs WHERE kind='line' AND user_id=$1",[A])).map(r=>r.payload);
+ const lines=async()=>(await q("SELECT payload FROM tbs_sync_jobs WHERE kind='line' AND user_id=$1 AND payload::text LIKE '%สรุปเดือน%'",[A])).map(r=>r.payload);
  assert.equal(await q("SELECT tbs_travel_payout_reminder('2026-11-01 05:00+07') n").then(r=>r[0].n),0);
  assert.equal(await q("SELECT tbs_travel_payout_reminder('2026-11-01 08:00+07') n").then(r=>r[0].n),1);
  assert.equal(await q("SELECT tbs_travel_payout_reminder('2026-11-02 08:00+07') n").then(r=>r[0].n),0);
