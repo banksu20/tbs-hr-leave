@@ -2,7 +2,7 @@ import type {VercelRequest,VercelResponse} from './_lib/platform.js';
 import {z} from 'zod';
 import {json} from './_lib/http.js';
 import {dashboardCall,dashboardSession,hashPassword,passwordValid,sameOrigin} from './_lib/dashboardAuth.js';
-const schema=z.object({id:z.string().uuid().optional(),username:z.string().regex(/^[a-z0-9._-]{2,64}$/),role:z.enum(['admin','ceo','hr']),active:z.boolean(),password:z.string().optional()});
+const schema=z.object({id:z.string().uuid().optional(),username:z.string().regex(/^[a-z0-9._-]{2,64}$/),role:z.enum(['admin','ceo','hr','accounting']),active:z.boolean(),password:z.string().optional()});
 export default async function handler(req:VercelRequest,res:VercelResponse){
  res.setHeader('Cache-Control','no-store');
  try{

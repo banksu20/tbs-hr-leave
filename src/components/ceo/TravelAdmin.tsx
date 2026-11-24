@@ -15,7 +15,7 @@ const initials=(n:string)=>n.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]
 const receiptIssues=(r:AdminTrip['receipts'][number],date:string,dt:(s:string)=>string)=>[r.readIsReceipt===false&&dt('Not a receipt'),r.readDate&&r.readDate!==date&&dt('Other day'),r.wrongTime&&dt('Outside trip time'),r.duplicate&&dt('Used before'),r.wrongKind&&dt('Wrong type')].filter(Boolean) as string[];
 const clock=(v:string)=>new Date(v).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'});
 
-function TripDetailView({id,onBack,onChanged}:{id:number;onBack:()=>void;onChanged:()=>void}){
+function TripDetailView({id,onBack,onChanged,accounting}:{id:number;onBack:()=>void;onChanged:()=>void;accounting?:boolean}){
  const dt=useDashboardText();const {language}=useLanguage();const text:T=(en,th)=>language==='th'?th:en;
  const [trip,setTrip]=useState<AdminTrip|null>(null),[note,setNote]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
  useEffect(()=>{loadTrip(id).then(setTrip).catch(e=>setError((e as Error).message));},[id]);
@@ -68,7 +68,8 @@ function TripDetailView({id,onBack,onChanged}:{id:number;onBack:()=>void;onChang
      </dl>
     </div>
     {trip.decidedBy&&<p className="flex items-start gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0"/><span><span className="font-semibold">{dt('Checked by {0}',[trip.decidedBy])}</span>{trip.decisionNote&&<span className="block text-indigo-800/80">{trip.decisionNote}</span>}</span></p>}
-    {trip.status==='flagged'&&<div className={card+' space-y-3'}><h3 className="font-bold text-slate-900">{dt('Your decision')}</h3>
+    {trip.status==='flagged'&&accounting&&<p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{dt('HR checks this trip before it can be paid.')}</p>}
+    {trip.status==='flagged'&&!accounting&&<div className={card+' space-y-3'}><h3 className="font-bold text-slate-900">{dt('Your decision')}</h3>
      <textarea value={note} maxLength={500} rows={3} onChange={e=>setNote(e.target.value)} placeholder={dt('Note (optional)')} className={field+' mt-0'}/>
      <button type="button" disabled={busy} onClick={()=>void act(()=>decideTrip(trip.id,'approve',note))} className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-sm disabled:opacity-50"><CheckCircle2 className="h-4 w-4"/>{dt('Approve')}</button>
      <button type="button" disabled={busy} onClick={()=>void act(()=>decideTrip(trip.id,'reject',note))} className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white py-3 text-sm font-bold text-rose-700 disabled:opacity-50"><XCircle className="h-4 w-4"/>{dt('Reject')}</button></div>}
@@ -128,10 +129,10 @@ function Settings(){
  </section>;
 }
 
-export default function TravelAdmin(){
+export default function TravelAdmin({accounting=false}:{accounting?:boolean}){
  const dt=useDashboardText();const {language}=useLanguage();const text:T=(en,th)=>language==='th'?th:en;
  const url=new URLSearchParams(location.search);
- const [tab,setTab]=useState<'claims'|'payout'|'settings'>(url.get('tab')==='payout'?'payout':'claims'),[month,setMonth]=useState(/^20\d{2}-(0[1-9]|1[0-2])$/.test(url.get('month')??'')?url.get('month')!:new Date(Date.now()+7*3600e3).toISOString().slice(0,7)),[status,setStatus]=useState<string>('flagged'),[trips,setTrips]=useState<AdminTripRow[]|null>(null),[all,setAll]=useState<AdminTripRow[]|null>(null),[open,setOpen]=useState<number|null>(null),[error,setError]=useState('');
+ const [tab,setTab]=useState<'claims'|'payout'|'settings'>(url.get('tab')==='payout'||accounting?'payout':'claims'),[month,setMonth]=useState(/^20\d{2}-(0[1-9]|1[0-2])$/.test(url.get('month')??'')?url.get('month')!:new Date(Date.now()+7*3600e3).toISOString().slice(0,7)),[status,setStatus]=useState<string>('flagged'),[trips,setTrips]=useState<AdminTripRow[]|null>(null),[all,setAll]=useState<AdminTripRow[]|null>(null),[open,setOpen]=useState<number|null>(null),[error,setError]=useState('');
  const refresh=useCallback(()=>{setTrips(null);setError('');loadTrips(status).then(setTrips).catch(e=>setError((e as Error).message));loadTrips('').then(setAll).catch(()=>undefined);},[status]);
  useEffect(()=>{if(tab==='claims')refresh();},[tab,refresh]);
  const stats=useMemo(()=>{const l=all??[];const sum=(f:(t:AdminTripRow)=>boolean)=>l.filter(f).reduce((s,t)=>s+Number(t.total),0);
@@ -140,8 +141,8 @@ export default function TravelAdmin(){
  const tiles:[string,string,React.ReactNode,string][]=[[dt('Needs your check'),String(stats.flagged),<Flag key="f" className="h-4 w-4"/>,'bg-amber-100 text-amber-700'],[dt('To pay'),`฿${money(stats.toPay)}`,<Banknote key="b" className="h-4 w-4"/>,'bg-sky-100 text-sky-700'],[dt('Paid · last 60 days'),`฿${money(stats.paid)}`,<CheckCircle2 key="c" className="h-4 w-4"/>,'bg-emerald-100 text-emerald-700'],[dt('Paper receipts due'),String(stats.paper),<Receipt key="r" className="h-4 w-4"/>,'bg-indigo-100 text-indigo-700']];
  return <section className="space-y-5">
   <div className="flex flex-wrap items-end justify-between gap-3"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-linear-to-br/srgb from-sky-500 to-indigo-600 text-white shadow-md shadow-sky-600/20"><Car className="h-5 w-5"/></span><div><h2 className="text-xl font-bold text-slate-900">{dt('Travel claims')}</h2><p className="text-sm text-slate-500">{dt('Clean trips go straight to accounting. Flagged trips wait for your check.')}</p></div></div>
-   <div className="flex gap-1 rounded-xl bg-slate-100 p-1">{tabBtn('claims',dt('Claims'),<Receipt className="h-4 w-4"/>)}{tabBtn('payout',dt('Monthly payout'),<Wallet className="h-4 w-4"/>)}{tabBtn('settings',dt('Settings'),<SlidersHorizontal className="h-4 w-4"/>)}</div></div>
-  {tab==='settings'?<Settings/>:open?<TripDetailView id={open} onBack={()=>setOpen(null)} onChanged={refresh}/>:tab==='payout'?<TravelPayout month={month} onMonth={setMonth} onOpen={setOpen}/>:<>
+   <div className="flex gap-1 rounded-xl bg-slate-100 p-1">{tabBtn('claims',dt('Claims'),<Receipt className="h-4 w-4"/>)}{tabBtn('payout',dt('Monthly payout'),<Wallet className="h-4 w-4"/>)}{!accounting&&tabBtn('settings',dt('Settings'),<SlidersHorizontal className="h-4 w-4"/>)}</div></div>
+  {tab==='settings'&&!accounting?<Settings/>:open?<TripDetailView id={open} accounting={accounting} onBack={()=>setOpen(null)} onChanged={refresh}/>:tab==='payout'?<TravelPayout month={month} onMonth={setMonth} onOpen={setOpen}/>:<>
    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{tiles.map(([k,v,icon,tone])=><div key={k} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-500">{k}</p><span className={`grid h-8 w-8 place-items-center rounded-lg ${tone}`}>{icon}</span></div><p className="mt-2 truncate text-2xl font-extrabold text-slate-900">{all?v:'–'}</p></div>)}</div>
    <div className="flex flex-wrap gap-2">{filters.map(f=><button key={f} type="button" onClick={()=>setStatus(f)} className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${status===f?'bg-slate-900 text-white':'border border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}>{f?statusLabel(f,text):dt('All')}{all&&<span className={`rounded-full px-1.5 text-[10px] ${status===f?'bg-white/20':'bg-slate-100 text-slate-500'}`}>{stats.count(f)}</span>}</button>)}</div>
    {error&&<p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}

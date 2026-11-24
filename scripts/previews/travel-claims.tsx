@@ -97,7 +97,7 @@ history.replaceState(null,'',location.pathname+location.search.replace(/([?&])t=
 export function Preview(){
  const {toggleLanguage,language}=useLanguage();
  const [tab,setTab]=useState(new URLSearchParams(location.search).get('tab')||'employee');
- return <><div className="flex flex-wrap items-center justify-between gap-2 bg-amber-100 p-3 text-sm"><span>Local demo · no live changes</span><span className="flex gap-3">{['employee','accounting','dashboard'].map(t=><button key={t} onClick={()=>setTab(t)} className={tab===t?'font-bold underline':''}>{t}</button>)}<button onClick={toggleLanguage} className="underline">{language==='en'?'ภาษาไทย':'English'}</button></span></div>
-  {tab==='employee'?<div className="mx-auto max-w-md"><MemoryRouter><TravelClaims/></MemoryRouter></div>:tab==='accounting'?<TravelReview/>:<div className="min-h-screen bg-slate-100"><div className="mx-auto max-w-4xl p-6"><TravelAdmin/></div></div>}</>;
+ return <><div className="flex flex-wrap items-center justify-between gap-2 bg-amber-100 p-3 text-sm"><span>Local demo · no live changes</span><span className="flex gap-3">{['employee','accounting','dashboard','accounting login'].map(t=><button key={t} onClick={()=>setTab(t)} className={tab===t?'font-bold underline':''}>{t}</button>)}<button onClick={toggleLanguage} className="underline">{language==='en'?'ภาษาไทย':'English'}</button></span></div>
+  {tab==='employee'?<div className="mx-auto max-w-md"><MemoryRouter><TravelClaims/></MemoryRouter></div>:tab==='accounting'?<TravelReview/>:<div className="min-h-screen bg-slate-100"><div className="mx-auto max-w-4xl p-6"><TravelAdmin key={tab} accounting={tab==='accounting login'}/></div></div>}</>;
 }
 createRoot(document.getElementById('root')!).render(<LanguageProvider><Preview/></LanguageProvider>);
