@@ -7,7 +7,7 @@ import liff from "@line/liff";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Thermometer, Palmtree, CalendarDays, Users, Plus, ChevronRight, ShieldCheck, GraduationCap, FileCheck2, Car } from "lucide-react";
 import { fetchSops } from "@/lib/sop";
-import { loadTravel } from "@/lib/travel";
+import { loadTravel, money, monthSummary } from "@/lib/travel";
 import HolidaysModal from "./HolidaysModal";
 import { useLeaveQuota } from "@/hooks/useLeaveQuota";
 import tbsLogo from "@/image/TBS-Logo.png";
@@ -94,7 +94,7 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
   const [offToday, setOffToday] = useState<number | null>(null);
   const [isIntern, setIsIntern] = useState(false);
   const [sopPending, setSopPending] = useState<number | null>(null);
-  const [travel, setTravel] = useState<{ open: boolean; configured: boolean } | null>(null);
+  const [travel, setTravel] = useState<{ open: boolean; configured: boolean; client: string; total: number; trips: number; paper: number } | null>(null);
 
   const { t, language } = useLanguage();
   const th = language === 'th';
@@ -117,7 +117,7 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
     if (employeePreview || !liff.getAccessToken()) return;
     let active = true;
     fetchSops().then(docs => { if (active) setSopPending(docs.filter(d => !d.acceptedAt).length); }).catch(() => undefined);
-    loadTravel().then(t => { if (active) setTravel(t.eligible ? { open: !!t.trip, configured: t.configured } : null); }).catch(() => undefined);
+    loadTravel().then(t => { if (active) setTravel(t.eligible ? { open: !!t.trip, configured: t.configured, client: t.trip?.stops.at(-1)?.clientName ?? '', ...monthSummary(t.recent) } : null); }).catch(() => undefined);
     return () => { active = false; };
   }, [employeePreview]);
 
@@ -292,13 +292,18 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
         </button>
 
         {travel?.configured && (
-          <button type="button" onClick={() => navigate("/travel")} className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left shadow-xs transition active:scale-[0.98] ${travel.open ? 'border-cyan-200 bg-cyan-50' : 'border-slate-100 bg-white hover:border-cyan-200'}`}>
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-cyan-50 text-cyan-600"><Car className="h-5 w-5" /></span>
+          <button type="button" onClick={() => navigate("/travel")} className={`relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border p-4 text-left shadow-xs transition active:scale-[0.98] ${travel.open ? 'border-sky-200 bg-linear-to-r/srgb from-sky-50 to-indigo-50' : travel.paper ? 'border-amber-200 bg-amber-50' : 'border-slate-100 bg-white hover:border-sky-200'}`}>
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-linear-to-br/srgb from-sky-500 to-indigo-600 text-white shadow-sm shadow-sky-600/20"><Car className="h-5 w-5" /></span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-bold text-slate-800">{th ? 'เบิกค่าเดินทาง' : 'Travel claims'}</span>
-              <span className={`block text-[11px] font-medium ${travel.open ? 'text-cyan-700' : 'text-slate-500'}`}>{travel.open ? (th ? 'มีทริปที่กำลังเดินทาง' : 'Trip in progress') : (th ? 'ไปพบลูกค้า บันทึกระยะทางและใบเสร็จ' : 'Client visits, distance and receipts')}</span>
+              {travel.open
+                ? <span className="flex items-center gap-1.5 truncate text-[11px] font-semibold text-sky-700"><span className="relative flex h-2 w-2 shrink-0"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500" /></span><span className="truncate">{th ? 'กำลังเดินทาง' : 'Trip in progress'}{travel.client ? ` · ${travel.client}` : ''}</span></span>
+                : travel.paper
+                  ? <span className="block text-[11px] font-semibold text-amber-700">{th ? `ส่งใบเสร็จตัวจริงให้บัญชี ${travel.paper} ใบ` : `${travel.paper} paper receipt${travel.paper > 1 ? 's' : ''} to hand in`}</span>
+                  : <span className="block text-[11px] font-medium text-slate-500">{travel.trips ? (th ? `เดือนนี้ ฿${money(travel.total)} · ${travel.trips} ทริป` : `฿${money(travel.total)} this month · ${travel.trips} trip${travel.trips > 1 ? 's' : ''}`) : (th ? 'ไปพบลูกค้า บันทึกระยะทางและใบเสร็จ' : 'Client visits, distance and receipts')}</span>}
             </span>
-            <ChevronRight className="h-5 w-5 text-slate-400" />
+            {travel.open ? <span className="rounded-full bg-sky-600 px-2.5 py-1 text-[11px] font-bold text-white">{th ? 'เปิด' : 'Open'}</span> : !!travel.paper && <span className="grid h-6 min-w-6 place-items-center rounded-full bg-amber-500 px-1.5 text-xs font-bold text-white">{travel.paper}</span>}
+            <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" />
           </button>
         )}
 

@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useState} from 'react';
-import {ArrowLeft,Banknote,BellRing,Building2,Car,CheckCircle2,ChevronRight,ExternalLink,FileText,Flag,Home,Loader2,MapPin,Power,Receipt,Search,ShieldCheck,SlidersHorizontal,Users,Wallet,XCircle} from 'lucide-react';
+import {ArrowLeft,Banknote,BellRing,Building2,Car,CheckCircle2,ChevronRight,Circle,ExternalLink,FileText,Flag,Home,Loader2,MapPin,Power,Receipt,Search,Rocket,ShieldCheck,SlidersHorizontal,Users,Wallet,XCircle} from 'lucide-react';
 import TravelPayout from './TravelPayout';
 import {useDashboardText} from '@/hooks/useDashboardText';
 import {useLanguage} from '@/hooks/useLanguage';
@@ -92,9 +92,22 @@ function Settings(){
  const save=()=>run(async()=>{apply(await saveTravelSettings({officeLat:s!.officeLat,officeLng:s!.officeLng,radius:Number(s!.radius),rate:Number(s!.rate),homeCutoff:s!.homeCutoff,tripKmCap:Number(s!.tripKmCap),accountingEmail:email.trim(),payoutNotify:notify,departments:depts.split(',').map(x=>x.trim()).filter(Boolean)}));setNotice(dt('Saved.'));});
  if(!s)return error?<p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>:<p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin"/>{dt('Loading…')}</p>;
  const on=s.officeLat!=null;
+ const claimers=people.filter(p=>p.eligible).length;
+ const steps:{done:boolean;label:string;hint:string;optional?:boolean}[]=[
+  {done:on,label:dt('Office pin set'),hint:dt('Staff check back in against this pin.')},
+  {done:s.departments.length>0,label:dt('Departments chosen'),hint:s.departments.length?s.departments.join(', '):dt('Empty means only people allowed below can claim.')},
+  {done:!!s.payoutNotify,label:dt('Accountant on LINE chosen'),hint:dt('Gets each trip card and the monthly totals.')},
+  {done:!!s.accountingEmail,label:dt('Accounting email'),hint:s.accountingEmail??dt('Optional.'),optional:true},
+  {done:claimers>0,label:dt('{0} people can claim',[claimers]),hint:dt('They see Travel claims on the home screen once the pin is set.')},
+ ];
+ const ready=steps.filter(x=>!x.optional).every(x=>x.done);
  return <section className="space-y-4">
   {error&&<p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
   {notice&&<p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
+  <div className={card}>
+   <div className="mb-3 flex items-center gap-3"><span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${ready?'bg-emerald-100 text-emerald-700':'bg-sky-100 text-sky-700'}`}><Rocket className="h-5 w-5"/></span><div><h3 className="font-bold text-slate-900">{dt('Launch checklist')}</h3><p className="text-sm text-slate-600">{ready?dt('Everything needed is set.'):dt('{0} of {1} done',[steps.filter(x=>x.done).length,steps.length])}</p></div></div>
+   <ul className="space-y-2">{steps.map(x=><li key={x.label} className="flex items-start gap-2.5 text-sm">{x.done?<CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"/>:<Circle className={`mt-0.5 h-4 w-4 shrink-0 ${x.optional?'text-slate-300':'text-amber-500'}`}/>}<div className="min-w-0"><p className={`font-semibold ${x.done?'text-slate-900':'text-slate-700'}`}>{x.label}</p><p className="truncate text-xs text-slate-500">{x.hint}</p></div></li>)}</ul>
+  </div>
   <div className={`rounded-2xl border p-5 shadow-xs ${on?'border-slate-200 bg-white':'border-amber-200 bg-amber-50'}`}>
    <div className="flex items-start gap-3"><span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${on?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}`}>{on?<CheckCircle2 className="h-5 w-5"/>:<Power className="h-5 w-5"/>}</span><div>
    <h3 className="font-bold text-slate-900">{on?dt('Office location'):dt('Claims are off')}</h3>

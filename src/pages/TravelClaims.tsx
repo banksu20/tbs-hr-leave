@@ -1,8 +1,9 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {useNavigate} from 'react-router-dom';
-import {ArrowLeft,Briefcase,Building2,Camera,Car,CarTaxiFront,Check,CheckCircle2,ChevronRight,Clock,ExternalLink,Flag,Home,ImagePlus,Link2,Loader2,MapPin,Navigation,Plus,Receipt,Search,Smartphone,Trash2,X} from 'lucide-react';
+import {createPortal} from 'react-dom';
+import {ArrowLeft,BookOpen,Briefcase,Building2,Camera,Car,CarTaxiFront,Check,CheckCircle2,ChevronRight,Clock,ExternalLink,Flag,Home,ImagePlus,Link2,Loader2,MapPin,Navigation,Plus,Receipt,Search,Smartphone,Trash2,X} from 'lucide-react';
 import {useLanguage} from '@/hooks/useLanguage';
-import {currentPosition,findPlaces,loadTravel,money,prepareFile,readReceipt,receiptUrl,travelAction,TravelError,type Fix,type Place,type ReceiptKind,type ReceiptRead,type TravelState,type TripDetail,type TripStatus,type TripSummary,flagLabel,statusLabel} from '@/lib/travel';
+import {currentPosition,findPlaces,loadTravel,money,prepareFile,readReceipt,receiptUrl,travelAction,TravelError,type Fix,type Place,type ReceiptKind,type ReceiptRead,type TravelState,type TripDetail,type TripStatus,type TripSummary,flagLabel,monthSummary,statusLabel} from '@/lib/travel';
 
 import type {T} from '@/lib/travel';
 type Run=(fn:()=>Promise<TravelState>)=>Promise<void>;
@@ -211,11 +212,33 @@ function OpenTrip({trip,text,run}:{trip:TripDetail;text:T;run:Run}){
  </>;
 }
 
+function Guide({state,text,onClose}:{state:TravelState|null;text:T;onClose:()=>void}){
+ const rate=money(Number(state?.settings.rate??7)),radius=state?.settings.radius??200,cutoff=state?.settings.homeCutoff??'10:00';
+ const steps:[React.ReactNode,string,string][]=[
+  [<Navigation key="s" className="h-4 w-4"/>,text('Start the trip','เริ่มทริป'),text(`Choose the client (paste a Google Maps link or search), the purpose and how you travel, then tap Start trip. Start from home only before ${cutoff}.`,`เลือกลูกค้า (วางลิงก์ Google Maps หรือค้นหา) งาน และวิธีเดินทาง แล้วกด เริ่มทริป เริ่มจากบ้านได้เฉพาะก่อน ${cutoff} น.`)],
+  [<MapPin key="a" className="h-4 w-4"/>,text('Check in at the client',"เช็กอินที่ลูกค้า"),text("When you get there, tap I've arrived. You must be within 1 km of the client.",'เมื่อถึงแล้วกด ถึงแล้ว ต้องอยู่ห่างลูกค้าไม่เกิน 1 กม.')],
+  [<Receipt key="r" className="h-4 w-4"/>,text('Add receipts','เพิ่มใบเสร็จ'),text('Tolls, parking, Grab or taxi: take a photo or pick one from Photos. The app reads the amount, so check it and fix it if wrong.','ค่าทางด่วน ค่าจอดรถ Grab หรือแท็กซี่ ถ่ายรูปหรือเลือกจากคลังรูป แอปจะอ่านยอดให้ ตรวจดูและแก้ถ้าไม่ถูก')],
+  [<Building2 key="b" className="h-4 w-4"/>,text('Come back','กลับออฟฟิศ'),text(`Tap I'm back at the office within ${radius} m of the office, or Go to another client to add the next stop.`,`กด กลับถึงออฟฟิศแล้ว เมื่ออยู่ห่างออฟฟิศไม่เกิน ${radius} ม. หรือกด ไปลูกค้าอีกที่ เพื่อเพิ่มจุดถัดไป`)],
+  [<CheckCircle2 key="c" className="h-4 w-4"/>,text('Finish and claim','จบทริปและส่งเบิก'),text('Tap Finish and claim. Hand paper receipts to accounting within 7 days.','กด จบและส่งเบิก แล้วส่งใบเสร็จตัวจริงให้บัญชีภายใน 7 วัน')],
+ ];
+ const rules=[text(`Own car: ฿${rate} per km by road. Grab, taxi, tolls and parking: by receipt.`,`รถส่วนตัว: กม.ละ ${rate} บาท ตามระยะทางถนน Grab แท็กซี่ ทางด่วน และที่จอดรถ: เบิกตามใบเสร็จ`),text('Trips with something unusual wait for HR to check before payment.','ทริปที่มีจุดผิดปกติ HR จะตรวจก่อนจ่าย'),text('A trip left open closes by itself at midnight.','ทริปที่ไม่ได้ปิด ระบบจะปิดเองตอนเที่ยงคืน'),text('You get a LINE message when your claim is approved, rejected or paid.','คุณจะได้ LINE เมื่ออนุมัติ ไม่อนุมัติ หรือจ่ายแล้ว')];
+ return <div role="dialog" aria-modal="true" aria-label={text('How travel claims work','วิธีเบิกค่าเดินทาง')} className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-[2px] sm:items-center" onClick={onClose}>
+  <div className="max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[2rem] bg-white p-5 pb-8 shadow-2xl sm:rounded-[2rem]" onClick={e=>e.stopPropagation()}>
+   <div className="mb-4 flex items-start justify-between gap-3"><div><p className="text-xs font-semibold text-sky-700">{text('Travel claims','เบิกค่าเดินทาง')}</p><h2 className="text-xl font-extrabold text-slate-900">{text('How it works','วิธีใช้')}</h2></div><button type="button" onClick={onClose} aria-label={text('Close','ปิด')} className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-slate-600"><X className="h-4 w-4"/></button></div>
+   <ol>{steps.map(([icon,title,body],i)=><li key={title} className="relative flex gap-3 pb-4 last:pb-0">{i<steps.length-1&&<span className="absolute top-9 bottom-0 left-[17px] w-0.5 bg-sky-100"/>}<span className="relative z-10 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-linear-to-br/srgb from-sky-500 to-indigo-600 text-white">{icon}</span><div className="pt-1"><p className="font-bold text-slate-900">{i+1}. {title}</p><p className="text-sm leading-relaxed text-slate-600">{body}</p></div></li>)}</ol>
+   <div className="mt-5 rounded-2xl bg-slate-50 p-4"><p className="mb-2 text-sm font-bold text-slate-900">{text('Good to know','ควรรู้')}</p><ul className="space-y-1.5">{rules.map(x=><li key={x} className="flex gap-2 text-sm text-slate-600"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"/>{x}</li>)}</ul></div>
+   <button type="button" onClick={onClose} className="mt-5 w-full rounded-2xl bg-slate-900 py-3.5 text-sm font-bold text-white">{text('Got it','เข้าใจแล้ว')}</button>
+  </div>
+ </div>;
+}
+
 export default function TravelClaims(){
  const navigate=useNavigate();
  const {language}=useLanguage();const th=language==='th';
  const text:T=useCallback((en,thai)=>th?thai:en,[th]);
- const [state,setState]=useState<TravelState|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState<TripSummary|null>(null);
+ const [state,setState]=useState<TravelState|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState<TripSummary|null>(null),[guide,setGuide]=useState(false);
+ const closeGuide=()=>{setGuide(false);try{localStorage.setItem('tbs_travel_guide_seen','1');}catch{setGuide(false);}};
+ useEffect(()=>{if(!state?.eligible||state.trip||state.recent.length)return;let seen=false;try{seen=localStorage.getItem('tbs_travel_guide_seen')==='1';}catch{seen=true;}if(!seen)setGuide(true);},[state]);
  useEffect(()=>{let active=true;loadTravel().then(s=>{if(active)setState(s);}).catch(e=>{if(active)setError((e as Error).message);});return()=>{active=false;};},[]);
  const run=useCallback(async(fn:()=>Promise<TravelState>)=>{
   setBusy(true);setError('');
@@ -223,17 +246,13 @@ export default function TravelClaims(){
   catch(e){const err=e as TravelError;if(err.state)setState(err.state);if(!err.distanceM){setError(err.message);return;}const m=Math.round(err.distanceM),far=m>=1000,client=/client/i.test(err.message);setError(text(`${client?'You are not at the client yet.':'You are not at the office yet.'} (${far?`${money(Math.round(m/100)/10)} km`:`${m} m`} away)`,`${client?'ยังไม่ถึงที่ลูกค้า':'ยังไม่ถึงออฟฟิศ'} (ห่าง ${far?`${money(Math.round(m/100)/10)} กม.`:`${m} ม.`})`));}
   finally{setBusy(false);}
  },[text]);
- const month=useMemo(()=>{
-  const ym=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Bangkok'}).slice(0,7);
-  const list=(state?.recent??[]).filter(t=>t.date.startsWith(ym)&&!['rejected','cancelled'].includes(t.status));
-  return {total:list.reduce((s,t)=>s+Number(t.total),0),trips:list.length,paper:(state?.recent??[]).reduce((s,t)=>s+t.originalsWaiting,0)};
- },[state]);
+ const month=useMemo(()=>monthSummary(state?.recent??[]),[state]);
  const day=(d:string)=>new Date(d+'T12:00:00+07:00');
  return <main className="min-h-dvh bg-slate-50 pb-12">
   <header className="relative overflow-hidden rounded-b-[2rem] bg-linear-to-br/srgb from-sky-500 via-sky-600 to-indigo-600 px-5 pt-6 pb-20 text-white">
    <span className="pointer-events-none absolute -top-20 -right-16 h-56 w-56 rounded-full bg-white/10"/><span className="pointer-events-none absolute bottom-0 -left-10 h-32 w-32 rounded-full bg-white/5"/>
    <div className="relative md:mx-auto md:max-w-2xl">
-    <button type="button" onClick={()=>navigate('/')} className="mb-5 inline-flex items-center gap-1.5 rounded-full bg-white/15 py-1.5 pr-3.5 pl-2.5 text-sm font-semibold backdrop-blur-sm"><ArrowLeft className="h-4 w-4"/>{text('Back','กลับ')}</button>
+    <div className="mb-5 flex items-center justify-between gap-2"><button type="button" onClick={()=>navigate('/')} className="inline-flex items-center gap-1.5 rounded-full bg-white/15 py-1.5 pr-3.5 pl-2.5 text-sm font-semibold backdrop-blur-sm"><ArrowLeft className="h-4 w-4"/>{text('Back','กลับ')}</button><button type="button" onClick={()=>setGuide(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/15 py-1.5 pr-3.5 pl-3 text-sm font-semibold backdrop-blur-sm"><BookOpen className="h-4 w-4"/>{text('How it works','วิธีใช้')}</button></div>
     <p className="text-sm font-medium text-sky-100">{text('Travel claims','เบิกค่าเดินทาง')}</p>
     <h1 className="text-[28px] leading-tight font-extrabold">{text('Client visits','ไปพบลูกค้า')}</h1>
     <div className="mt-4 grid grid-cols-3 gap-2">
@@ -241,6 +260,7 @@ export default function TravelClaims(){
     </div>
    </div>
   </header>
+  {guide&&createPortal(<Guide state={state} text={text} onClose={closeGuide}/>,document.body)}
   <div className="relative -mt-12 space-y-4 px-4 md:mx-auto md:max-w-2xl">
    {state===null&&!error&&<div className={card+' flex items-center gap-3 text-slate-500'}><Loader2 className="h-5 w-5 animate-spin text-sky-600"/>{text('Loading…','กำลังโหลด…')}</div>}
    {error&&<p role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-800 shadow-md shadow-slate-200/60">{error}</p>}
