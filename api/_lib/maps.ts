@@ -3,7 +3,7 @@ import {webhookSecret} from './webhookSecret.js';
 export interface Place {lat:number;lng:number;label:string}
 export class MapsError extends Error {constructor(public status:number,message:string){super(message);}}
 const TIMEOUT=Number(process.env.MAPS_TIMEOUT_MS||9000);
-const LINK_HOSTS=/^(maps\.app\.goo\.gl|goo\.gl|(www\.)?google\.[a-z.]+|maps\.google\.[a-z.]+)$/i;
+const LINK_HOSTS=/^(maps\.app\.goo\.gl|goo\.gl|share\.google|(www\.)?google\.[a-z.]+|maps\.google\.[a-z.]+)$/i;
 const valid=(lat:number,lng:number)=>Number.isFinite(lat)&&Number.isFinite(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180&&!(lat===0&&lng===0);
 
 async function timed(url:string,init:RequestInit={}){
@@ -40,7 +40,7 @@ async function expandLink(raw:string){
  let url=new URL(raw);
  for(let i=0;i<5;i++){
   if(url.protocol!=='https:'||!LINK_HOSTS.test(url.hostname))throw new MapsError(422,'Paste a Google Maps link, an address or a place name.');
-  if(!/^(maps\.app\.goo\.gl|goo\.gl)$/i.test(url.hostname))return url;
+  if(!/^(maps\.app\.goo\.gl|goo\.gl|share\.google)$/i.test(url.hostname)&&url.pathname!=='/share.google')return url;
   const r=await timed(url.toString(),{redirect:'manual'}).catch(()=>{throw new MapsError(422,'This Google Maps link could not be opened.');});
   const next=r.headers.get('location');if(!next)throw new MapsError(422,'This Google Maps link could not be opened.');
   url=new URL(next,url);

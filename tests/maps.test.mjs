@@ -42,3 +42,12 @@ test('a Google failure is a clear retry message',async()=>{
  reply=()=>{throw new Error('offline');};
  await assert.rejects(findPlaces('Siam'),e=>e.status===503);
 });
+
+test('share.google links resolve to the shared place name',async()=>{
+ sent=[];
+ reply=url=>url.startsWith('https://share.google/')?{ok:false,status:302,headers:new Map([['location','https://www.google.com/share.google?q=abc123']]),json:async()=>({})}
+  :url.startsWith('https://www.google.com/share.google')?{ok:false,status:302,headers:new Map([['location','https://www.google.com/search?kgmid=/g/1&q=TBS+Marketing']]),json:async()=>({})}
+  :{ok:true,json:async()=>({places:[{lat:13.737,lng:100.611,label:'TBS Marketing - Head Office'}]})};
+ assert.deepEqual(await findPlaces('https://share.google/abc123'),[{lat:13.737,lng:100.611,label:'TBS Marketing - Head Office'}]);
+ assert.deepEqual(sent.at(-1).body,{op:'search',query:'TBS Marketing'});
+});
