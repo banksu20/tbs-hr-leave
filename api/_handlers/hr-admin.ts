@@ -5,10 +5,11 @@ const schema=z.discriminatedUnion('action',[
  z.object({action:z.literal('hr-people-save'),userId:z.string().min(1).max(64),careerLevel:z.enum(['','operational','manager','c_level']),managerId:z.string().max(64).default(''),roles:z.array(role).max(8)}),
  z.object({action:z.literal('hr-sop-save'),id:z.number().int().positive().optional(),version:z.number().int().positive().optional(),titleEn:z.string().trim().min(1).max(120),titleTh:z.string().trim().max(120).default(''),body:z.string().trim().min(1).max(20000),notify:z.boolean().default(false)}),
  z.object({action:z.literal('hr-sop-active'),id:z.number().int().positive(),active:z.boolean()}),
- z.object({action:z.literal('travel-settings-save'),officeLat:z.number().min(-90).max(90).nullable().optional(),officeLng:z.number().min(-180).max(180).nullable().optional(),radius:z.number().int().min(50).max(2000).optional(),rate:z.number().positive().max(100).optional(),homeCutoff:z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),tripKmCap:z.number().positive().max(5000).optional(),accountingEmail:z.union([z.string().trim().email().max(200),z.literal('')]).optional(),departments:z.array(z.string().trim().min(1).max(80)).max(20).optional()}),
+ z.object({action:z.literal('travel-settings-save'),officeLat:z.number().min(-90).max(90).nullable().optional(),officeLng:z.number().min(-180).max(180).nullable().optional(),radius:z.number().int().min(50).max(2000).optional(),rate:z.number().positive().max(100).optional(),homeCutoff:z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),tripKmCap:z.number().positive().max(5000).optional(),accountingEmail:z.union([z.string().trim().email().max(200),z.literal('')]).optional(),departments:z.array(z.string().trim().min(1).max(80)).max(20).optional(),payoutNotify:z.string().max(64).optional()}),
  z.object({action:z.literal('travel-access-save'),userId:z.string().min(1).max(64),allowed:z.boolean().nullable()}),
  z.object({action:z.literal('travel-decide'),id:z.number().int().positive(),decision:z.enum(['approve','reject']),note:z.string().trim().max(500).default('')}),
  z.object({action:z.literal('travel-mark'),id:z.number().int().positive(),mark:z.enum(['paid','received'])}),
+ z.object({action:z.literal('travel-payout-paid'),month:z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])$/),userId:z.string().min(1).max(64).optional()}),
  z.object({action:z.literal('travel-place'),query:z.string().trim().min(2).max(2000)}),
 ]);
 export default async function handler(req:VercelRequest,res:VercelResponse){
@@ -25,12 +26,13 @@ export default async function handler(req:VercelRequest,res:VercelResponse){
     res.setHeader('Content-Type',r.mime);res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Cache-Control','private, max-age=300');
     return res.status(200).send(Buffer.from(r.content,'base64'));
    }
-   const views:Record<string,string>={people:'hr-people',sops:'hr-sops',travel:'travel-settings',trips:'travel-trips',trip:'travel-trip'};
+   const views:Record<string,string>={people:'hr-people',sops:'hr-sops',travel:'travel-settings',trips:'travel-trips',trip:'travel-trip',payout:'travel-payout'};
    if(!Object.hasOwn(views,view))return json(res,404,{error:'Unknown view'});
    const tripId=Number(req.query?.id);
    if(view==='trip'&&!(Number.isInteger(tripId)&&tripId>0))return json(res,422,{error:'Invalid trip'});
-   const status=String(req.query?.status??'');
-   out=await dashboardCall(req,views[view],{body:view==='trip'?{id:tripId}:view==='trips'?{status:/^[a-z]{4,10}$/.test(status)?status:''}:{}});
+   const status=String(req.query?.status??''),month=String(req.query?.month??'');
+   if(view==='payout'&&!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month))return json(res,422,{error:'Choose a month.'});
+   out=await dashboardCall(req,views[view],{body:view==='trip'?{id:tripId}:view==='trips'?{status:/^[a-z]{4,10}$/.test(status)?status:''}:view==='payout'?{month}:{}});
   }else{
    if(req.method!=='POST'||!sameOrigin(req))return json(res,403,{error:'Operation not permitted'});
    const p=schema.safeParse(req.body);if(!p.success)return json(res,422,{error:'Check the details and try again.'});

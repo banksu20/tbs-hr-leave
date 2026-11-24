@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useMemo,useState} from 'react';
-import {ArrowLeft,Banknote,Building2,Car,CheckCircle2,ChevronRight,ExternalLink,FileText,Flag,Home,Loader2,MapPin,Power,Receipt,Search,ShieldCheck,SlidersHorizontal,Users,XCircle} from 'lucide-react';
+import {ArrowLeft,Banknote,BellRing,Building2,Car,CheckCircle2,ChevronRight,ExternalLink,FileText,Flag,Home,Loader2,MapPin,Power,Receipt,Search,ShieldCheck,SlidersHorizontal,Users,Wallet,XCircle} from 'lucide-react';
+import TravelPayout from './TravelPayout';
 import {useDashboardText} from '@/hooks/useDashboardText';
 import {useLanguage} from '@/hooks/useLanguage';
 import {adminReceiptUrl,decideTrip,findOffice,loadTrip,loadTravelSettings,loadTrips,markTrip,saveTravelAccess,saveTravelSettings,type AdminTrip,type AdminTripRow,type TravelPerson,type TravelSettings} from '@/lib/hrAdmin';
@@ -82,12 +83,12 @@ function TripDetailView({id,onBack,onChanged}:{id:number;onBack:()=>void;onChang
 
 function Settings(){
  const dt=useDashboardText();
- const [s,setS]=useState<TravelSettings|null>(null),[people,setPeople]=useState<TravelPerson[]>([]),[query,setQuery]=useState(''),[places,setPlaces]=useState<Place[]|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[depts,setDepts]=useState(''),[email,setEmail]=useState('');
- const apply=(r:{settings:TravelSettings;people:TravelPerson[]})=>{setS(r.settings);setPeople(r.people);setDepts(r.settings.departments.join(', '));setEmail(r.settings.accountingEmail??'');};
+ const [s,setS]=useState<TravelSettings|null>(null),[people,setPeople]=useState<TravelPerson[]>([]),[query,setQuery]=useState(''),[places,setPlaces]=useState<Place[]|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[depts,setDepts]=useState(''),[email,setEmail]=useState(''),[notify,setNotify]=useState('');
+ const apply=(r:{settings:TravelSettings;people:TravelPerson[]})=>{setS(r.settings);setPeople(r.people);setDepts(r.settings.departments.join(', '));setEmail(r.settings.accountingEmail??'');setNotify(r.settings.payoutNotify??'');};
  useEffect(()=>{loadTravelSettings().then(apply).catch(e=>setError((e as Error).message));},[]);
  const run=async(fn:()=>Promise<void>)=>{setBusy(true);setError('');setNotice('');try{await fn();}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
  const search=()=>run(async()=>{setPlaces(await findOffice(query));});
- const save=()=>run(async()=>{apply(await saveTravelSettings({officeLat:s!.officeLat,officeLng:s!.officeLng,radius:Number(s!.radius),rate:Number(s!.rate),homeCutoff:s!.homeCutoff,tripKmCap:Number(s!.tripKmCap),accountingEmail:email.trim(),departments:depts.split(',').map(x=>x.trim()).filter(Boolean)}));setNotice(dt('Saved.'));});
+ const save=()=>run(async()=>{apply(await saveTravelSettings({officeLat:s!.officeLat,officeLng:s!.officeLng,radius:Number(s!.radius),rate:Number(s!.rate),homeCutoff:s!.homeCutoff,tripKmCap:Number(s!.tripKmCap),accountingEmail:email.trim(),payoutNotify:notify,departments:depts.split(',').map(x=>x.trim()).filter(Boolean)}));setNotice(dt('Saved.'));});
  if(!s)return error?<p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>:<p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin"/>{dt('Loading…')}</p>;
  const on=s.officeLat!=null;
  return <section className="space-y-4">
@@ -109,6 +110,7 @@ function Settings(){
    <label className="text-sm font-medium text-slate-700">{dt('Start from home only before')}<input type="time" value={s.homeCutoff} onChange={e=>setS({...s,homeCutoff:e.target.value})} className={field}/></label>
    <label className="text-sm font-medium text-slate-700">{dt('Flag trips over (km)')}<input type="number" min={1} max={5000} value={s.tripKmCap} onChange={e=>setS({...s,tripKmCap:e.target.valueAsNumber})} className={field}/></label>
    <label className="text-sm font-medium text-slate-700 sm:col-span-2">{dt('Accounting email (daily summary)')}<input type="email" value={email} onChange={e=>setEmail(e.target.value)} className={field}/></label>
+   <label className="text-sm font-medium text-slate-700 sm:col-span-2"><span className="flex items-center gap-1.5"><BellRing className="h-3.5 w-3.5 text-slate-400"/>{dt('Month-end payout reminder on LINE')}</span><select value={notify} onChange={e=>setNotify(e.target.value)} className={field}><option value="">{dt('Nobody')}</option>{people.filter(p=>/^U[0-9a-f]{32}$/.test(p.id)||p.id===notify).map(p=><option key={p.id} value={p.id}>{p.nickname?`${p.nickname} · ${p.name}`:p.name}</option>)}</select><span className="mt-1 block text-xs font-normal text-slate-500">{dt('Sent on the 1st with last month’s totals.')}</span></label>
    <label className="text-sm font-medium text-slate-700 sm:col-span-2">{dt('Departments that can claim (comma separated)')}<input value={depts} onChange={e=>setDepts(e.target.value)} className={field}/></label>
    <button type="button" disabled={busy} onClick={()=>void save()} className="rounded-xl bg-sky-600 py-3 text-sm font-bold text-white shadow-sm disabled:opacity-50 sm:col-span-2">{busy?dt('Saving…'):dt('Save')}</button>
   </div>
@@ -128,17 +130,18 @@ function Settings(){
 
 export default function TravelAdmin(){
  const dt=useDashboardText();const {language}=useLanguage();const text:T=(en,th)=>language==='th'?th:en;
- const [tab,setTab]=useState<'claims'|'settings'>('claims'),[status,setStatus]=useState<string>('flagged'),[trips,setTrips]=useState<AdminTripRow[]|null>(null),[all,setAll]=useState<AdminTripRow[]|null>(null),[open,setOpen]=useState<number|null>(null),[error,setError]=useState('');
+ const url=new URLSearchParams(location.search);
+ const [tab,setTab]=useState<'claims'|'payout'|'settings'>(url.get('tab')==='payout'?'payout':'claims'),[month,setMonth]=useState(/^20\d{2}-(0[1-9]|1[0-2])$/.test(url.get('month')??'')?url.get('month')!:new Date(Date.now()+7*3600e3).toISOString().slice(0,7)),[status,setStatus]=useState<string>('flagged'),[trips,setTrips]=useState<AdminTripRow[]|null>(null),[all,setAll]=useState<AdminTripRow[]|null>(null),[open,setOpen]=useState<number|null>(null),[error,setError]=useState('');
  const refresh=useCallback(()=>{setTrips(null);setError('');loadTrips(status).then(setTrips).catch(e=>setError((e as Error).message));loadTrips('').then(setAll).catch(()=>undefined);},[status]);
  useEffect(()=>{if(tab==='claims')refresh();},[tab,refresh]);
  const stats=useMemo(()=>{const l=all??[];const sum=(f:(t:AdminTripRow)=>boolean)=>l.filter(f).reduce((s,t)=>s+Number(t.total),0);
   return {flagged:l.filter(t=>t.status==='flagged').length,toPay:sum(t=>t.status==='submitted'||t.status==='approved'),paid:sum(t=>t.status==='paid'),paper:l.reduce((s,t)=>s+t.originalsWaiting,0),count:(f:string)=>f?l.filter(t=>t.status===f).length:l.length};},[all]);
- const tabBtn=(v:'claims'|'settings',l:string,icon:React.ReactNode)=><button type="button" onClick={()=>{setTab(v);setOpen(null);}} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${tab===v?'bg-white text-slate-900 shadow-sm':'text-slate-500 hover:text-slate-800'}`}>{icon}{l}</button>;
+ const tabBtn=(v:'claims'|'payout'|'settings',l:string,icon:React.ReactNode)=><button type="button" onClick={()=>{setTab(v);setOpen(null);}} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${tab===v?'bg-white text-slate-900 shadow-sm':'text-slate-500 hover:text-slate-800'}`}>{icon}{l}</button>;
  const tiles:[string,string,React.ReactNode,string][]=[[dt('Needs your check'),String(stats.flagged),<Flag key="f" className="h-4 w-4"/>,'bg-amber-100 text-amber-700'],[dt('To pay'),`฿${money(stats.toPay)}`,<Banknote key="b" className="h-4 w-4"/>,'bg-sky-100 text-sky-700'],[dt('Paid · last 60 days'),`฿${money(stats.paid)}`,<CheckCircle2 key="c" className="h-4 w-4"/>,'bg-emerald-100 text-emerald-700'],[dt('Paper receipts due'),String(stats.paper),<Receipt key="r" className="h-4 w-4"/>,'bg-indigo-100 text-indigo-700']];
  return <section className="space-y-5">
   <div className="flex flex-wrap items-end justify-between gap-3"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-linear-to-br/srgb from-sky-500 to-indigo-600 text-white shadow-md shadow-sky-600/20"><Car className="h-5 w-5"/></span><div><h2 className="text-xl font-bold text-slate-900">{dt('Travel claims')}</h2><p className="text-sm text-slate-500">{dt('Clean trips go straight to accounting. Flagged trips wait for your check.')}</p></div></div>
-   <div className="flex gap-1 rounded-xl bg-slate-100 p-1">{tabBtn('claims',dt('Claims'),<Receipt className="h-4 w-4"/>)}{tabBtn('settings',dt('Settings'),<SlidersHorizontal className="h-4 w-4"/>)}</div></div>
-  {tab==='settings'?<Settings/>:open?<TripDetailView id={open} onBack={()=>setOpen(null)} onChanged={refresh}/>:<>
+   <div className="flex gap-1 rounded-xl bg-slate-100 p-1">{tabBtn('claims',dt('Claims'),<Receipt className="h-4 w-4"/>)}{tabBtn('payout',dt('Monthly payout'),<Wallet className="h-4 w-4"/>)}{tabBtn('settings',dt('Settings'),<SlidersHorizontal className="h-4 w-4"/>)}</div></div>
+  {tab==='settings'?<Settings/>:open?<TripDetailView id={open} onBack={()=>setOpen(null)} onChanged={refresh}/>:tab==='payout'?<TravelPayout month={month} onMonth={setMonth} onOpen={setOpen}/>:<>
    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{tiles.map(([k,v,icon,tone])=><div key={k} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-500">{k}</p><span className={`grid h-8 w-8 place-items-center rounded-lg ${tone}`}>{icon}</span></div><p className="mt-2 truncate text-2xl font-extrabold text-slate-900">{all?v:'–'}</p></div>)}</div>
    <div className="flex flex-wrap gap-2">{filters.map(f=><button key={f} type="button" onClick={()=>setStatus(f)} className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${status===f?'bg-slate-900 text-white':'border border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}>{f?statusLabel(f,text):dt('All')}{all&&<span className={`rounded-full px-1.5 text-[10px] ${status===f?'bg-white/20':'bg-slate-100 text-slate-500'}`}>{stats.count(f)}</span>}</button>)}</div>
    {error&&<p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}

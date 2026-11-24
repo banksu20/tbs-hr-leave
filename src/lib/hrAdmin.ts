@@ -12,7 +12,7 @@ export const saveSop=(body:{id?:number;version?:number;titleEn:string;titleTh:st
 export const setSopActive=(id:number,active:boolean)=>call<{sops:HrSop[]}>({body:{action:'hr-sop-active',id,active}}).then(b=>b.sops);
 export const loadPeople=()=>call<{people:HrPerson[]}>({view:'people'}).then(b=>b.people.map(p=>({...p,roles:p.roles.map(r=>({...r,timeShare:Number(r.timeShare)}))})));
 export const savePerson=(body:{userId:string;careerLevel:string;managerId:string;roles:HrRole[]})=>call<{people:HrPerson[]}>({body:{action:'hr-people-save',...body}}).then(b=>b.people.map(p=>({...p,roles:p.roles.map(r=>({...r,timeShare:Number(r.timeShare)}))})));
-export interface TravelSettings {officeLat:number|null;officeLng:number|null;radius:number;rate:number;homeCutoff:string;tripKmCap:number;accountingEmail:string|null;departments:string[]}
+export interface TravelSettings {officeLat:number|null;officeLng:number|null;radius:number;rate:number;homeCutoff:string;tripKmCap:number;accountingEmail:string|null;departments:string[];payoutNotify?:string|null}
 export interface TravelPerson {id:string;name:string;nickname:string|null;department:string|null;eligible:boolean;override:boolean|null}
 export type AdminTrip=import('./travel').TripDetail&{employee:string;department:string|null};
 export type AdminTripRow=import('./travel').TripSummary&{employee:string;department:string|null};
@@ -23,5 +23,10 @@ export const findOffice=(query:string)=>call<{places:import('./travel').Place[]}
 export const loadTrips=(status:string)=>call<{trips:AdminTripRow[]}>({view:`trips&status=${encodeURIComponent(status)}`}).then(b=>b.trips);
 export const loadTrip=(id:number)=>call<{trip:AdminTrip}>({view:`trip&id=${id}`}).then(b=>b.trip);
 export const decideTrip=(id:number,decision:'approve'|'reject',note:string)=>call<{trip:AdminTrip}>({body:{action:'travel-decide',id,decision,note}}).then(b=>b.trip);
+export interface PayoutLine {id:number;date:string;status:string;clients:string[];km:number;kmAmount:number;receiptAmount:number;total:number;originalsWaiting:number}
+export interface PayoutPerson {userId:string;code:string;name:string;nickname:string|null;department:string|null;trips:number;flagged:number;km:number;kmAmount:number;receiptAmount:number;total:number;paid:number;ready:number;held:number;paperMissing:number;lines:PayoutLine[]}
+const numbers=(p:PayoutPerson):PayoutPerson=>({...p,km:Number(p.km),kmAmount:Number(p.kmAmount),receiptAmount:Number(p.receiptAmount),total:Number(p.total),paid:Number(p.paid),ready:Number(p.ready),held:Number(p.held),lines:p.lines.map(l=>({...l,km:Number(l.km),kmAmount:Number(l.kmAmount),receiptAmount:Number(l.receiptAmount),total:Number(l.total)}))});
+export const loadPayout=(month:string)=>call<{people:PayoutPerson[]}>({view:`payout&month=${encodeURIComponent(month)}`}).then(b=>b.people.map(numbers));
+export const markPayoutPaid=(month:string,userId?:string)=>call<{people:PayoutPerson[];marked:number}>({body:{action:'travel-payout-paid',month,...(userId?{userId}:{})}}).then(b=>({marked:b.marked,people:b.people.map(numbers)}));
 export const markTrip=(id:number,mark:'paid'|'received')=>call<{trip:AdminTrip}>({body:{action:'travel-mark',id,mark}}).then(b=>b.trip);
 export const adminReceiptUrl=(id:string)=>`/api/hr-admin?view=receipt&id=${encodeURIComponent(id)}`;

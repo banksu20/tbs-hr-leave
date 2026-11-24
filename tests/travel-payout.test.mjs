@@ -1,0 +1,67 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {PGlite} from '@electric-sql/pglite';import {readFileSync,readdirSync} from 'node:fs';
+const db=new PGlite();const q=async(s,p=[])=>(await db.query(s,p)).rows;
+await db.exec(readFileSync('tests/employee-cancellation.test.mjs','utf8').match(/await db.exec\(`([\s\S]*?)`\);/)[1]);
+const files=JSON.parse(readFileSync('tests/leave-policy.test.mjs','utf8').match(/const files=(\[.*?\]);/s)[1].replaceAll("'",'"'));
+const later=readdirSync('n8n/sql').filter(f=>/^0(4[3-9]|[5-7]\d)_/.test(f)).sort().map(f=>f.replace('.sql',''));
+for(const f of [...files,...later])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
+const dash=async(operation,body={},token='a')=>(await q('SELECT tbs_dashboard_auth($1::jsonb) r',[JSON.stringify({operation,sessionHash:token.repeat(64),body})]))[0].r;
+const A='U'+'7'.repeat(32),B='U'+'8'.repeat(32);
+await q("INSERT INTO tbs_dashboard_accounts(username,password_hash,role) VALUES('hr','test','hr')");
+await q("INSERT INTO tbs_dashboard_sessions(token_hash,account_id,version) SELECT $1,id,version FROM tbs_dashboard_accounts WHERE username='hr'",['a'.repeat(64)]);
+await q("INSERT INTO tbs_employees(user_id,tbs_id,first_name,last_name,nickname,department,status,employment_type) VALUES($1,81,'Anan','Suk','An','Sale','active','employee'),($2,82,'Benja','Dee','Ben','Sale','active','employee'),('plain-id',83,'Chai','No','Chai','Sale','active','employee')",[A,B]);
+const trip=async(user,date,status,receipts)=>{
+ const id=(await q("INSERT INTO tbs_trips(user_id,trip_date,purpose,mode,start_from,rate,status) VALUES($1,$2,'care','car','office',7,$3) RETURNING id",[user,date,status]))[0].id;
+ for(const [amount,paperDue] of receipts)await q("INSERT INTO tbs_trip_receipts(trip_id,kind,mime,content,amount,needs_original) VALUES($1,'toll','image/png',$2,$3,$4)",[id,Buffer.from(`r-${id}-${amount}-${Math.random()}`),amount,paperDue]);
+ return id;
+};
+
+test('monthly payout groups each person and holds trips missing paper receipts',async()=>{
+ await trip(A,'2026-10-03','submitted',[[100,false]]);
+ const held=await trip(A,'2026-10-09','approved',[[40,true]]);
+ await trip(A,'2026-10-20','paid',[[25,false]]);
+ await trip(A,'2026-10-21','flagged',[[999,false]]);
+ await trip(A,'2026-10-22','rejected',[[500,false]]);
+ await trip(B,'2026-10-05','submitted',[[60,false]]);
+ await trip(B,'2026-11-01','submitted',[[70,false]]);
+ assert.equal((await dash('travel-payout',{month:'2026-10'},'z')).statusCode,401);
+ assert.equal((await dash('travel-payout',{month:'2026-13'})).statusCode,422);
+ const r=await dash('travel-payout',{month:'2026-10'});
+ assert.equal(r.ok,true);assert.equal(r.month,'2026-10');
+ const a=r.people.find(p=>p.userId===A),b=r.people.find(p=>p.userId===B);
+ assert.equal(a.code,'TBS-081');assert.equal(a.name,'Anan Suk');
+ assert.equal(a.trips,3);assert.equal(a.flagged,1);
+ assert.equal(Number(a.total),165);assert.equal(Number(a.paid),25);assert.equal(Number(a.ready),100);assert.equal(Number(a.held),40);assert.equal(a.paperMissing,1);
+ assert.equal(a.lines.length,4);
+ assert.equal(Number(b.total),60);
+ const one=await dash('travel-payout-paid',{month:'2026-10',userId:B});
+ assert.equal(one.marked,1);
+ assert.equal(Number(one.people.find(p=>p.userId===A).ready),100);
+ const all=await dash('travel-payout-paid',{month:'2026-10'});
+ assert.equal(all.marked,1);
+ const after=all.people.find(p=>p.userId===A);
+ assert.equal(Number(after.ready),0);assert.equal(Number(after.paid),125);assert.equal(Number(after.held),40);
+ assert.equal((await q('SELECT status FROM tbs_trips WHERE id=$1',[held]))[0].status,'approved');
+ assert.equal((await q("SELECT status FROM tbs_trips WHERE trip_date='2026-11-01'"))[0].status,'submitted');
+ assert.equal((await q("SELECT count(*)::int n FROM tbs_dashboard_account_audit WHERE action='travel-mark-paid'"))[0].n,2);
+});
+
+test('month-end reminder goes once to the chosen person only',async()=>{
+ assert.equal((await dash('travel-settings-save',{payoutNotify:'plain-id'})).statusCode,422);
+ const set=await dash('travel-settings-save',{payoutNotify:A});
+ assert.equal(set.settings.payoutNotify,A);
+ assert.equal((await dash('travel-settings')).settings.payoutNotify,A);
+ const lines=async()=>(await q("SELECT payload FROM tbs_sync_jobs WHERE kind='line' AND user_id=$1",[A])).map(r=>r.payload);
+ assert.equal(await q("SELECT tbs_travel_payout_reminder('2026-11-01 05:00+07') n").then(r=>r[0].n),0);
+ assert.equal(await q("SELECT tbs_travel_payout_reminder('2026-11-01 08:00+07') n").then(r=>r[0].n),1);
+ assert.equal(await q("SELECT tbs_travel_payout_reminder('2026-11-02 08:00+07') n").then(r=>r[0].n),0);
+ const sent=await lines();
+ assert.equal(sent.length,1);assert.equal(sent[0].to,A);
+ const text=sent[0].messages[0].text;
+ assert.match(text,/^Travel claim \/ เบิกค่าเดินทาง: สรุปเดือน 10\/2026/);
+ assert.match(text,/Waiting for paper: 40\.00 THB/);
+ assert.match(text,/month=2026-10$/);
+ assert.equal((await q('SELECT tbs_line_job_wanted($1::jsonb) w',[JSON.stringify(sent[0])]))[0].w,true);
+ const cleared=await dash('travel-settings-save',{payoutNotify:''});
+ assert.equal(cleared.settings.payoutNotify,null);
+ assert.equal(await q("SELECT tbs_travel_payout_reminder('2026-12-01 08:00+07') n").then(r=>r[0].n),0);
+});
