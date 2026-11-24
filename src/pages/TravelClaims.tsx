@@ -82,20 +82,25 @@ function StartForm({state,text,run}:{state:TravelState;text:T;run:Run}){
 }
 
 function AddReceipt({trip,text,run}:{trip:TripDetail;text:T;run:Run}){
- const ref=useRef<HTMLInputElement>(null);
+ const ref=useRef<HTMLInputElement>(null),library=useRef<HTMLInputElement>(null);
  const [file,setFile]=useState<{mime:string;content:string;preview:string}|null>(null),[reading,setReading]=useState(false),[kind,setKind]=useState<ReceiptKind>(trip.mode==='car'?'toll':trip.mode),[amount,setAmount]=useState(''),[read,setRead]=useState<{amount:number|null;date:string|null}|null>(null),[error,setError]=useState('');
  const pick=async(f:File|undefined)=>{
   if(!f)return;setError('');setReading(true);
   try{const p=await prepareFile(f);setFile(p);const r=await readReceipt(p.mime,p.content).catch(()=>({amount:null,date:null,kind:null}));setRead(r);if(r.amount)setAmount(String(r.amount));if(r.kind)setKind(r.kind);}
-  catch(e){setError((e as Error).message);}finally{setReading(false);if(ref.current)ref.current.value='';}
+  catch(e){setError((e as Error).message);}finally{setReading(false);if(ref.current)ref.current.value='';if(library.current)library.current.value='';}
  };
  const clear=()=>{if(file?.preview)URL.revokeObjectURL(file.preview);setFile(null);setAmount('');setRead(null);};
  const value=Number(amount);
  const save=()=>run(async()=>{const s=await travelAction('receipt-add',{tripId:trip.id,kind,mime:file!.mime,content:file!.content,amount:value,readAmount:read?.amount??null,readDate:read?.date??null});clear();return s;});
  return <>
-  <input ref={ref} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={e=>void pick(e.target.files?.[0])}/>
-  {!file&&<button type="button" disabled={reading} onClick={()=>ref.current?.click()} className="flex aspect-[3/4] flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-sky-200 bg-sky-50/60 text-sky-700 transition active:scale-[.98] disabled:opacity-70">
-   {reading?<Loader2 className="h-6 w-6 animate-spin"/>:<Camera className="h-6 w-6"/>}<span className="px-2 text-center text-xs font-bold">{reading?text('Reading…','กำลังอ่าน…'):text('Add receipt','เพิ่มใบเสร็จ')}</span></button>}
+  <input ref={ref} type="file" accept="image/*" capture="environment" className="hidden" onChange={e=>void pick(e.target.files?.[0])}/>
+  <input ref={library} type="file" accept="image/*,application/pdf" className="hidden" onChange={e=>void pick(e.target.files?.[0])}/>
+  {!file&&(reading?<div className="flex aspect-[3/4] flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-sky-200 bg-sky-50/60 text-sky-700"><Loader2 className="h-6 w-6 animate-spin"/><span className="text-xs font-bold">{text('Reading…','กำลังอ่าน…')}</span></div>
+   :<div className="flex aspect-[3/4] flex-col overflow-hidden rounded-2xl border-2 border-dashed border-sky-200 bg-sky-50/60 text-sky-700">
+    <button type="button" onClick={()=>ref.current?.click()} className="flex flex-1 flex-col items-center justify-center gap-1 transition active:bg-sky-100"><Camera className="h-5 w-5"/><span className="text-xs font-bold">{text('Camera','ถ่ายรูป')}</span></button>
+    <span className="mx-3 border-t border-dashed border-sky-200"/>
+    <button type="button" onClick={()=>library.current?.click()} className="flex flex-1 flex-col items-center justify-center gap-1 transition active:bg-sky-100"><ImagePlus className="h-5 w-5"/><span className="text-xs font-bold">{text('Photos','เลือกรูป')}</span></button>
+   </div>)}
   {error&&<p className="col-span-full rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p>}
   {file&&<div className="col-span-full space-y-3 rounded-2xl bg-slate-50 p-3">
    <div className="flex gap-3">{file.preview?<img src={file.preview} alt="" className="h-28 w-20 rounded-xl object-cover shadow-sm"/>:<span className="grid h-28 w-20 place-items-center rounded-xl bg-white text-xs font-bold text-slate-500">PDF</span>}
@@ -205,7 +210,7 @@ export default function TravelClaims(){
  const run=useCallback(async(fn:()=>Promise<TravelState>)=>{
   setBusy(true);setError('');
   try{const s=await fn();setState(s);if(s.submitted)setDone(s.submitted);}
-  catch(e){const err=e as TravelError;if(err.state)setState(err.state);setError(err.distanceM?text(`${err.message} (${Math.round(err.distanceM)} m away)`,`ยังไม่ถึงออฟฟิศ (ห่าง ${Math.round(err.distanceM)} ม.)`):err.message);}
+  catch(e){const err=e as TravelError;if(err.state)setState(err.state);if(!err.distanceM){setError(err.message);return;}const m=Math.round(err.distanceM),far=m>=1000,client=/client/i.test(err.message);setError(text(`${client?'You are not at the client yet.':'You are not at the office yet.'} (${far?`${money(Math.round(m/100)/10)} km`:`${m} m`} away)`,`${client?'ยังไม่ถึงที่ลูกค้า':'ยังไม่ถึงออฟฟิศ'} (ห่าง ${far?`${money(Math.round(m/100)/10)} กม.`:`${m} ม.`})`));}
   finally{setBusy(false);}
  },[text]);
  const month=useMemo(()=>{

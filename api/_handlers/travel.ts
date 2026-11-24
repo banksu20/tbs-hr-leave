@@ -18,7 +18,9 @@ const schema=z.discriminatedUnion('action',[
  z.object({action:z.literal('cancel'),tripId:id}),
 ]);
 type Point={id:number;kind:string;lat:number;lng:number};
-type State={ok?:boolean;statusCode?:number;error?:string;settings?:{officeLat:number|null;officeLng:number|null};trip?:{id:number;points:Point[]}|null};
+type State={ok?:boolean;statusCode?:number;error?:string;settings?:{officeLat:number|null;officeLng:number|null;radius?:number};trip?:{id:number;points:Point[];stops?:{id:number;lat:number;lng:number}[]}|null};
+const CLIENT_RADIUS_M=1000;
+const metres=(a:{lat:number;lng:number},b:{lat:number;lng:number})=>{const r=Math.PI/180,x=Math.sin((b.lat-a.lat)*r/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin((b.lng-a.lng)*r/2)**2;return Math.round(12742000*Math.asin(Math.sqrt(x)));};
 const one=(r:unknown)=>(Array.isArray(r)?r[0]:r) as State|undefined;
 const call=async(operation:string,payload:Record<string,unknown>)=>one(await n8nPost('employee-cancellations',{operation,payload}));
 
@@ -60,6 +62,14 @@ export default async function handler(req:VercelRequest,res:VercelResponse){
    const last=s.trip?.id===b.tripId?s.trip.points.at(-1):undefined;
    if(!last||last.id!==b.prevPointId)return json(res,409,{...s,ok:false,error:'Your trip changed on another screen. Please try again.'});
    const here={lat:b.lat,lng:b.lng};
+   if(b.action==='arrive'){
+    const stop=s.trip?.stops?.find(x=>x.id===b.stopId);
+    const d=stop?metres(here,{lat:Number(stop.lat),lng:Number(stop.lng)}):0;
+    if(stop&&d-Math.min(b.accuracy??0,500)>Math.max(Number(s.settings?.radius)||0,CLIENT_RADIUS_M))return json(res,422,{...s,ok:false,error:'You are not at the client yet.',distanceM:d});
+   }else if(s.settings?.officeLat!=null&&s.settings.officeLng!=null){
+    const d=metres(here,{lat:Number(s.settings.officeLat),lng:Number(s.settings.officeLng)});
+    if(d>(Number(s.settings.radius)||200))return json(res,422,{...s,ok:false,error:'You are not at the office yet.',distanceM:d});
+   }
    const km=await routeKm({lat:Number(last.lat),lng:Number(last.lng)},here);
    const extra:Record<string,unknown>={};
    if(b.action==='arrive'&&last.kind==='start_home'&&s.settings?.officeLat!=null&&s.settings.officeLng!=null)extra.officeKm=await routeKm({lat:Number(s.settings.officeLat),lng:Number(s.settings.officeLng)},here);
