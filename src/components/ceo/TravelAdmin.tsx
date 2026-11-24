@@ -4,7 +4,7 @@ import TravelPayout from './TravelPayout';
 import {useDashboardText} from '@/hooks/useDashboardText';
 import {useLanguage} from '@/hooks/useLanguage';
 import {adminReceiptUrl,decideTrip,findOffice,loadTrip,loadTravelSettings,loadTrips,markTrip,saveTravelAccess,saveTravelSettings,type AdminTrip,type AdminTripRow,type TravelPerson,type TravelSettings} from '@/lib/hrAdmin';
-import {flagLabel,money,statusLabel,type Place,type T} from '@/lib/travel';
+import {flagLabel,money,statusLabel,tripDate,type Place,type T} from '@/lib/travel';
 
 const field='mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500';
 const filters=['flagged','submitted','approved','paid','rejected',''] as const;
@@ -32,7 +32,7 @@ function TripDetailView({id,onBack,onChanged,accounting}:{id:number;onBack:()=>v
    <div className="space-y-4">
     <div className={card+' flex flex-wrap items-center gap-4'}>
      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-linear-to-br/srgb from-sky-500 to-indigo-600 font-extrabold text-white">{initials(trip.employee)}</span>
-     <div className="min-w-0 flex-1"><h2 className="truncate text-xl font-bold text-slate-900">{trip.employee}</h2><p className="text-sm text-slate-500">{[trip.department,trip.date,trip.purpose==='deal'?dt('Deal'):dt('Customer care'),trip.dealRef].filter(Boolean).join(' · ')}</p></div>
+     <div className="min-w-0 flex-1"><h2 className="truncate text-xl font-bold text-slate-900">{trip.employee}</h2><p className="text-sm text-slate-500">{[trip.department,tripDate(trip.date,language),trip.purpose==='deal'?dt('Deal'):dt('Customer care'),trip.dealRef].filter(Boolean).join(' · ')}</p></div>
      <span className={`rounded-full px-3 py-1 text-xs font-bold ${tones[trip.status]}`}>{statusLabel(trip.status,text)}</span>
     </div>
     {(trip.flags.length>0||trip.autoClosed)&&<div className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="mb-2 flex items-center gap-2 text-sm font-bold text-amber-900"><Flag className="h-4 w-4"/>{dt('Why this trip needs a check')}</p>
@@ -163,10 +163,11 @@ export default function TravelAdmin({accounting=false}:{accounting?:boolean}){
    {trips?.length===0&&<div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center"><CheckCircle2 className="mx-auto h-8 w-8 text-slate-300"/><p className="mt-2 text-sm text-slate-500">{dt('No claims here.')}</p></div>}
    {!!trips?.length&&<div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs"><ul className="divide-y divide-slate-100">{trips.map(t=><li key={t.id}><button type="button" onClick={()=>setOpen(t.id)} className="flex w-full items-center gap-4 px-4 py-3.5 text-left transition hover:bg-sky-50/50">
     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">{initials(t.employee)}</span>
-    <span className="min-w-0 flex-1"><span className="flex flex-wrap items-baseline gap-x-2"><span className="font-semibold text-slate-900">{t.employee}</span><span className="text-xs text-slate-400">{t.date}</span></span>
+    <span className="min-w-0 flex-1"><span className="flex flex-wrap items-baseline gap-x-2"><span className="font-semibold text-slate-900">{t.employee}</span><span className="text-xs text-slate-400">{tripDate(t.date,language)}</span></span>
      <span className="block truncate text-sm text-slate-500">{t.clients.join(', ')}</span>
      <span className="mt-1 flex flex-wrap items-center gap-1.5"><span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${tones[t.status]}`}>{statusLabel(t.status,text)}</span><span className="text-[11px] text-slate-500">{dt('{0} km',[money(t.km)])}</span>
-      {t.flags.map(f=><span key={f} className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800"><Flag className="h-2.5 w-2.5"/>{flagLabel(f,text)}</span>)}
+      {t.flags.slice(0,2).map(f=><span key={f} className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800"><Flag className="h-2.5 w-2.5"/>{flagLabel(f,text)}</span>)}
+      {t.flags.length>2&&<span title={t.flags.slice(2).map(f=>flagLabel(f,text)).join(', ')} className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">+{t.flags.length-2}</span>}
       {t.originalsWaiting>0&&<span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">{dt('Paper due')}</span>}</span></span>
     <span className="text-right text-lg font-extrabold text-slate-900">฿{money(t.total)}</span><ChevronRight className="h-4 w-4 shrink-0 text-slate-300"/></button></li>)}</ul></div>}
   </>}

@@ -64,6 +64,11 @@ export function statusLabel(s:TripStatus,text:T){
 export function flagLabel(f:string,text:T){
  return ({gps_weak:text('Weak GPS','GPS ไม่แม่น'),too_fast:text('Too fast for the distance','เร็วผิดปกติ'),over_cap:text('Over the daily km limit','เกินระยะต่อวัน'),far_from_client:text('Checked in far from the client','เช็กอินห่างจากลูกค้า'),fare_high:text('Fare looks high','ค่าโดยสารสูงผิดปกติ'),no_checkin:text('No client check-in','ไม่ได้เช็กอินที่ลูกค้า'),receipt_not_receipt:text('Photo is not a receipt','รูปไม่ใช่ใบเสร็จ'),receipt_date:text('Receipt from another day','ใบเสร็จคนละวัน'),receipt_time:text('Receipt time outside the trip','เวลาใบเสร็จไม่อยู่ในช่วงทริป'),receipt_duplicate:text('Receipt used before','ใบเสร็จถูกใช้ซ้ำ'),receipt_kind:text('Receipt does not match the trip','ใบเสร็จไม่ตรงกับการเดินทาง')} as Record<string,string>)[f]??f;
 }
+export function tripDate(date:string,language:string){
+ const d=new Date(`${date}T00:00:00Z`);
+ return Number.isNaN(d.getTime())?date:d.toLocaleDateString(language==='th'?'th-TH':'en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
+}
+
 export function monthSummary(recent:TripSummary[]){
  const ym=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Bangkok'}).slice(0,7);
  const list=recent.filter(t=>t.date.startsWith(ym)&&!['rejected','cancelled'].includes(t.status));

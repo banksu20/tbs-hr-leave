@@ -3,7 +3,7 @@ import {Banknote,CheckCircle2,ChevronDown,ChevronLeft,ChevronRight,Download,Flag
 import {useDashboardText} from '@/hooks/useDashboardText';
 import {useLanguage} from '@/hooks/useLanguage';
 import {loadPayout,markPayoutPaid,type PayoutPerson} from '@/lib/hrAdmin';
-import {money,statusLabel,type T,type TripStatus} from '@/lib/travel';
+import {money,statusLabel,tripDate,type T,type TripStatus} from '@/lib/travel';
 
 const thisMonth=()=>new Date(Date.now()+7*3600e3).toISOString().slice(0,7);
 const shift=(m:string,by:number)=>{const [y,mo]=m.split('-').map(Number);const d=new Date(Date.UTC(y,mo-1+by,1));return d.toISOString().slice(0,7);};
@@ -57,13 +57,13 @@ export default function TravelPayout({month,onMonth,onOpen}:{month:string;onMont
      <ChevronDown className={`h-4 w-4 shrink-0 text-slate-300 transition ${open?'rotate-180':''}`}/>
     </button>
     <div className="flex items-center gap-3">
-     <div className="text-right"><p className="text-lg font-extrabold text-slate-900">฿{money(p.ready)}</p><p className="text-[11px] text-slate-400">{dt('of ฿{0}',[money(p.total)])}</p></div>
+     <div className="text-right"><p className="text-lg font-extrabold text-slate-900">฿{money(p.ready)}</p>{p.ready!==p.total&&<p className="text-[11px] text-slate-400">{dt('of ฿{0}',[money(p.total)])}</p>}</div>
      {p.ready>0&&(confirm===p.userId?<button type="button" disabled={busy} onClick={()=>void pay(p.userId)} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{dt('Confirm')}</button>
       :<button type="button" onClick={()=>setConfirm(p.userId)} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">{dt('Mark paid')}</button>)}
     </div>
    </div>
    {open&&<div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2"><table className="w-full text-sm"><tbody>{p.lines.map(l=><tr key={l.id} onClick={()=>onOpen(l.id)} className="cursor-pointer border-b border-slate-100 last:border-0 hover:bg-white">
-    <td className="py-2 pr-3 whitespace-nowrap text-xs text-slate-500">{l.date}</td>
+    <td className="py-2 pr-3 whitespace-nowrap text-xs text-slate-500">{tripDate(l.date,language)}</td>
     <td className="py-2 pr-3"><span className="block truncate font-medium text-slate-800">{l.clients.join(', ')}</span>{l.originalsWaiting>0&&<span className="text-[11px] text-indigo-700">{dt('Paper due')}</span>}</td>
     <td className="py-2 pr-3"><span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${tones[l.status]??'bg-slate-100 text-slate-600'}`}>{statusLabel(l.status as TripStatus,text)}</span></td>
     <td className="py-2 pr-3 text-right text-xs whitespace-nowrap text-slate-500">{dt('{0} km',[money(l.km)])}</td>
