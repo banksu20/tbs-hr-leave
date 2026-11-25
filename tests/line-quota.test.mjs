@@ -9,6 +9,8 @@ await q("INSERT INTO tbs_dashboard_accounts(username,password_hash,role) VALUES(
 await q("INSERT INTO tbs_dashboard_sessions(token_hash,account_id,version) SELECT $1,id,version FROM tbs_dashboard_accounts WHERE username='boss'",['a'.repeat(64)]);
 await q("INSERT INTO tbs_dashboard_sessions(token_hash,account_id,version) SELECT $1,id,version FROM tbs_dashboard_accounts WHERE username='hr'",['b'.repeat(64)]);
 const U=n=>'U'+String(n).padStart(32,'0');
+await q('ALTER TABLE leave_requests DISABLE TRIGGER USER');
+const request=async(id,status='Pending')=>q("INSERT INTO leave_requests(id,user_id,leave_type,leave_days,start_date,end_date,selected_dates,status) VALUES($1,'x','annual',1,'2099-01-05','2099-01-05','2099-01-05',$2) ON CONFLICT(id) DO UPDATE SET status=EXCLUDED.status",[id,status]);
 const text=(to,t)=>({to,messages:[{type:'text',text:t}]});
 const sop=to=>({to,messages:[{type:'flex',altText:'Company SOP updated / ระเบียบบริษัท: Leave',contents:{}}]});
 const decision=to=>({to,messages:[{type:'flex',altText:'อนุมัติแล้ว / Approved',contents:{}}]});
@@ -64,7 +66,7 @@ test('when LINE is full, approvals go by email and everything else waits for the
  await finish(j,'LINE delivery failed (429). You have reached your monthly limit. Execution 9');
  let st=(await dash('delivery-status')).lineQuota;
  assert.equal(st.state,'full');
- await add(sop(U(2)));await add(approval(U(3),777));
+ await request(777);await add(sop(U(2)));await add(approval(U(3),777));
  assert.equal((await claim()).length,0);
  st=(await dash('delivery-status')).lineQuota;
  assert.equal(st.held,2);
@@ -81,6 +83,7 @@ test('when LINE is full, approvals go by email and everything else waits for the
 test('without approver emails, approvals also wait instead of failing for a day',async()=>{
  await reset();
  await report(300,300);
+ await request(778);
  await add(approval(U(9),778));
  assert.equal((await claim()).length,0);
  assert.equal((await q("SELECT priority FROM tbs_line_held")).map(r=>r.priority).join(),'high');
@@ -119,4 +122,23 @@ test('a failed LINE check is shown but keeps the last good numbers, and unlimite
  assert.equal(st.state,'unlimited');assert.equal(st.checkError,null);
  await add(sop(U(1)));
  assert.equal((await sendAll()).length,1);
+});
+
+test('an approval already sent by email or already decided never goes out on LINE',async()=>{
+ await reset();
+ await report(300,10);
+ await request(801);await request(802,'Approved');await request(803);
+ await q("INSERT INTO tbs_email_decision_links(request_id,recipient,recipient_name,token_hash,expires_at) VALUES(801,'boss@example.com','Boss',md5(random()::text),now()+interval '1 day')");
+ await add(approval(U(1),801));await add(approval(U(2),802));await add(approval(U(3),803));
+ assert.deepEqual((await sendAll()).map(j=>j.payload.to),[U(3)]);
+ assert.equal((await q("SELECT count(*)::int n FROM tbs_sync_jobs WHERE retirement_reason LIKE 'Not sent on LINE%'"))[0].n,2);
+ await report(300,300);
+ await request(804);await add(approval(U(4),804));
+ assert.equal((await claim()).length,0);
+ assert.equal((await dash('delivery-status')).lineQuota.held,1);
+ await q("INSERT INTO tbs_email_decision_links(request_id,recipient,recipient_name,token_hash,expires_at) VALUES(804,'boss@example.com','Boss',md5(random()::text),now()+interval '1 day')");
+ await report(300,10);
+ assert.equal((await claim()).length,0);
+ assert.equal((await dash('delivery-status')).lineQuota.held,0);
+ assert.equal((await q("SELECT released_job FROM tbs_line_held WHERE payload::text LIKE '%id=804%'"))[0].released_job,null);
 });
