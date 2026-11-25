@@ -124,7 +124,7 @@ test('the delivery loop runs the daily job once and a failure never blocks LINE'
 
 test('earlier operations still route and leave the 12-function limit intact',async()=>{
  const read=f=>readFileSync(f,'utf8');
- assert.match(JSON.parse(read('vercel.json')).routes[0].src,/\|travel\|travel-review\)/);
+ assert.match(JSON.parse(read('vercel.json')).routes[0].src,/\|travel\|travel-review\|attendance\)/);
  assert.match(read('api/[policy].ts'),/travel,'travel-review':travelReview/);
  assert.match(read('vite-api-plugin.ts'),/'travel','travel-review'/);
  assert.match(read('src/App.tsx'),/path="\/travel"/);

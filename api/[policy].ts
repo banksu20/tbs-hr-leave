@@ -1,4 +1,5 @@
 import type {VercelRequest,VercelResponse} from './_lib/platform.js';
+import attendance from './_handlers/attendance.js';
 import companyHolidays from './_handlers/company-holidays.js';
 import emailDecision from './_handlers/email-decision.js';
 import employeeRequest from './_handlers/employee-request.js';
@@ -16,7 +17,7 @@ import {json} from './_lib/http.js';
 const handlers:Record<string,(req:VercelRequest,res:VercelResponse)=>Promise<unknown>>={
  'email-decision':emailDecision,'employee-data':employeeData,'company-holidays':companyHolidays,'employee-request':employeeRequest,
  'intern-decision':internDecision,'intern-terms':internTerms,
- 'leave-evidence':leaveEvidence,'leave-policy':leavePolicy,registration,sop,'hr-admin':hrAdmin,travel,'travel-review':travelReview,
+ 'leave-evidence':leaveEvidence,'leave-policy':leavePolicy,registration,sop,'hr-admin':hrAdmin,travel,'travel-review':travelReview,attendance,
 };
 export default async function handler(req:VercelRequest,res:VercelResponse){
  const name=new URL(req.url??'','https://local.invalid').pathname.match(/^\/api\/([a-z-]+)\/?$/)?.[1];

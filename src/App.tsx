@@ -22,6 +22,7 @@ const InternDecision = lazy(() => import('@/pages/InternDecision'));
 const EmailDecision = lazy(() => import('@/pages/EmailDecision'));
 const SopCenter = lazy(() => import('@/pages/SopCenter'));
 const TravelClaims = lazy(() => import('@/pages/TravelClaims'));
+const Attendance = lazy(() => import('@/pages/Attendance'));
 const TravelReview = lazy(() => import('@/pages/TravelReview'));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const SickAcknowledgement = lazy(() => import("@/pages/SickAcknowledgement"));
@@ -206,6 +207,7 @@ const App = () => {
             />
 
             <Route path="/sops" element={!localUser ? <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} /> : <SopCenter />} />
+            <Route path="/attendance" element={!localUser ? <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} /> : <Attendance />} />
             <Route path="/travel" element={!localUser ? <ProfileSetup defaultName={userProfile?.displayName || ""} onSave={handleSaveProfile} /> : <TravelClaims />} />
 
             <Route path="*" element={<NotFound />} />
