@@ -33,12 +33,12 @@ export const loadPayout=(month:string)=>call<{people:PayoutPerson[]}>({view:`pay
 export const markPayoutPaid=(month:string,userId?:string)=>call<{people:PayoutPerson[];marked:number}>({body:{action:'travel-payout-paid',month,...(userId?{userId}:{})}}).then(b=>({marked:b.marked,people:b.people.map(numbers)}));
 export const markTrip=(id:number,mark:'paid'|'received')=>call<{trip:AdminTrip}>({body:{action:'travel-mark',id,mark}}).then(b=>b.trip);
 export const adminReceiptUrl=(id:string)=>`/api/hr-admin?view=receipt&id=${encodeURIComponent(id)}`;
-export interface AttendancePerson {id:string;name:string;department:string|null;type:'employee'|'intern';member:boolean;checkerId:string|null;checker:string|null}
+export interface AttendancePerson {id:string;name:string;department:string|null;type:'employee'|'intern';member:boolean;kind:import('./attendance').AttendanceKind;wfhDays:number[]}
 export type AdminShift=import('./attendance').Shift&{userId:string;employee:string};
-export interface AttendanceOverview {from:string;to:string;today:string;settings:import('./attendance').AttendanceSettings&{enabled:boolean;updatedAt:string;updatedBy:string|null};people:AttendancePerson[];shifts:AdminShift[];fixes:import('./attendance').Fix[]}
+export interface AttendanceOverview {from:string;to:string;today:string;settings:import('./attendance').AttendanceSettings&{enabled:boolean;wfhWorkMinutes:number;updatedAt:string;updatedBy:string|null};people:AttendancePerson[];shifts:AdminShift[];fixes:import('./attendance').Fix[]}
 export const loadAttendanceOverview=(from='',to='')=>call<AttendanceOverview>({view:`attendance&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`});
 export const saveAttendanceOn=(enabled:boolean)=>call<AttendanceOverview>({body:{action:'attendance-settings-save',enabled}});
-export const saveAttendancePerson=(userId:string,member:boolean)=>call<AttendanceOverview>({body:{action:'attendance-person-save',userId,member}});
+export const saveAttendancePerson=(userId:string,member:boolean,kind?:import('./attendance').AttendanceKind,wfhDays?:number[])=>call<AttendanceOverview>({body:{action:'attendance-person-save',userId,member,kind,wfhDays}});
 export const decideAttendanceFix=(id:number,decision:'approve'|'reject',note='')=>call<AttendanceOverview>({body:{action:'attendance-fix-decide',id,decision,note}});
 export interface FormRow {date:string|null;detail:string;amount:number|string|null;remark:string}
 export interface ReimbursementForm {formDate:string|null;nameTh:string;nameEn:string;idNo:string;position:string;department:string;bank:string;account:string;approver:string;from:string|null;to:string|null;rows:FormRow[]}

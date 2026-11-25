@@ -16,7 +16,7 @@ const schema=z.discriminatedUnion('action',[
  z.object({action:z.literal('travel-form-reset'),month:z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])$/),userId:z.string().min(1).max(64)}),
  z.object({action:z.literal('travel-form-email'),month:z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])$/),userId:z.string().min(1).max(64),pdf:z.string().min(200).max(6000000).regex(/^JVBERi0[A-Za-z0-9+/]*={0,2}$/)}),
  z.object({action:z.literal('attendance-settings-save'),enabled:z.boolean()}),
- z.object({action:z.literal('attendance-person-save'),userId:z.string().min(1).max(64),member:z.boolean()}),
+ z.object({action:z.literal('attendance-person-save'),userId:z.string().min(1).max(64),member:z.boolean(),kind:z.enum(['part-time','wfh']).optional(),wfhDays:z.array(z.number().int().min(1).max(7)).max(7).optional()}),
  z.object({action:z.literal('attendance-fix-decide'),id:z.number().int().positive(),decision:z.enum(['approve','reject']),note:z.string().trim().max(500).default('')}),
 ]);
 export default async function handler(req:VercelRequest,res:VercelResponse){

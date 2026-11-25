@@ -95,7 +95,7 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
   const [offToday, setOffToday] = useState<number | null>(null);
   const [isIntern, setIsIntern] = useState(false);
   const [sopPending, setSopPending] = useState<number | null>(null);
-  const [attendance, setAttendance] = useState<{ eligible: boolean; open: string | null; toCheck: number } | null>(null);
+  const [attendance, setAttendance] = useState<{ open: string | null; workToday: boolean } | null>(null);
   const [travel, setTravel] = useState<{ open: boolean; configured: boolean; client: string; total: number; trips: number; paper: number } | null>(null);
 
   const { t, language } = useLanguage();
@@ -119,7 +119,7 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
     if (employeePreview || !liff.getAccessToken()) return;
     let active = true;
     fetchSops().then(docs => { if (active) setSopPending(docs.filter(d => !d.acceptedAt).length); }).catch(() => undefined);
-    loadAttendance().then(a => { if (active) setAttendance(a.eligible || a.team.length ? { eligible: a.eligible, open: a.open?.in ?? null, toCheck: a.teamFixes.length } : null); }).catch(() => undefined);
+    loadAttendance().then(a => { if (active) setAttendance(a.eligible ? { open: a.open?.in ?? null, workToday: a.workToday } : null); }).catch(() => undefined);
     loadTravel().then(t => { if (active) setTravel(t.eligible ? { open: !!t.trip, configured: t.configured, client: t.trip?.stops.at(-1)?.clientName ?? '', ...monthSummary(t.recent) } : null); }).catch(() => undefined);
     return () => { active = false; };
   }, [employeePreview]);
@@ -295,13 +295,12 @@ const Dashboard = ({ employeePreview = false, profile, registration }: { employe
         </button>
 
         {attendance && (
-          <button type="button" onClick={() => navigate("/attendance")} className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left shadow-xs transition active:scale-[0.98] ${attendance.open ? 'border-emerald-200 bg-emerald-50' : attendance.toCheck ? 'border-amber-200 bg-amber-50' : 'border-slate-100 bg-white hover:border-emerald-200'}`}>
+          <button type="button" onClick={() => navigate("/attendance")} className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left shadow-xs transition active:scale-[0.98] ${attendance.open ? 'border-emerald-200 bg-emerald-50' : 'border-slate-100 bg-white hover:border-emerald-200'}`}>
             <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${attendance.open ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-600'}`}><Clock3 className="h-5 w-5" /></span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold text-slate-800">{attendance.eligible ? (th ? 'ลงเวลาทำงาน' : 'Clock in') : (th ? 'เวลาทำงานของทีมพาร์ทไทม์' : 'Part-time team hours')}</span>
-              <span className={`block text-[11px] font-medium ${attendance.open ? 'text-emerald-700' : attendance.toCheck ? 'text-amber-700' : 'text-slate-500'}`}>{attendance.open ? (th ? `ทำงานตั้งแต่ ${clock(attendance.open)}` : `Working since ${clock(attendance.open)}`) : attendance.toCheck ? (th ? `คำขอแก้ไขเวลารอตรวจ ${attendance.toCheck} รายการ` : `${attendance.toCheck} time fix${attendance.toCheck > 1 ? 'es' : ''} to check`) : attendance.eligible ? (th ? 'กดลงเวลาเข้าและออก ดูชั่วโมงของฉัน' : 'Clock in and out, see my hours') : (th ? 'ดูชั่วโมงของทีม' : 'See your team\'s hours')}</span>
+              <span className="block text-sm font-bold text-slate-800">{th ? 'ลงเวลาทำงาน' : 'Clock in'}</span>
+              <span className={`block text-[11px] font-medium ${attendance.open ? 'text-emerald-700' : 'text-slate-500'}`}>{attendance.open ? (th ? `ทำงานตั้งแต่ ${clock(attendance.open)}` : `Working since ${clock(attendance.open)}`) : attendance.workToday ? (th ? 'กดลงเวลาเข้าและออก ดูชั่วโมงของฉัน' : 'Clock in and out, see my hours') : (th ? 'วันนี้เข้าออฟฟิศ ไม่ต้องลงเวลา' : 'Office day today, no clock-in needed')}</span>
             </span>
-            {!!attendance.toCheck && <span className="grid h-6 min-w-6 place-items-center rounded-full bg-amber-500 px-1.5 text-xs font-bold text-white">{attendance.toCheck}</span>}
             <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" />
           </button>
         )}

@@ -1,8 +1,8 @@
 import {useCallback,useEffect,useState} from 'react';
 import {useNavigate} from 'react-router-dom';
-import {AlertTriangle,ArrowLeft,CheckCircle2,Clock3,Loader2,LogIn,LogOut,MapPin,PencilLine,Users,X,XCircle} from 'lucide-react';
+import {AlertTriangle,ArrowLeft,Building2,Clock3,Loader2,LogIn,LogOut,MapPin,PencilLine,X} from 'lucide-react';
 import {useLanguage} from '@/hooks/useLanguage';
-import {attendanceAction,AttendanceError,clock,dayLabel,hours,loadAttendance,type AttendanceState,type Fix,type Shift} from '@/lib/attendance';
+import {attendanceAction,AttendanceError,clock,dayLabel,hours,loadAttendance,weekdays,type AttendanceState,type Fix,type Shift} from '@/lib/attendance';
 import {currentPosition} from '@/lib/travel';
 
 type Draft={shiftId?:number;date:string;in:string;out:string;reason:string};
@@ -28,20 +28,25 @@ export default function Attendance(){
  const minDate=state?new Date(new Date(state.today+'T00:00:00Z').getTime()-31*864e5).toISOString().slice(0,10):'';
  const open=state?.open;
  const elapsed=open?Math.max(0,Math.floor((now-new Date(open.in).getTime())/60000)):0;
+ const wfh=state?.kind==='wfh',target=(state?.settings.workMinutes??420)/60,officeDay=!!state&&!state.workToday&&!state.open;
  const todayMin=(state?.shifts??[]).filter(s=>s.date===state?.today).reduce((a,s)=>a+s.workedMin,0);
  const statusChip=(f:Fix)=>f.status==='pending'?<span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">{text('Waiting','รออนุมัติ')}</span>:f.status==='approved'?<span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">{text('Approved','อนุมัติแล้ว')}</span>:<span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-800">{text('Not approved','ไม่อนุมัติ')}</span>;
  return <main className="min-h-dvh bg-slate-50 pb-12">
   <header className="bg-linear-to-br from-cyan-500 to-cyan-700 px-5 pt-6 pb-10 text-white">
    <button type="button" onClick={()=>navigate('/')} className="mb-5 flex items-center gap-1 text-sm font-semibold text-cyan-50"><ArrowLeft className="h-4 w-4"/>{text('Back','กลับ')}</button>
-   <p className="text-xs font-bold uppercase tracking-wider text-cyan-100">TBS · {text('Part-time','พาร์ทไทม์')}</p>
-   <h1 className="mt-1 text-2xl font-bold">{state&&!state.eligible&&state.team.length?text('Part-time team hours','เวลาทำงานของทีมพาร์ทไทม์'):text('Clock in','ลงเวลาทำงาน')}</h1>
-   <p className="mt-1 text-sm text-cyan-50">{text('7 hours of work plus a 1-hour break each day.','ทำงาน 7 ชั่วโมง พัก 1 ชั่วโมงต่อวัน')}</p>
+   <p className="text-xs font-bold uppercase tracking-wider text-cyan-100">TBS · {wfh?text('Work from home','ทำงานที่บ้าน'):text('Part-time','พาร์ทไทม์')}</p>
+   <h1 className="mt-1 text-2xl font-bold">{text('Clock in','ลงเวลาทำงาน')}</h1>
+   {state?.eligible&&<p className="mt-1 text-sm text-cyan-50">{text(`${target} hours of work plus a 1-hour break each day.`,`ทำงาน ${target} ชั่วโมง พัก 1 ชั่วโมงต่อวัน`)}{wfh&&<><br/>{text(`Your work-from-home days: ${weekdays(state.wfhDays,false)}`,`วันทำงานที่บ้าน: ${weekdays(state.wfhDays,true)}`)}</>}</p>}
   </header>
   <section className="-mt-6 space-y-3 px-4">
    {state===null&&!error&&<div className="flex items-center gap-2 rounded-2xl bg-white p-5 text-slate-500 shadow-xs"><Loader2 className="h-5 w-5 animate-spin"/>{text('Loading…','กำลังโหลด…')}</div>}
    {error&&<p role="alert" className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0"/><span>{error}</span></p>}
-   {state&&!state.eligible&&!state.team.length&&<div className="rounded-2xl bg-white p-5 shadow-xs"><p className="font-bold text-slate-900">{text('Clock-in is not open for you yet','ยังไม่เปิดให้คุณลงเวลา')}</p><p className="mt-1 text-sm text-slate-500">{text('HR will let you know when it starts.','HR จะแจ้งเมื่อเริ่มใช้งาน')}</p></div>}
-   {state?.eligible&&<div className={`rounded-2xl border p-5 shadow-xs ${open?'border-emerald-200 bg-emerald-50':'border-slate-100 bg-white'}`}>
+   {state&&!state.eligible&&<div className="rounded-2xl bg-white p-5 shadow-xs"><p className="font-bold text-slate-900">{text('Clock-in is not open for you yet','ยังไม่เปิดให้คุณลงเวลา')}</p><p className="mt-1 text-sm text-slate-500">{text('HR will let you know when it starts.','HR จะแจ้งเมื่อเริ่มใช้งาน')}</p></div>}
+   {state?.eligible&&officeDay&&<div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-5 shadow-xs">
+    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-slate-100 text-slate-500"><Building2 className="h-6 w-6"/></span>
+    <div><p className="font-bold text-slate-900">{text('Office day today','วันนี้เข้าออฟฟิศ')}</p><p className="text-sm text-slate-500">{text('No clock-in needed. Come back on your work-from-home days.','ไม่ต้องลงเวลา กลับมาลงเวลาในวันทำงานที่บ้าน')}</p></div>
+   </div>}
+   {state?.eligible&&!officeDay&&<div className={`rounded-2xl border p-5 shadow-xs ${open?'border-emerald-200 bg-emerald-50':'border-slate-100 bg-white'}`}>
     <div className="flex items-center gap-3">
      <span className={`grid h-12 w-12 place-items-center rounded-2xl ${open?'bg-emerald-500 text-white':'bg-slate-100 text-slate-500'}`}><Clock3 className="h-6 w-6"/></span>
      <div className="min-w-0 flex-1">
@@ -68,7 +73,7 @@ export default function Attendance(){
      <label className="block text-sm font-medium text-slate-700">{text('Clock out','เวลาออก')}<input type="time" value={draft.out} onChange={e=>setDraft({...draft,out:e.target.value})} className={field}/></label>
     </div>
     <label className="mt-3 block text-sm font-medium text-slate-700">{text('Why does it need fixing?','เหตุผลที่ต้องแก้ไข')}<textarea rows={2} maxLength={500} value={draft.reason} onChange={e=>setDraft({...draft,reason:e.target.value})} placeholder={text('e.g. Forgot to clock out','เช่น ลืมกดลงเวลาออก')} className={field}/></label>
-    <button type="button" disabled={!!busy||draft.reason.trim().length<3||!draft.in||!draft.out||!draft.date} onClick={()=>void sendFix()} className="mt-4 w-full rounded-xl bg-cyan-600 py-3.5 font-bold text-white disabled:opacity-50">{busy==='fix'?text('Sending…','กำลังส่ง…'):text('Send to my team lead','ส่งให้หัวหน้าทีม')}</button>
+    <button type="button" disabled={!!busy||draft.reason.trim().length<3||!draft.in||!draft.out||!draft.date} onClick={()=>void sendFix()} className="mt-4 w-full rounded-xl bg-cyan-600 py-3.5 font-bold text-white disabled:opacity-50">{busy==='fix'?text('Sending…','กำลังส่ง…'):text('Send to HR','ส่งให้ HR')}</button>
    </div>}
    {state?.eligible&&<div className="rounded-2xl bg-white shadow-xs">
     <div className="flex items-center justify-between px-4 pt-4"><h2 className="font-bold text-slate-900">{text('My hours','เวลาทำงานของฉัน')}</h2>{!draft&&<button type="button" onClick={()=>startFix()} className="text-sm font-semibold text-cyan-700">{text('+ Missing day','+ วันที่ลืมลงเวลา')}</button>}</div>
@@ -92,23 +97,6 @@ export default function Attendance(){
      {f.note&&<p className="mt-1 text-xs text-slate-700">{text('Note','หมายเหตุ')}: {f.note}</p>}
      {f.status==='pending'&&<button type="button" disabled={!!busy} onClick={()=>void run('cancel',()=>attendanceAction('fix-cancel',{id:f.id}))} className="mt-2 text-xs font-semibold text-rose-700">{text('Cancel request','ยกเลิกคำขอ')}</button>}
     </li>)}</ul>
-   </div>}
-   {!!state?.team.length&&<div className="rounded-2xl bg-white p-4 shadow-xs">
-    <h2 className="flex items-center gap-2 font-bold text-slate-900"><Users className="h-4 w-4 text-cyan-600"/>{text('My team','ทีมของฉัน')}</h2>
-    <ul className="mt-2 divide-y divide-slate-100">{state.team.map(m=><li key={m.id} className="flex items-center justify-between gap-2 py-2.5 text-sm">
-     <span className="min-w-0"><span className="block truncate font-semibold text-slate-900">{m.name}</span><span className={`text-xs ${m.open?'font-semibold text-emerald-700':'text-slate-500'}`}>{m.open?text(`Working since ${clock(m.open)}`,`ทำงานตั้งแต่ ${clock(m.open)}`):text('Not clocked in','ยังไม่ลงเวลา')}</span></span>
-     <span className="text-right text-xs text-slate-500 tabular-nums">{text('Today','วันนี้')} <b className="text-slate-900">{hours(m.todayMin)}</b><br/>{text('Week','สัปดาห์')} <b className="text-slate-900">{hours(m.weekMin)}</b></span>
-    </li>)}</ul>
-    {state.teamFixes.length>0&&<><h3 className="mt-3 text-sm font-bold text-amber-800">{text('Time fixes to check','คำขอแก้ไขเวลารอตรวจ')}</h3>
-     <ul className="mt-2 space-y-2">{state.teamFixes.map(f=><li key={f.id} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
-      <p className="font-semibold text-slate-900">{f.employee}</p>
-      <p className="text-xs text-slate-700">{dayLabel(f.date,th)} · {clock(f.in)}–{clock(f.out)} · {hours(f.workedMin)} {text('hrs','ชม.')}{f.was&&<span className="text-slate-500"> ({text('was','เดิม')} {clock(f.was.in)}–{f.was.missedOut?'?':clock(f.was.out)})</span>}</p>
-      <p className="mt-1 text-xs text-slate-600">{f.reason}</p>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-       <button type="button" disabled={!!busy} onClick={()=>void run('d'+f.id,()=>attendanceAction('team-decide',{id:f.id,decision:'approve'}))} className="flex items-center justify-center gap-1 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white disabled:opacity-50"><CheckCircle2 className="h-4 w-4"/>{text('Approve','อนุมัติ')}</button>
-       <button type="button" disabled={!!busy} onClick={()=>void run('d'+f.id,()=>attendanceAction('team-decide',{id:f.id,decision:'reject'}))} className="flex items-center justify-center gap-1 rounded-lg bg-white py-2 text-xs font-bold text-rose-700 ring-1 ring-rose-200 disabled:opacity-50"><XCircle className="h-4 w-4"/>{text('Reject','ไม่อนุมัติ')}</button>
-      </div>
-     </li>)}</ul></>}
    </div>}
   </section>
  </main>;

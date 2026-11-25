@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {PGl
 const db=new PGlite();const q=async(s,p=[])=>(await db.query(s,p)).rows;
 await db.exec(readFileSync('tests/employee-cancellation.test.mjs','utf8').match(/await db.exec\(`([\s\S]*?)`\);/)[1]);
 const files=JSON.parse(readFileSync('tests/leave-policy.test.mjs','utf8').match(/const files=(\[.*?\]);/s)[1].replaceAll("'",'"'));
-const later=readdirSync('n8n/sql').filter(f=>/^0(4[3-9]|[5-8]\d)_/.test(f)).sort().map(f=>f.replace('.sql',''));
+const later=readdirSync('n8n/sql').filter(f=>/^0(4[3-9]|[5-9]\d)_/.test(f)).sort().map(f=>f.replace('.sql',''));
 for(const f of [...files,...later])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
 const dash=async(operation,body={},token='a')=>(await q('SELECT tbs_dashboard_auth($1::jsonb) r',[JSON.stringify({operation,sessionHash:token.repeat(64),body})]))[0].r;
 const emp=async(operation,payload)=>(await q('SELECT tbs_cancellation($1,$2::jsonb) r',[operation,JSON.stringify(payload)]))[0].r;
@@ -23,7 +23,7 @@ test('clock-in stays closed until HR turns it on and adds the person',async()=>{
  assert.equal((await dash('attendance-overview',{},'c')).statusCode,403);
  let o=await dash('attendance-person-save',{userId:P,member:true});
  assert.equal(o.people.find(p=>p.id===P).member,true);
- assert.equal(o.people.find(p=>p.id===P).checkerId,L);
+ assert.equal(o.people.find(p=>p.id===P).kind,'part-time');
  assert.equal((await emp('attendance-in',{accountId:P,...here})).statusCode,403);
  o=await dash('attendance-settings-save',{enabled:true});
  assert.equal(o.settings.enabled,true);
@@ -49,7 +49,7 @@ test('clock in and out records location and counts hours with a 1 hour break',as
  assert.equal((await q("SELECT tbs_attendance_worked(now()-interval '8 hours',now()) m"))[0].m,420);
 });
 
-test('a forgotten clock-out is marked missed and fixed through the team lead',async()=>{
+test('a forgotten clock-out is marked missed and fixed by HR',async()=>{
  await q('DELETE FROM tbs_attendance_shifts');
  await emp('attendance-in',{accountId:P,...here});
  await q(`UPDATE tbs_attendance_shifts SET in_at=${hoursAgo(20)},work_date=(now() AT TIME ZONE 'Asia/Bangkok')::date-1 WHERE user_id=$1`,[P]);
@@ -61,10 +61,9 @@ test('a forgotten clock-out is marked missed and fixed through the team lead',as
  assert.equal(st.fixes[0].status,'pending');
  assert.equal((await emp('attendance-fix',{accountId:P,shiftId,date:day,in:'09:00',out:'18:00',reason:'Again please'})).statusCode,409);
  const lead=await emp('attendance-state',{accountId:L});
- assert.equal(lead.team.length,1);assert.equal(lead.teamFixes.length,1);
- assert.equal((await emp('attendance-team-decide',{accountId:X,id:lead.teamFixes[0].id,decision:'approve'})).statusCode,404);
- const after=await emp('attendance-team-decide',{accountId:L,id:lead.teamFixes[0].id,decision:'approve'});
- assert.equal(after.teamFixes.length,0);
+ assert.equal(lead.team.length,0);assert.equal(lead.teamFixes.length,0);
+ assert.equal((await emp('attendance-team-decide',{accountId:L,id:st.fixes[0].id,decision:'approve'})).statusCode,403);
+ await dash('attendance-fix-decide',{id:st.fixes[0].id,action:'approve'});
  st=await emp('attendance-state',{accountId:P});
  assert.equal(st.shifts[0].missedOut,false);assert.equal(st.shifts[0].edited,true);assert.equal(st.shifts[0].workedMin,420);
  assert.equal(st.fixes[0].status,'approved');
@@ -100,4 +99,31 @@ test('turning it off or removing the person closes clock-in again',async()=>{
  await dash('attendance-person-save',{userId:P,member:true});
  await dash('attendance-settings-save',{enabled:false});
  assert.equal((await emp('attendance-in',{accountId:P,...here})).statusCode,403);
+});
+
+test('full-time WFH staff clock in only on their WFH days with an 8 hour target',async()=>{
+ await q('DELETE FROM tbs_attendance_shifts');await q('DELETE FROM tbs_attendance_fixes');
+ await dash('attendance-settings-save',{enabled:true});
+ const dow=Number((await q("SELECT extract(isodow FROM (now() AT TIME ZONE 'Asia/Bangkok')::date)::int d"))[0].d);
+ const other=dow%7+1;
+ assert.equal((await dash('attendance-person-save',{userId:X,member:true,kind:'wfh',wfhDays:[]})).statusCode,422);
+ assert.equal((await dash('attendance-person-save',{userId:X,member:true,kind:'wfh',wfhDays:[8]})).statusCode,422);
+ let o=await dash('attendance-person-save',{userId:X,member:true,kind:'wfh',wfhDays:[other]});
+ let me=o.people.find(p=>p.id===X);assert.equal(me.kind,'wfh');assert.deepEqual(me.wfhDays,[other]);
+ let st=await emp('attendance-state',{accountId:X});
+ assert.equal(st.kind,'wfh');assert.equal(st.workToday,false);assert.equal(st.settings.workMinutes,480);
+ assert.equal((await emp('attendance-in',{accountId:X,...here})).statusCode,409);
+ const today=(await q("SELECT ((now() AT TIME ZONE 'Asia/Bangkok')::date)::text d"))[0].d;
+ assert.equal((await emp('attendance-fix',{accountId:X,date:today,in:'00:00',out:'00:01',reason:'Office day'})).statusCode,422);
+ await dash('attendance-person-save',{userId:X,member:true,kind:'wfh',wfhDays:[dow,other]});
+ st=await emp('attendance-in',{accountId:X,...here});
+ assert.equal(st.workToday,true);assert.ok(st.open);
+ await q(`UPDATE tbs_attendance_shifts SET in_at=${hoursAgo(9.5)} WHERE user_id=$1`,[X]);
+ st=await emp('attendance-out',{accountId:X,...here});
+ assert.ok(st.shifts[0].workedMin>=509&&st.shifts[0].workedMin<=511);
+ assert.ok(st.shifts[0].overtimeMin>=29&&st.shifts[0].overtimeMin<=31);
+ assert.equal((await emp('attendance-state',{accountId:P})).settings.workMinutes,420);
+ o=await dash('attendance-person-save',{userId:X,member:true,kind:'part-time'});
+ me=o.people.find(p=>p.id===X);assert.equal(me.kind,'part-time');assert.deepEqual(me.wfhDays,[]);
+ assert.equal((await emp('attendance-state',{accountId:X})).workToday,true);
 });

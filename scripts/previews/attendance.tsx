@@ -10,6 +10,7 @@ import '../../src/index.css';
 Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition:(ok:PositionCallback)=>setTimeout(()=>ok({coords:{latitude:13.7466,longitude:100.5393,accuracy:12}} as GeolocationPosition),400)}});
 const params=new URLSearchParams(location.search);
 const role=params.get('as')||'parttimer';
+const isoDow=(()=>{const d=new Date(Date.now()+7*3600e3).getUTCDay();return d===0?7:d;})();
 const bkk=(d:Date)=>new Date(d.getTime()+7*3600e3).toISOString().slice(0,10);
 const today=bkk(new Date());
 const day=(n:number)=>bkk(new Date(Date.now()-n*864e5));
@@ -23,38 +24,38 @@ const shifts:S[]=[
  mk('ploy','Ploy Dee (Ploy)',day(1),'09:02','17:05'),mk('ploy','Ploy Dee (Ploy)',day(2),'09:10',null,true),mk('ploy','Ploy Dee (Ploy)',day(3),'08:55','18:20'),mk('ploy','Ploy Dee (Ploy)',day(4),'13:00','17:00'),
  mk('mint','Mint Kaew (Mint)',today,'09:30',null),mk('mint','Mint Kaew (Mint)',day(1),'09:00','16:00'),
 ];
-const fixes=[{id:7,userId:'mint',employee:'Mint Kaew (Mint)',shiftId:null as number|null,date:day(5),in:at(day(5),'10:00'),out:at(day(5),'15:00'),reason:'Phone battery died, worked at the office',status:'pending',decidedBy:null as string|null,decidedAt:null as string|null,note:null as string|null,createdAt:new Date().toISOString(),was:null as null|{in:string;out:string|null;missedOut:boolean},checker:'Lek Lead (Lek)'}];
+const fixes=[{id:7,userId:'mint',employee:'Mint Kaew (Mint)',shiftId:null as number|null,date:day(5),in:at(day(5),'10:00'),out:at(day(5),'15:00'),reason:'Phone battery died, worked at the office',status:'pending',decidedBy:null as string|null,decidedAt:null as string|null,note:null as string|null,createdAt:new Date().toISOString(),was:null as null|{in:string;out:string|null;missedOut:boolean}}];
 let enabled=params.get('off')===null;
-const people=[{id:'ploy',name:'Ploy Dee (Ploy)',department:'SEO',type:'employee',member:true,checkerId:'lek',checker:'Lek Lead (Lek)'},{id:'mint',name:'Mint Kaew (Mint)',department:'Content',type:'intern',member:true,checkerId:'lek',checker:'Lek Lead (Lek)'},{id:'som',name:'Somchai Jaidee (Som)',department:'Sale',type:'employee',member:false,checkerId:null,checker:null}];
-const out=(s:S)=>({...s,workedMin:worked(s.in,s.out),overtimeMin:Math.max(0,worked(s.in,s.out)-420)});
+const people=[{id:'ploy',name:'Ploy Dee (Ploy)',department:'SEO',type:'employee',member:true,kind:'part-time',wfhDays:[] as number[]},{id:'mint',name:'Mint Kaew (Mint)',department:'Content',type:'employee',member:true,kind:'wfh',wfhDays:[1,5]},{id:'som',name:'Somchai Jaidee (Som)',department:'Sale',type:'employee',member:false,kind:'part-time',wfhDays:[] as number[]}];
+const target=(u:string)=>people.find(p=>p.id===u)?.kind==='wfh'?480:420;
+const out=(s:S)=>({...s,workedMin:worked(s.in,s.out),overtimeMin:Math.max(0,worked(s.in,s.out)-target(s.userId))});
 const fixOut=(f:typeof fixes[number])=>({...f,workedMin:worked(f.in,f.out)});
 const sum=(u:string,from:string)=>shifts.filter(s=>s.userId===u&&s.date>=from).reduce((a,s)=>a+worked(s.in,s.out),0);
 const monday=(()=>{const d=new Date(today+'T00:00:00Z');d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));return d.toISOString().slice(0,10);})();
-const state=()=>{const me=role==='lead'?'lek':'ploy';const mine=shifts.filter(s=>s.userId===me);return {ok:true,enabled,member:role!=='lead',eligible:enabled&&role!=='lead',settings,today,
- open:mine.find(s=>!s.out&&!s.missedOut)?out(mine.find(s=>!s.out&&!s.missedOut)!):null,shifts:mine.sort((a,b)=>b.in.localeCompare(a.in)).map(out),weekMin:sum(me,monday),monthMin:sum(me,today.slice(0,8)+'01'),
- fixes:fixes.filter(f=>f.userId===me&&f.status!=='cancelled').map(fixOut),
- team:role==='lead'?people.filter(p=>p.member).map(p=>({id:p.id,name:p.name,open:shifts.find(s=>s.userId===p.id&&!s.out&&!s.missedOut)?.in??null,todayMin:sum(p.id,today),weekMin:sum(p.id,monday)})):[],
- teamFixes:role==='lead'?fixes.filter(f=>f.status==='pending').map(fixOut):[]};};
-const overview=()=>({ok:true,from:today.slice(0,8)+'01',to:today,today,settings:{...settings,enabled,updatedAt:new Date().toISOString(),updatedBy:'hr'},people,shifts:shifts.map(out),fixes:fixes.map(fixOut)});
+const state=()=>{const me=role==='wfh'?'mint':'ploy';const p=people.find(x=>x.id===me)!;const mine=shifts.filter(s=>s.userId===me);const wfhDays=role==='office'?[isoDow%7+1]:p.wfhDays.includes(isoDow)||p.kind!=='wfh'?p.wfhDays:[...p.wfhDays,isoDow].sort();
+ const openShift=mine.find(s=>!s.out&&!s.missedOut);
+ return {ok:true,enabled,member:true,eligible:enabled,kind:role==='parttimer'?'part-time':'wfh',wfhDays:role==='parttimer'?[]:wfhDays,workToday:role==='parttimer'||wfhDays.includes(isoDow),settings:{...settings,workMinutes:role==='parttimer'?420:480},today,
+ open:role==='office'?null:openShift?out(openShift):null,shifts:mine.filter(s=>role!=='office'||s.out||s.missedOut).sort((a,b)=>b.in.localeCompare(a.in)).map(out),weekMin:sum(me,monday),monthMin:sum(me,today.slice(0,8)+'01'),
+ fixes:fixes.filter(f=>f.userId===me&&f.status!=='cancelled').map(fixOut),team:[],teamFixes:[]};};
+const overview=()=>({ok:true,from:today.slice(0,8)+'01',to:today,today,settings:{...settings,wfhWorkMinutes:480,enabled,updatedAt:new Date().toISOString(),updatedBy:'hr'},people,shifts:shifts.map(out),fixes:fixes.map(fixOut)});
 const json=(b:unknown,status=200)=>new Response(JSON.stringify(b),{status,headers:{'Content-Type':'application/json'}});
 const realFetch=window.fetch.bind(window);
 window.fetch=async(input,init)=>{
  const url=String(input);if(!url.startsWith('/api/'))return realFetch(input,init);
  const b=init?.body?JSON.parse(String(init.body)):null;await new Promise(r=>setTimeout(r,300));
- const me=role==='lead'?'lek':'ploy';
+ const me=role==='parttimer'?'ploy':'mint';
  const decide=(id:number,act:string)=>{const f=fixes.find(x=>x.id===id)!;f.status=act==='approve'?'approved':'rejected';f.decidedBy='Lek';if(act==='approve'){const s=shifts.find(x=>x.id===f.shiftId);if(s){s.in=f.in;s.out=f.out;s.missedOut=false;s.edited=true;}else shifts.push({...mk(f.userId,f.employee,f.date,'00:00','01:00'),in:f.in,out:f.out,edited:true,inLat:null,inLng:null,outLat:null,outLng:null});}};
  if(url.startsWith('/api/attendance')){
   if(!b)return json(state());
   if(b.action==='in'){shifts.push({...mk(me,'Ploy Dee (Ploy)',today,'00:00',null),in:new Date().toISOString()});return json(state());}
   if(b.action==='out'){const s=shifts.find(x=>x.userId===me&&!x.out&&!x.missedOut)!;s.out=new Date(Math.max(Date.now(),+new Date(s.in)+60000)).toISOString();s.outLat=13.7468;s.outLng=100.5391;return json(state());}
-  if(b.action==='fix'){const t=(h:string)=>at(b.date,h);fixes.unshift({id:++seq,userId:me,employee:'Ploy Dee (Ploy)',shiftId:b.shiftId??null,date:b.date,in:t(b.in),out:t(b.out),reason:b.reason,status:'pending',decidedBy:null,decidedAt:null,note:null,createdAt:new Date().toISOString(),was:null,checker:'Lek Lead (Lek)'});return json(state());}
+  if(b.action==='fix'){const t=(h:string)=>at(b.date,h);fixes.unshift({id:++seq,userId:me,employee:'Ploy Dee (Ploy)',shiftId:b.shiftId??null,date:b.date,in:t(b.in),out:t(b.out),reason:b.reason,status:'pending',decidedBy:null,decidedAt:null,note:null,createdAt:new Date().toISOString(),was:null});return json(state());}
   if(b.action==='fix-cancel'){fixes.find(f=>f.id===b.id)!.status='cancelled';return json(state());}
-  if(b.action==='team-decide'){decide(b.id,b.decision);return json(state());}
  }
  if(url.startsWith('/api/hr-admin')){
   if(!b)return json(overview());
   if(b.action==='attendance-settings-save')enabled=b.enabled;
-  if(b.action==='attendance-person-save')people.find(p=>p.id===b.userId)!.member=b.member;
+  if(b.action==='attendance-person-save'){const p=people.find(x=>x.id===b.userId)!;p.member=b.member;if(b.kind){p.kind=b.kind;p.wfhDays=b.wfhDays??[];}}
   if(b.action==='attendance-fix-decide')decide(b.id,b.decision);
   return json(overview());
  }

@@ -8,7 +8,6 @@ const schema=z.discriminatedUnion('action',[
  z.object({action:z.literal('out'),...fix}),
  z.object({action:z.literal('fix'),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),in:time,out:time,shiftId:id.optional(),reason:z.string().trim().min(3).max(500)}),
  z.object({action:z.literal('fix-cancel'),id}),
- z.object({action:z.literal('team-decide'),id,decision:z.enum(['approve','reject']),note:z.string().trim().max(500).default('')}),
 ]);
 type Out={ok?:boolean;statusCode?:number;error?:string};
 const call=async(operation:string,payload:Record<string,unknown>)=>{const r=await n8nPost('employee-cancellations',{operation,payload});return (Array.isArray(r)?r[0]:r) as Out|undefined;};
