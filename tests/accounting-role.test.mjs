@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {PGl
 const db=new PGlite();const q=async(s,p=[])=>(await db.query(s,p)).rows;
 await db.exec(readFileSync('tests/employee-cancellation.test.mjs','utf8').match(/await db.exec\(`([\s\S]*?)`\);/)[1]);
 const files=JSON.parse(readFileSync('tests/leave-policy.test.mjs','utf8').match(/const files=(\[.*?\]);/s)[1].replaceAll("'",'"'));
-const later=readdirSync('n8n/sql').filter(f=>/^0(4[3-9]|[5-8]\d)_/.test(f)).sort().map(f=>f.replace('.sql',''));
+const later=readdirSync('n8n/sql').filter(f=>/^0(4[3-9]|[5-9]\d)_/.test(f)).sort().map(f=>f.replace('.sql',''));
 for(const f of [...files,...later])await db.exec(readFileSync('n8n/sql/'+f+'.sql','utf8'));
 const call=async(operation,payload={},sessionHash='a'.repeat(64))=>(await q('SELECT tbs_dashboard_auth($1::jsonb) r',[JSON.stringify({...payload,operation,sessionHash})]))[0].r;
 const hash='scrypt:'+'a'.repeat(32)+':'+'b'.repeat(128);
@@ -28,9 +28,10 @@ test('an accounting login only reaches travel claims',async()=>{
  assert.equal((await as('travel-payout',{month:'2026-11'})).ok,true);
  assert.equal((await as('travel-mark',{id:held,action:'received'})).ok,true);
  assert.equal((await as('travel-payout-paid',{month:'2026-11'})).marked,1);
- for(const [op,body] of [['travel-decide',{id:flagged,action:'approve'}],['travel-settings',{}],['travel-settings-save',{rate:9}],['travel-access-save',{userId:S,allowed:true}],['data',{}],['accounts-list',{}],['hr-people',{}],['hr-sops',{}]])
+ assert.equal((await as('travel-decide',{id:flagged,action:'approve',note:'Checked receipt'})).ok,true);
+ for(const [op,body] of [['travel-settings',{}],['travel-settings-save',{rate:9}],['travel-access-save',{userId:S,allowed:true}],['data',{}],['accounts-list',{}],['hr-people',{}],['hr-sops',{}]])
   assert.equal((await as(op,body)).statusCode,403,op);
- assert.equal((await q('SELECT status FROM tbs_trips WHERE id=$1',[flagged]))[0].status,'flagged');
+ assert.equal((await q('SELECT status FROM tbs_trips WHERE id=$1',[flagged]))[0].status,'approved');
  assert.equal((await q('SELECT car_rate FROM tbs_travel_settings'))[0].car_rate,'7.00');
  assert.equal((await call('travel-settings')).ok,true);
  assert.equal((await call('account-save',{username:'bad',role:'boss',active:true,passwordHash:hash})).statusCode,422);
@@ -48,7 +49,8 @@ test('the API only lets an accounting session through to travel claims',async()=
  assert.equal(await ok(req('GET','/api/hr-admin?view=form&month=2026-11&userId=x')),true);
  assert.equal(await ok(req('POST','/api/hr-admin',{action:'travel-form-save',month:'2026-11',userId:'x',data:{}})),true);
  assert.equal(await ok(req('POST','/api/hr-admin',{action:'travel-form-email',month:'2026-11',userId:'x',pdf:'JVBERi0'})),true);
- assert.equal(await ok(req('POST','/api/hr-admin',{action:'travel-decide',id:1})),false);
+ assert.equal(await ok(req('POST','/api/hr-admin',{action:'travel-decide',id:1})),true);
+ assert.equal(await ok(req('POST','/api/hr-admin',{action:'travel-settings-save'})),false);
  assert.equal(await ok(req('GET','/api/hr-admin?view=travel')),false);
  assert.equal(await ok(req('GET','/api/hr-admin?view=people')),false);
  for(const u of ['/api/employees','/api/history','/api/quota','/api/interns','/api/cancellations','/api/registration','/api/company-holidays'])assert.equal(await ok(req('GET',u)),false,u);

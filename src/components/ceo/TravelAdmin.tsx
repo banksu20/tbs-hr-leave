@@ -69,8 +69,7 @@ function TripDetailView({id,onBack,onChanged,accounting}:{id:number;onBack:()=>v
      </dl>
     </div>
     {trip.decidedBy&&<p className="flex items-start gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0"/><span><span className="font-semibold">{dt('Checked by {0}',[trip.decidedBy])}</span>{trip.decisionNote&&<span className="block text-indigo-800/80">{trip.decisionNote}</span>}</span></p>}
-    {trip.status==='flagged'&&accounting&&<p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{dt('HR checks this trip before it can be paid.')}</p>}
-    {trip.status==='flagged'&&!accounting&&<div className={card+' space-y-3'}><h3 className="font-bold text-slate-900">{dt('Your decision')}</h3>
+    {trip.status==='flagged'&&<div className={card+' space-y-3'}><h3 className="font-bold text-slate-900">{dt('Your decision')}</h3>
      <textarea value={note} maxLength={500} rows={3} onChange={e=>setNote(e.target.value)} placeholder={dt('Note (optional)')} className={field+' mt-0'}/>
      <button type="button" disabled={busy} onClick={()=>void act(()=>decideTrip(trip.id,'approve',note))} className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-sm disabled:opacity-50"><CheckCircle2 className="h-4 w-4"/>{dt('Approve')}</button>
      <button type="button" disabled={busy} onClick={()=>void act(()=>decideTrip(trip.id,'reject',note))} className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white py-3 text-sm font-bold text-rose-700 disabled:opacity-50"><XCircle className="h-4 w-4"/>{dt('Reject')}</button></div>}

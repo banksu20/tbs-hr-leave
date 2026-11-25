@@ -834,7 +834,6 @@ export const dashboardThai: Record<string, string> = {
  "Accounting": "บัญชี",
  "Accounting · Travel claims": "บัญชี · ค่าเดินทาง",
  "Accounting — travel claims only": "บัญชี — ดูค่าเดินทางเท่านั้น",
- "HR checks this trip before it can be paid.": "HR ต้องตรวจทริปนี้ก่อนจึงจะจ่ายได้",
  "Confirm": "ยืนยัน",
  "Paid": "จ่ายแล้ว",
  "Trips": "จำนวนทริป",
