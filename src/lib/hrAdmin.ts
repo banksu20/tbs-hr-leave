@@ -40,3 +40,11 @@ export const loadAttendanceOverview=(from='',to='')=>call<AttendanceOverview>({v
 export const saveAttendanceOn=(enabled:boolean)=>call<AttendanceOverview>({body:{action:'attendance-settings-save',enabled}});
 export const saveAttendancePerson=(userId:string,member:boolean)=>call<AttendanceOverview>({body:{action:'attendance-person-save',userId,member}});
 export const decideAttendanceFix=(id:number,decision:'approve'|'reject',note='')=>call<AttendanceOverview>({body:{action:'attendance-fix-decide',id,decision,note}});
+export interface FormRow {date:string|null;detail:string;amount:number|string|null;remark:string}
+export interface ReimbursementForm {formDate:string|null;nameTh:string;nameEn:string;idNo:string;position:string;department:string;bank:string;account:string;approver:string;from:string|null;to:string|null;rows:FormRow[]}
+export interface Evidence {n:number;id:string;mime:string;kind:import('./travel').ReceiptKind;date:string;amount:number;merchant:string|null;tripId:number;needsOriginal:boolean;originalReceivedAt:string|null}
+export interface TravelFormData {month:string;userId:string;code:string;saved:{updatedAt:string;updatedBy:string}|null;form:ReimbursementForm;evidence:Evidence[];payeeMissing:boolean}
+const formNumbers=(b:TravelFormData):TravelFormData=>({...b,form:{...b.form,rows:b.form.rows.map(r=>({...r,amount:r.amount==null?null:Number(r.amount)}))},evidence:b.evidence.map(e=>({...e,amount:Number(e.amount)}))});
+export const loadTravelForm=(month:string,userId:string)=>call<TravelFormData>({view:`form&month=${encodeURIComponent(month)}&userId=${encodeURIComponent(userId)}`}).then(formNumbers);
+export const saveTravelForm=(month:string,userId:string,data:ReimbursementForm)=>call<TravelFormData>({body:{action:'travel-form-save',month,userId,data}}).then(formNumbers);
+export const resetTravelForm=(month:string,userId:string)=>call<TravelFormData>({body:{action:'travel-form-reset',month,userId}}).then(formNumbers);

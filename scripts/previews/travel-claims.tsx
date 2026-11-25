@@ -5,6 +5,7 @@ import liff from '@line/liff';
 import TravelClaims from '../../src/pages/TravelClaims';
 import TravelReview from '../../src/pages/TravelReview';
 import TravelAdmin from '../../src/components/ceo/TravelAdmin';
+import ReimbursementForm from '../../src/components/ceo/ReimbursementForm';
 import {LanguageProvider,useLanguage} from '../../src/hooks/useLanguage';
 import '../../src/index.css';
 (liff as unknown as {getAccessToken:()=>string}).getAccessToken=()=>'preview';
@@ -13,7 +14,7 @@ const client={lat:13.7244,lng:100.5786};
 let fix={...office,accuracy:12};
 const gpsOff=new URLSearchParams(location.search).get('gps')==='off';
 Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition:(ok:PositionCallback,fail?:PositionErrorCallback|null)=>setTimeout(()=>gpsOff?fail?.({code:2,message:'unavailable'} as GeolocationPositionError):ok({coords:{latitude:fix.lat,longitude:fix.lng,accuracy:fix.accuracy}} as GeolocationPosition),300)}});
-const svg=(label:string,amount:string)=>'data:image/svg+xml;base64,'+btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="320"><rect width="240" height="320" fill="#fff"/><text x="20" y="50" font-size="20" font-family="Arial">${label}</text><text x="20" y="120" font-size="16" font-family="Arial">Date 2026-11-23</text><text x="20" y="260" font-size="30" font-weight="bold" font-family="Arial">${amount} THB</text></svg>`);
+const svg=(label:string,amount:string)=>'data:image/svg+xml;base64,'+btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="320"><rect width="240" height="320" fill="#fdfdf7" stroke="#999"/><text x="20" y="300" font-size="12" font-family="Arial" fill="#666">Sample receipt</text><text x="20" y="50" font-size="20" font-family="Arial">${label}</text><text x="20" y="120" font-size="16" font-family="Arial">Date 2026-11-23</text><text x="20" y="260" font-size="30" font-weight="bold" font-family="Arial">${amount} THB</text></svg>`);
 const now=()=>new Date().toISOString();
 const ago=(m:number)=>new Date(Date.now()-m*60000).toISOString();
 const settings={officeLat:office.lat,officeLng:office.lng,radius:200,rate:7,homeCutoff:'10:00',tripKmCap:200,accountingEmail:'accounting@example.com',departments:['Sale'],payoutNotify:null as string|null,motorcycleRate:4 as number|null};
@@ -42,9 +43,11 @@ const simple=(id:number,date:string,user:string,employee:string,status:string,cl
 trips.push(simple(39,early('12'),'other','Boonsri Dee (Bee)','approved','True Digital Park',22,50,true),simple(38,early('06'),'me','Somchai Jaidee (Som)','paid','Siam Discovery',14,0,false),simple(37,early('09'),'me','Somchai Jaidee (Som)','submitted','ICONSIAM',30,70,true),simple(36,early('16'),'other','Boonsri Dee (Bee)','submitted','Samyan Mitrtown',18,0,false));
 const sum=(t:Trip)=>{const km=t.legs.reduce((s,l)=>s+l.km,0),kmAmount=t.legs.reduce((s,l)=>s+l.amount,0),receiptAmount=t.receipts.reduce((s,r)=>s+r.amount,0);
  return {...t,clients:t.stops.map(s=>s.clientName),km:Math.round(km*100)/100,kmAmount:Math.round(kmAmount*100)/100,receiptAmount,total:Math.round((kmAmount+receiptAmount)*100)/100,originalsWaiting:t.receipts.filter(r=>r.needsOriginal&&!r.originalReceivedAt).length,receipts:t.receipts.map(r=>({...r,img:undefined}))};};
-const state=(extra={})=>({ok:true,eligible:true,configured:true,settings,trip:trips.filter(t=>t.user==='me'&&t.status==='open').map(sum)[0]??null,recent:trips.filter(t=>t.user==='me'&&t.status!=='open').map(sum),...extra});
+let payee:Record<string,string>|null=new URLSearchParams(location.search).has('nopayee')?null:{nameTh:'สมชาย ใจดี',nameEn:'Somchai Jaidee',position:'Sales Executive',idNo:'1102002406941',bank:'กสิกรไทย',account:'0411644286'};
+const state=(extra={})=>({ok:true,eligible:true,configured:true,settings,payee,trip:trips.filter(t=>t.user==='me'&&t.status==='open').map(sum)[0]??null,recent:trips.filter(t=>t.user==='me'&&t.status!=='open').map(sum),...extra});
 const json=(b:unknown,status=200)=>new Response(JSON.stringify(b),{status,headers:{'Content-Type':'application/json'}});
 const dist=(a:{lat:number;lng:number},b:{lat:number;lng:number})=>Math.round(Math.hypot((a.lat-b.lat)*111,(a.lng-b.lng)*108)*1.35*100)/100;
+const forms:Record<string,unknown>={};
 const realFetch=window.fetch.bind(window);
 window.fetch=async(input,init)=>{
  const url=String(input);if(!url.startsWith('/api/'))return realFetch(input,init);
@@ -68,6 +71,7 @@ window.fetch=async(input,init)=>{
     fix=b.action==='arrive'?{...office,accuracy:11}:fix;return json(state());}
    case 'receipt-read':return json({ok:true,read:{amount:65,date:yesterday,kind:t?.mode==='grab'?'grab':'toll',time:'09:41',isReceipt:true,merchant:'Sukhumvit 62 plaza',ref:'TX-771203'},readSig:'demo'});
    case 'receipt-add':t!.receipts.push({id:crypto.randomUUID(),kind:b.kind,mime:b.mime,readAmount:b.read?.amount??null,readDate:b.read?.date??null,readTime:b.read?.time??null,readIsReceipt:b.read?.isReceipt??null,readMerchant:b.read?.merchant??null,readRef:b.read?.ref??null,amount:b.amount,edited:b.read?.amount!==b.amount,needsOriginal:['toll','parking','other'].includes(b.kind),originalReceivedAt:null,createdAt:now(),img:`data:${b.mime};base64,${b.content}`});return json(state());
+   case 'payee-save':{const {action:_a,...v}=b;void _a;payee={...v,idNo:v.idNo.replace(/\D/g,''),account:v.account.replace(/\D/g,'')};return json(state());}
    case 'receipt-remove':t!.receipts=t!.receipts.filter(r=>r.id!==b.receiptId);return json(state());
    case 'submit':t!.flags=t!.points.some(p=>p.manualReason)?['gps_manual']:[];t!.status=t!.points.some(p=>(p.accuracy??0)>100||p.manualReason)?'flagged':'submitted';t!.submittedAt=now();return json(state({submitted:sum(t!)}));
    case 'cancel':t!.status='cancelled';fix={...office,accuracy:12};return json(state());
@@ -83,6 +87,15 @@ window.fetch=async(input,init)=>{
     return {userId:user,code:user==='me'?'TBS-071':'TBS-072',name,nickname:nick,department:l[0].department,trips:ok.length,flagged:s.length-ok.length,km:ok.reduce((a,t)=>a+t.km,0),kmAmount:ok.reduce((a,t)=>a+t.kmAmount,0),receiptAmount:ok.reduce((a,t)=>a+t.receiptAmount,0),total:add(()=>true),paid:add(t=>t.status==='paid'),ready:add(t=>t.status!=='paid'&&!t.originalsWaiting),held:add(t=>t.status!=='paid'&&t.originalsWaiting>0),paperMissing:ok.reduce((a,t)=>a+t.originalsWaiting,0),
      lines:s.map(t=>({id:t.id,date:t.date,status:t.status,clients:t.clients,km:t.km,kmAmount:t.kmAmount,receiptAmount:t.receiptAmount,total:t.total,originalsWaiting:t.originalsWaiting}))};});};
   if(q.get('view')==='payout')return json({ok:true,people:payout()});
+  const formData=(month:string,userId:string)=>{const l=trips.filter(t=>t.user===userId&&t.date.startsWith(month)&&['submitted','approved','paid'].includes(t.status)).sort((a,c)=>a.date.localeCompare(c.date)||a.id-c.id);let n=0;const ev:unknown[]=[];const rows:unknown[]=[];
+   for(const t of l){const s=sum(t);if(s.kmAmount>0)rows.push({date:t.date,detail:`ค่าเดินทาง รถยนต์ ${s.km.toFixed(1)} กม. · ${s.clients.join(', ')}`,amount:s.kmAmount,remark:''});
+    for(const r of t.receipts){n++;rows.push({date:t.date,detail:({toll:'ค่าทางด่วน / Toll',parking:'ค่าจอดรถ / Parking',grab:'ค่า Grab',taxi:'ค่าแท็กซี่ / Taxi'} as Record<string,string>)[r.kind]+(r.readMerchant?' · '+r.readMerchant:''),amount:r.amount,remark:'หลักฐาน #'+n});ev.push({n,id:r.id,mime:r.mime,kind:r.kind,date:t.date,amount:r.amount,merchant:r.readMerchant??null,tripId:t.id,needsOriginal:r.needsOriginal,originalReceivedAt:r.originalReceivedAt});}}
+   const me=userId==='me'&&payee;const key=month+userId;
+   return {ok:true,month,userId,code:userId==='me'?'TBS-071':'TBS-072',saved:forms[key]?{updatedAt:now(),updatedBy:'acc'}:null,payeeMissing:!me,evidence:ev,
+    form:forms[key]??{formDate:today,nameTh:me?payee!.nameTh:(l[0]?.employee.split(' (')[0]??''),nameEn:me?payee!.nameEn:'',idNo:me?payee!.idNo:'',position:me?payee!.position:'',department:'Sale',bank:me?payee!.bank:'',account:me?payee!.account:'',approver:'',from:l[0]?.date??null,to:l.at(-1)?.date??null,rows}};};
+  if(q.get('view')==='form')return json(formData(q.get('month')!,q.get('userId')!));
+  if(b?.action==='travel-form-save'){forms[b.month+b.userId]=b.data;return json(formData(b.month,b.userId));}
+  if(b?.action==='travel-form-reset'){delete forms[b.month+b.userId];return json(formData(b.month,b.userId));}
   if(b?.action==='travel-payout-paid'){let n=0;trips.filter(t=>t.date.startsWith(b.month)&&['submitted','approved'].includes(t.status)&&(!b.userId||t.user===b.userId)&&!sum(t).originalsWaiting).forEach(t=>{t.status='paid';n++;});return json({ok:true,marked:n,people:payout()});}
   if(q.get('view')==='trip')return json({ok:true,trip:sum(trips.find(t=>t.id===Number(q.get('id')))!)});
   const t=trips.find(x=>x.id===b?.id);
@@ -95,10 +108,11 @@ window.fetch=async(input,init)=>{
  return json({ok:false,error:'Unknown demo call'},404);
 };
 history.replaceState(null,'',location.pathname+location.search.replace(/([?&])t=[^&]*/,'$1')+(location.search.includes('id=')?'':(location.search?'&':'?')+'id=40&t=00000000-0000-4000-8000-000000000000'));
+new MutationObserver(()=>document.querySelectorAll<HTMLImageElement>('img[src^="/api/hr-admin?view=receipt"]').forEach(img=>{const id=new URL(img.src).searchParams.get('id');const r=trips.flatMap(t=>t.receipts).find(x=>x.id===id);if(r)img.src=r.img;})).observe(document.body,{subtree:true,childList:true});
 export function Preview(){
  const {toggleLanguage,language}=useLanguage();
  const [tab,setTab]=useState(new URLSearchParams(location.search).get('tab')||'employee');
  return <><div className="flex flex-wrap items-center justify-between gap-2 bg-amber-100 p-3 text-sm"><span>Local demo · no live changes</span><span className="flex gap-3">{['employee','accounting','dashboard','accounting login'].map(t=><button key={t} onClick={()=>setTab(t)} className={tab===t?'font-bold underline':''}>{t}</button>)}<button onClick={toggleLanguage} className="underline">{language==='en'?'ภาษาไทย':'English'}</button></span></div>
-  {tab==='employee'?<div className="mx-auto max-w-md"><MemoryRouter><TravelClaims/></MemoryRouter></div>:tab==='accounting'?<TravelReview/>:<div className="min-h-screen bg-slate-100"><div className="mx-auto max-w-4xl p-6"><TravelAdmin key={tab} accounting={tab==='accounting login'}/></div></div>}</>;
+  {tab==='form'?<ReimbursementForm month={today.slice(0,7)} userId="me" onClose={()=>setTab('dashboard')}/>:tab==='employee'?<div className="mx-auto max-w-md"><MemoryRouter><TravelClaims/></MemoryRouter></div>:tab==='accounting'?<TravelReview/>:<div className="min-h-screen bg-slate-100"><div className="mx-auto max-w-4xl p-6"><TravelAdmin key={tab} accounting={tab==='accounting login'}/></div></div>}</>;
 }
 createRoot(document.getElementById('root')!).render(<LanguageProvider><Preview/></LanguageProvider>);

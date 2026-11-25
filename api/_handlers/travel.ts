@@ -19,6 +19,7 @@ const schema=z.discriminatedUnion('action',[
  z.object({action:z.literal('receipt-remove'),tripId:id,receiptId:z.string().uuid()}),
  z.object({action:z.literal('submit'),tripId:id}),
  z.object({action:z.literal('cancel'),tripId:id}),
+ z.object({action:z.literal('payee-save'),nameTh:z.string().trim().min(2).max(120),nameEn:z.string().trim().min(2).max(120),position:z.string().trim().min(2).max(120),idNo:z.string().trim().max(20),bank:z.string().trim().min(2).max(80),account:z.string().trim().max(30)}),
 ]);
 type Point={id:number;kind:string;lat:number;lng:number};
 type State={ok?:boolean;statusCode?:number;error?:string;settings?:{officeLat:number|null;officeLng:number|null;radius?:number};trip?:{id:number;points:Point[];stops?:{id:number;lat:number;lng:number}[]}|null};

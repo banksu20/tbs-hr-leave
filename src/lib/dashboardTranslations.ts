@@ -931,6 +931,20 @@ export const dashboardThai: Record<string, string> = {
  "{0} hours of work plus a {1}-minute break once a shift is over {2} hours. Locations are erased after {3} days.": "ทำงาน {0} ชั่วโมง พัก {1} นาทีเมื่อทำงานเกิน {2} ชั่วโมง ตำแหน่งจะถูกลบหลัง {3} วัน",
  "{0} hrs": "{0} ชม.",
  "{0} missed clock-outs": "ลืมลงเวลาออก {0} ครั้ง",
+ "Add row": "เพิ่มแถว",
+ "Choose a bank…": "เลือกธนาคาร…",
+ "Close without saving your changes?": "ปิดโดยไม่บันทึกการแก้ไขใช่ไหม",
+ "Filled from the claims. Check, edit, then print.": "กรอกจากรายการเบิกให้แล้ว ตรวจ แก้ไข แล้วพิมพ์",
+ "Form": "ใบเบิก",
+ "Open PDF": "เปิด PDF",
+ "Print / save PDF": "พิมพ์ / บันทึก PDF",
+ "Reimbursement form": "ใบขอเบิกค่าใช้จ่าย",
+ "Remove row": "ลบแถว",
+ "Saved by {0}": "บันทึกโดย {0}",
+ "Start over from claims": "เริ่มใหม่จากรายการเบิก",
+ "This person has not added their ID and bank details yet. Fill them in here and save; they will be remembered.": "พนักงานคนนี้ยังไม่ได้กรอกเลขบัตรประชาชนและบัญชีธนาคาร กรอกที่นี่แล้วบันทึก ระบบจะจำไว้ให้",
+ "Unsaved changes": "ยังไม่ได้บันทึก",
+ "Yes, start over": "ใช่ เริ่มใหม่",
 };
 
 export function dashboardText(language: string, text: string, values: readonly (string | number)[] = []): string {

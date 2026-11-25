@@ -1,11 +1,12 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {createPortal} from 'react-dom';
-import {AlertTriangle,ArrowLeft,Bike,BookOpen,Briefcase,Building2,Camera,Car,CarTaxiFront,Check,CheckCircle2,ChevronRight,Clock,ExternalLink,Flag,Home,ImagePlus,Link2,Loader2,MapPin,Navigation,Plus,Receipt,Search,Smartphone,Trash2,X} from 'lucide-react';
+import {AlertTriangle,ArrowLeft,Bike,BookOpen,Briefcase,Building2,Camera,Car,CarTaxiFront,Check,CheckCircle2,ChevronRight,Clock,ExternalLink,Flag,Home,ImagePlus,Link2,Loader2,MapPin,Navigation,Plus,Receipt,Search,ShieldCheck,Smartphone,Trash2,X,Landmark} from 'lucide-react';
 import {useLanguage} from '@/hooks/useLanguage';
 import {currentPosition,findPlaces,loadTravel,money,prepareFile,readReceipt,receiptUrl,travelAction,TravelError,type Fix,type Place,type ReceiptKind,type ReceiptRead,type TravelState,type TripDetail,type TripStatus,type TripSummary,type TravelMode,flagLabel,modeName,monthSummary,perKm,statusLabel} from '@/lib/travel';
 
 import type {T} from '@/lib/travel';
+import {bankEn,banks} from '@/lib/banks';
 type Run=(fn:()=>Promise<TravelState>)=>Promise<void>;
 const card='rounded-3xl border border-slate-100 bg-white p-5 shadow-md shadow-slate-200/60';
 const input='w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-[15px] text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-sky-500';
@@ -243,11 +244,31 @@ function Guide({state,text,onClose}:{state:TravelState|null;text:T;onClose:()=>v
  </div>;
 }
 
+function PayeeForm({state,text,run,onDone}:{state:TravelState;text:T;run:Run;onDone?:()=>void}){
+ const p=state.payee;
+ const [v,setV]=useState({nameTh:p?.nameTh??'',nameEn:p?.nameEn??'',position:p?.position??'',idNo:p?.idNo??'',bank:p?.bank??'',account:p?.account??''});
+ const set=(k:keyof typeof v)=>(e:{target:{value:string}})=>setV(x=>({...x,[k]:e.target.value}));
+ const idOk=v.idNo.replace(/\D/g,'').length===13,acctOk=/^\d{10,15}$/.test(v.account.replace(/\D/g,''));
+ const ok=v.nameTh.trim().length>=2&&v.nameEn.trim().length>=2&&v.position.trim().length>=2&&v.bank&&idOk&&acctOk;
+ return <section className={card+' space-y-4'}>
+  <div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-sky-50 text-sky-600"><Landmark className="h-5 w-5"/></span><div><h2 className="font-bold text-slate-900">{text('Your payment details','ข้อมูลสำหรับรับเงิน')}</h2><p className="text-sm text-slate-500">{text('Fill this in once. Accounting uses it on your reimbursement form and to transfer your money.','กรอกครั้งเดียว บัญชีจะใช้ในใบขอเบิกและโอนเงินให้คุณ')}</p></div></div>
+  <label className="block"><span className={label}>{text('Full name in Thai','ชื่อ-นามสกุล (ภาษาไทย)')}</span><input className={input} value={v.nameTh} onChange={set('nameTh')} autoComplete="name"/></label>
+  <label className="block"><span className={label}>{text('Full name in English','ชื่อ-นามสกุล (ภาษาอังกฤษ)')}</span><input className={input} value={v.nameEn} onChange={set('nameEn')}/></label>
+  <label className="block"><span className={label}>{text('Position','ตำแหน่ง')}</span><input className={input} value={v.position} onChange={set('position')} placeholder={text('e.g. Sales Executive','เช่น Sales Executive')}/></label>
+  <label className="block"><span className={label}>{text('ID card number (13 digits)','เลขบัตรประชาชน (13 หลัก)')}</span><input className={input} value={v.idNo} onChange={set('idNo')} inputMode="numeric" maxLength={17}/>{v.idNo&&!idOk&&<span className="mt-1 block text-xs text-rose-600">{text('Needs 13 digits.','ต้องมี 13 หลัก')}</span>}</label>
+  <label className="block"><span className={label}>{text('Bank','ธนาคาร')}</span><select className={input} value={v.bank} onChange={set('bank')}><option value="">{text('Choose your bank','เลือกธนาคาร')}</option>{banks.map(([b,en])=><option key={b} value={b}>{text(en,b)}</option>)}</select></label>
+  <label className="block"><span className={label}>{text('Account number','เลขที่บัญชี')}</span><input className={input} value={v.account} onChange={set('account')} inputMode="numeric" maxLength={20}/>{v.account&&!acctOk&&<span className="mt-1 block text-xs text-rose-600">{text('Use 10 to 15 digits.','ใช้ 10 ถึง 15 หลัก')}</span>}</label>
+  <p className="flex items-start gap-2 rounded-2xl bg-slate-50 p-3 text-xs text-slate-500"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"/>{text('Only you, HR and accounting can see these details.','เฉพาะคุณ HR และฝ่ายบัญชีเท่านั้นที่เห็นข้อมูลนี้')}</p>
+  <button type="button" disabled={!ok} className={primary} onClick={()=>void run(async()=>{const s=await travelAction('payee-save',v);onDone?.();return s;})}><Check className="h-5 w-5"/>{text('Save','บันทึก')}</button>
+  {onDone&&<button type="button" className={secondary} onClick={onDone}>{text('Cancel','ยกเลิก')}</button>}
+ </section>;
+}
+
 export default function TravelClaims(){
  const navigate=useNavigate();
  const {language}=useLanguage();const th=language==='th';
  const text:T=useCallback((en,thai)=>th?thai:en,[th]);
- const [state,setState]=useState<TravelState|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState<TripSummary|null>(null),[guide,setGuide]=useState(false);
+ const [state,setState]=useState<TravelState|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[done,setDone]=useState<TripSummary|null>(null),[guide,setGuide]=useState(false),[editPayee,setEditPayee]=useState(false);
  const closeGuide=()=>{setGuide(false);try{localStorage.setItem('tbs_travel_guide_seen','1');}catch{setGuide(false);}};
  useEffect(()=>{if(!state?.eligible||state.trip||state.recent.length)return;let seen=false;try{seen=localStorage.getItem('tbs_travel_guide_seen')==='1';}catch{seen=true;}if(!seen)setGuide(true);},[state]);
  useEffect(()=>{let active=true;loadTravel().then(s=>{if(active)setState(s);}).catch(e=>{if(active)setError((e as Error).message);});return()=>{active=false;};},[]);
@@ -282,7 +303,8 @@ export default function TravelClaims(){
    </section>}
    {state&&!state.eligible&&<div className={card+' text-center'}><Car className="mx-auto h-8 w-8 text-slate-300"/><p className="mt-2 text-sm text-slate-600">{text('Travel claims are not open for your team yet.','ยังไม่เปิดให้ทีมของคุณเบิกค่าเดินทาง')}</p></div>}
    {state?.eligible&&!state.configured&&<div className={card+' text-center'}><Clock className="mx-auto h-8 w-8 text-slate-300"/><p className="mt-2 text-sm text-slate-600">{text('HR is still setting up travel claims. Please check back soon.','HR กำลังตั้งค่าระบบเบิกค่าเดินทาง กรุณารอสักครู่')}</p></div>}
-   {state?.eligible&&state.configured&&(state.trip?<OpenTrip key={state.trip.id} trip={state.trip} text={text} run={run}/>:<StartForm state={state} text={text} run={run}/>)}
+   {state?.eligible&&state.configured&&(state.trip?<OpenTrip key={state.trip.id} trip={state.trip} text={text} run={run}/>:!state.payee||editPayee?<PayeeForm state={state} text={text} run={run} onDone={state.payee?()=>setEditPayee(false):undefined}/>:<StartForm state={state} text={text} run={run}/>)}
+   {state?.payee&&!editPayee&&!state.trip&&<button type="button" onClick={()=>setEditPayee(true)} className="flex w-full items-center gap-3 rounded-2xl bg-white px-4 py-3 text-left text-sm shadow-sm"><Landmark className="h-4 w-4 text-slate-400"/><span className="min-w-0 flex-1 truncate text-slate-600">{text('Paid to','รับเงินเข้า')} {text(bankEn(state.payee.bank),state.payee.bank)} ••••{state.payee.account.slice(-4)}</span><span className="font-semibold text-sky-700">{text('Edit','แก้ไข')}</span></button>}
    {!!state?.recent.length&&<section className={card}>
     <h2 className="mb-3 font-bold text-slate-900">{text('Recent claims','รายการเบิกล่าสุด')}</h2>
     <ul className="space-y-2">{state.recent.map(t=><li key={t.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3">

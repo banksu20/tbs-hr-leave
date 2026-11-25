@@ -9,7 +9,8 @@ export const perKm=(mode:TravelMode)=>mode==='car'||mode==='motorcycle';
 export type ReceiptKind='toll'|'parking'|'grab'|'taxi'|'other';
 export interface TripSummary {id:number;date:string;purpose:'deal'|'care';dealRef:string|null;mode:TravelMode;startFrom:'office'|'home';appointment:string|null;rate:number;status:TripStatus;flags:string[];autoClosed:boolean;submittedAt:string|null;decidedAt:string|null;decidedBy:string|null;decisionNote:string|null;paidAt:string|null;clients:string[];km:number;kmAmount:number;receiptAmount:number;total:number;originalsWaiting:number}
 export interface TripDetail extends TripSummary {stops:TripStop[];points:TripPoint[];legs:TripLeg[];receipts:TripReceipt[]}
-export interface TravelState {eligible:boolean;configured:boolean;settings:{officeLat:number|null;officeLng:number|null;radius:number;rate:number;motorcycleRate?:number|null;homeCutoff:string};trip:TripDetail|null;recent:TripSummary[];submitted?:TripSummary}
+export interface Payee {nameTh:string;nameEn:string;position:string;idNo:string;bank:string;account:string;updatedAt?:string}
+export interface TravelState {payee?:Payee|null;eligible:boolean;configured:boolean;settings:{officeLat:number|null;officeLng:number|null;radius:number;rate:number;motorcycleRate?:number|null;homeCutoff:string};trip:TripDetail|null;recent:TripSummary[];submitted?:TripSummary}
 export interface Place {lat:number;lng:number;label:string}
 export interface ReceiptRead {amount:number|null;date:string|null;kind:ReceiptKind|null;time:string|null;isReceipt:boolean|null;merchant:string|null;ref:string|null}
 export class TravelError extends Error {constructor(message:string,public status:number,public state?:TravelState,public distanceM?:number){super(message);}}
