@@ -55,6 +55,8 @@ window.fetch=async(input,init)=>{
   if(init?.method==='POST'){const b=JSON.parse(String(init.body));if(b.kind==='quota'){quotaSettings={alertEmail:b.alertEmail||null,warnPct:b.warnPct,reservePct:b.reservePct};return json({ok:true,lineQuota:lineQuota()});}demoRetried=true;return json({ok:true});}
   return json(url.searchParams.has('delivery')?{pending:demoRetried?0:1,failed:demoRetried?0:1,calendar:{lastSuccess:new Date().toISOString(),error:demoRetried?null:'Sample connection failure',running:false,failures:demoRetried?0:1},lineQuota:lineQuota(),jobs:demoRetried?[]:[{id:'sample',kind:'line',name:'Sample Employee',status:'Retry scheduled',attempts:1,blocked:false,running:false,needsResend:false,error:'Sample LINE delivery failure',updatedAt:new Date().toISOString()}]}:{requests:[]});
  }
+ if(url.pathname==='/api/hr-admin'&&url.searchParams.get('view')==='trips')return json({ok:true,trips:url.searchParams.get('status')==='flagged'?[{id:1,status:'flagged'},{id:2,status:'flagged'}]:[]});
+ if(url.pathname==='/api/hr-admin'&&url.searchParams.get('view')==='attendance')return json({ok:true,fixes:[{id:1,status:'pending'}]});
  throw Error('Live requests are disabled in this preview');
 };
 export function DemoLanguage(){const {language,toggleLanguage}=useLanguage();return <button className="fixed bottom-3 right-3 z-50 rounded-full border bg-white px-4 py-2 shadow" onClick={toggleLanguage}>{language==='th'?'EN':'ไทย'}</button>;}
