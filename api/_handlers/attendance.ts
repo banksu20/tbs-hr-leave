@@ -1,11 +1,12 @@
 import type {VercelRequest,VercelResponse} from '../_lib/platform.js';import {z} from 'zod';
 import {headerValue,json} from '../_lib/http.js';import {verifyLineIdentity} from '../_lib/lineIdentity.js';import {n8nPost} from '../_lib/n8nClient.js';
 const fix={lat:z.number().min(-90).max(90),lng:z.number().min(-180).max(180),accuracy:z.number().min(0).max(100000).optional()};
+const photo=z.string().min(1000).max(2900000).regex(/^\/9j\/[A-Za-z0-9+/]*={0,2}$/);
 const time=z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const id=z.number().int().positive();
 const schema=z.discriminatedUnion('action',[
- z.object({action:z.literal('in'),...fix}),
- z.object({action:z.literal('out'),...fix}),
+ z.object({action:z.literal('in'),...fix,photo}),
+ z.object({action:z.literal('out'),...fix,photo}),
  z.object({action:z.literal('fix'),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),in:time,out:time,shiftId:id.optional(),reason:z.string().trim().min(3).max(500)}),
  z.object({action:z.literal('fix-cancel'),id}),
 ]);

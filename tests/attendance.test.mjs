@@ -7,7 +7,8 @@ for(const f of [...files,...later])await db.exec(readFileSync('n8n/sql/'+f+'.sql
 const dash=async(operation,body={},token='a')=>(await q('SELECT tbs_dashboard_auth($1::jsonb) r',[JSON.stringify({operation,sessionHash:token.repeat(64),body})]))[0].r;
 const emp=async(operation,payload)=>(await q('SELECT tbs_cancellation($1,$2::jsonb) r',[operation,JSON.stringify(payload)]))[0].r;
 const P='U'+'7'.repeat(32),L='U'+'8'.repeat(32),X='U'+'9'.repeat(32);
-const here={lat:13.7563,lng:100.5018,accuracy:15};
+const pic='/9j/'+'A'.repeat(2000);
+const here={lat:13.7563,lng:100.5018,accuracy:15,photo:pic};
 await q("INSERT INTO tbs_dashboard_accounts(username,password_hash,role) VALUES('hr','test','hr'),('acc','test','accounting')");
 await q("INSERT INTO tbs_dashboard_sessions(token_hash,account_id,version) SELECT $1,id,version FROM tbs_dashboard_accounts WHERE username='hr'",['a'.repeat(64)]);
 await q("INSERT INTO tbs_dashboard_sessions(token_hash,account_id,version) SELECT $1,id,version FROM tbs_dashboard_accounts WHERE username='acc'",['c'.repeat(64)]);
@@ -126,4 +127,30 @@ test('full-time WFH staff clock in only on their WFH days with an 8 hour target'
  o=await dash('attendance-person-save',{userId:X,member:true,kind:'part-time'});
  me=o.people.find(p=>p.id===X);assert.equal(me.kind,'part-time');assert.deepEqual(me.wfhDays,[]);
  assert.equal((await emp('attendance-state',{accountId:X})).workToday,true);
+});
+
+test('clocking in and out needs a photo that only HR, CEO and admin can open',async()=>{
+ await q('DELETE FROM tbs_attendance_shifts');
+ await dash('attendance-person-save',{userId:P,member:true,kind:'part-time'});
+ const {photo,...noPhoto}=here;
+ let r=await emp('attendance-in',{accountId:P,...noPhoto});
+ assert.equal(r.statusCode,422);assert.match(r.error,/photo/);
+ assert.equal((await emp('attendance-in',{accountId:P,...noPhoto,photo:'iVBOR'+'A'.repeat(2000)})).statusCode,422);
+ await dash('attendance-person-save',{userId:X,member:false});
+ assert.equal((await emp('attendance-in',{accountId:X,...noPhoto})).statusCode,403);
+ let st=await emp('attendance-in',{accountId:P,...here});
+ assert.equal(st.open.inPhoto,true);assert.equal(st.open.outPhoto,false);
+ await q(`UPDATE tbs_attendance_shifts SET in_at=${hoursAgo(2)} WHERE user_id=$1`,[P]);
+ assert.equal((await emp('attendance-out',{accountId:P,...noPhoto})).statusCode,422);
+ assert.ok((await emp('attendance-state',{accountId:P})).open);
+ st=await emp('attendance-out',{accountId:P,...here,photo:'/9j/'+'B'.repeat(2000)});
+ const s=st.shifts[0];assert.equal(s.inPhoto,true);assert.equal(s.outPhoto,true);
+ const img=await dash('attendance-photo',{shiftId:s.id,kind:'out'});
+ assert.equal(img.mime,'image/jpeg');assert.equal(img.content,'/9j/'+'B'.repeat(2000));
+ assert.equal((await dash('attendance-photo',{shiftId:s.id,kind:'out'},'c')).statusCode,403);
+ assert.equal((await dash('attendance-photo',{shiftId:s.id,kind:'out'},'z')).statusCode,401);
+ assert.equal((await dash('attendance-photo',{shiftId:'x',kind:'out'})).statusCode,422);
+ await q("UPDATE tbs_attendance_shifts SET in_at=now()-interval '100 days',out_at=now()-interval '100 days'+interval '2 hours' WHERE id=$1",[s.id]);
+ await q('SELECT tbs_attendance_purge()');
+ assert.equal((await q('SELECT count(*)::int n FROM tbs_attendance_photos WHERE shift_id=$1',[s.id]))[0].n,0);
 });

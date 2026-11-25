@@ -33,6 +33,13 @@ export default async function handler(req:VercelRequest,res:VercelResponse){
     res.setHeader('Content-Type',r.mime);res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Cache-Control','private, max-age=300');
     return res.status(200).send(Buffer.from(r.content,'base64'));
    }
+   if(view==='attendance-photo'){
+    const id=String(req.query?.id??''),kind=String(req.query?.kind??'');if(!/^[1-9]\d{0,8}$/.test(id)||!['in','out'].includes(kind))return json(res,422,{error:'Invalid photo'});
+    const r=await dashboardCall(req,'attendance-photo',{body:{shiftId:id,kind}}) as {ok?:boolean;statusCode?:number;mime?:string;content?:string};
+    if(!r?.ok||r.mime!=='image/jpeg'||!r.content)return json(res,Number(r?.statusCode)||404,{error:'Photo not found.'});
+    res.setHeader('Content-Type','image/jpeg');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Cache-Control','private, max-age=300');
+    return res.status(200).send(Buffer.from(r.content,'base64'));
+   }
    const views:Record<string,string>={people:'hr-people',alerts:'people-alerts',sops:'hr-sops',travel:'travel-settings',trips:'travel-trips',trip:'travel-trip',payout:'travel-payout',form:'travel-form',attendance:'attendance-overview'};
    if(!Object.hasOwn(views,view))return json(res,404,{error:'Unknown view'});
    const tripId=Number(req.query?.id);

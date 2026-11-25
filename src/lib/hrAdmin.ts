@@ -32,6 +32,7 @@ const numbers=(p:PayoutPerson):PayoutPerson=>({...p,km:Number(p.km),kmAmount:Num
 export const loadPayout=(month:string)=>call<{people:PayoutPerson[]}>({view:`payout&month=${encodeURIComponent(month)}`}).then(b=>b.people.map(numbers));
 export const markPayoutPaid=(month:string,userId?:string)=>call<{people:PayoutPerson[];marked:number}>({body:{action:'travel-payout-paid',month,...(userId?{userId}:{})}}).then(b=>({marked:b.marked,people:b.people.map(numbers)}));
 export const markTrip=(id:number,mark:'paid'|'received')=>call<{trip:AdminTrip}>({body:{action:'travel-mark',id,mark}}).then(b=>b.trip);
+export const attendancePhotoUrl=(id:number,kind:'in'|'out')=>`/api/hr-admin?view=attendance-photo&id=${id}&kind=${kind}`;
 export const adminReceiptUrl=(id:string)=>`/api/hr-admin?view=receipt&id=${encodeURIComponent(id)}`;
 export interface AttendancePerson {id:string;name:string;department:string|null;type:'employee'|'intern';member:boolean;kind:import('./attendance').AttendanceKind;wfhDays:number[]}
 export type AdminShift=import('./attendance').Shift&{userId:string;employee:string};

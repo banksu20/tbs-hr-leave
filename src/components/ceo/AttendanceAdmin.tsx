@@ -1,9 +1,9 @@
 import {useCallback,useEffect,useMemo,useState} from 'react';
-import {AlertTriangle,CheckCircle2,ChevronDown,Clock3,Loader2,MapPin,PencilLine,Power,UserMinus,UserPlus,Users,XCircle} from 'lucide-react';
+import {AlertTriangle,Camera,CheckCircle2,ChevronDown,Clock3,Loader2,MapPin,PencilLine,Power,UserMinus,UserPlus,Users,XCircle} from 'lucide-react';
 import {useDashboardText} from '@/hooks/useDashboardText';
 import {useLanguage} from '@/hooks/useLanguage';
 import {clock,dayLabel,hours,mapLink,weekdays,type AttendanceKind} from '@/lib/attendance';
-import {decideAttendanceFix,loadAttendanceOverview,saveAttendanceOn,saveAttendancePerson,type AttendanceOverview,type AttendancePerson} from '@/lib/hrAdmin';
+import {attendancePhotoUrl,decideAttendanceFix,loadAttendanceOverview,saveAttendanceOn,saveAttendancePerson,type AttendanceOverview,type AttendancePerson} from '@/lib/hrAdmin';
 
 type Edit={id:string;kind:AttendanceKind;days:number[]};
 const field='mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-cyan-500';
@@ -29,7 +29,7 @@ export default function AttendanceAdmin(){
     <div>
      <h1 className="flex items-center gap-2 text-xl font-bold"><Clock3 className="h-5 w-5 text-cyan-600"/>{dt('Clock-in')}</h1>
      <p className="mt-1 text-sm text-slate-600">{dt('Only people on the list below can clock in: part-timers on any day, work-from-home staff only on their work-from-home days. Nobody else sees it.')}</p>
-     <p className="mt-1 text-xs text-slate-500">{dt('Part-time {0} hours a day, work from home {1} hours a day. A {2}-minute break is taken off once a shift is over {3} hours. Locations are erased after {4} days.',[s.workMinutes/60,s.wfhWorkMinutes/60,s.breakMinutes,s.breakAfterMinutes/60,s.locationDays])}</p>
+     <p className="mt-1 text-xs text-slate-500">{dt('Part-time {0} hours a day, work from home {1} hours a day. A {2}-minute break is taken off once a shift is over {3} hours. Staff take a photo and share their location each time. Both are erased after {4} days.',[s.workMinutes/60,s.wfhWorkMinutes/60,s.breakMinutes,s.breakAfterMinutes/60,s.locationDays])}</p>
     </div>
     <button type="button" disabled={!!busy} onClick={()=>void act('on',()=>saveAttendanceOn(!s.enabled))} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50 ${s.enabled?'bg-white text-rose-700 ring-1 ring-rose-200':'bg-emerald-600 text-white'}`}><Power className="h-4 w-4"/>{s.enabled?dt('Turn off'):dt('Turn on')}</button>
    </div>
@@ -89,8 +89,8 @@ export default function AttendanceAdmin(){
      <thead className="bg-slate-50 text-left text-xs text-slate-500"><tr><th className="px-3 py-2 font-medium">{dt('Day')}</th><th className="px-3 py-2 font-medium">{dt('In')}</th><th className="px-3 py-2 font-medium">{dt('Out')}</th><th className="px-3 py-2 text-right font-medium">{dt('Hours')}</th></tr></thead>
      <tbody>{p.shifts.map(x=>{const a=mapLink(x.inLat,x.inLng),b=mapLink(x.outLat,x.outLng);return <tr key={x.id} className="border-t border-slate-100">
       <td className="px-3 py-2">{dayLabel(x.date,th)}{x.edited&&<span className="ml-1 rounded bg-slate-100 px-1 text-[10px] text-slate-600">{dt('fixed')}</span>}</td>
-      <td className="px-3 py-2 tabular-nums">{clock(x.in)}{a&&<a href={a} target="_blank" rel="noreferrer" aria-label={dt('Clock-in location')} className="ml-1 inline-flex text-cyan-700"><MapPin className="h-3.5 w-3.5"/></a>}</td>
-      <td className="px-3 py-2 tabular-nums">{x.missedOut?<span className="text-rose-600">{dt('Missing')}</span>:x.out?<>{clock(x.out)}{b&&<a href={b} target="_blank" rel="noreferrer" aria-label={dt('Clock-out location')} className="ml-1 inline-flex text-cyan-700"><MapPin className="h-3.5 w-3.5"/></a>}</>:<span className="text-emerald-700">{dt('Working')}</span>}</td>
+      <td className="px-3 py-2 tabular-nums">{clock(x.in)}{a&&<a href={a} target="_blank" rel="noreferrer" aria-label={dt('Clock-in location')} className="ml-1 inline-flex text-cyan-700"><MapPin className="h-3.5 w-3.5"/></a>}{x.inPhoto&&<a href={attendancePhotoUrl(x.id,'in')} target="_blank" rel="noreferrer" aria-label={dt('Clock-in photo')} className="ml-1 inline-flex text-cyan-700"><Camera className="h-3.5 w-3.5"/></a>}</td>
+      <td className="px-3 py-2 tabular-nums">{x.missedOut?<span className="text-rose-600">{dt('Missing')}</span>:x.out?<>{clock(x.out)}{b&&<a href={b} target="_blank" rel="noreferrer" aria-label={dt('Clock-out location')} className="ml-1 inline-flex text-cyan-700"><MapPin className="h-3.5 w-3.5"/></a>}{x.outPhoto&&<a href={attendancePhotoUrl(x.id,'out')} target="_blank" rel="noreferrer" aria-label={dt('Clock-out photo')} className="ml-1 inline-flex text-cyan-700"><Camera className="h-3.5 w-3.5"/></a>}</>:<span className="text-emerald-700">{dt('Working')}</span>}</td>
       <td className="px-3 py-2 text-right tabular-nums">{hours(x.workedMin)}{x.overtimeMin>0&&<span className="ml-1 text-xs text-amber-700">+{hours(x.overtimeMin)}</span>}</td>
      </tr>;})}</tbody>
     </table>}

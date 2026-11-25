@@ -1,5 +1,5 @@
 import liff from '@line/liff';
-export interface Shift {id:number;date:string;in:string;out:string|null;missedOut:boolean;edited:boolean;workedMin:number;overtimeMin:number;inLat?:number|null;inLng?:number|null;inAccuracy?:number|null;outLat?:number|null;outLng?:number|null;outAccuracy?:number|null}
+export interface Shift {id:number;date:string;in:string;out:string|null;missedOut:boolean;edited:boolean;workedMin:number;overtimeMin:number;inPhoto?:boolean;outPhoto?:boolean;inLat?:number|null;inLng?:number|null;inAccuracy?:number|null;outLat?:number|null;outLng?:number|null;outAccuracy?:number|null}
 export type FixStatus='pending'|'approved'|'rejected'|'cancelled';
 export interface Fix {id:number;userId:string;employee:string;shiftId:number|null;date:string;in:string;out:string;workedMin:number;reason:string;status:FixStatus;decidedBy:string|null;decidedAt:string|null;note:string|null;createdAt:string;was:{in:string;out:string|null;missedOut:boolean}|null}
 export interface AttendanceSettings {workMinutes:number;breakMinutes:number;breakAfterMinutes:number;locationDays:number}

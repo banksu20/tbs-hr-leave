@@ -17,9 +17,9 @@ const day=(n:number)=>bkk(new Date(Date.now()-n*864e5));
 const at=(date:string,hhmm:string)=>new Date(`${date}T${hhmm}:00+07:00`).toISOString();
 const settings={workMinutes:420,breakMinutes:60,breakAfterMinutes:300,locationDays:90};
 const worked=(a:string,b:string|null)=>{if(!b)return 0;const span=Math.floor((+new Date(b)-+new Date(a))/60000);return Math.max(0,span-(span>300?60:0));};
-type S={id:number;userId:string;employee:string;date:string;in:string;out:string|null;missedOut:boolean;edited:boolean;inLat:number|null;inLng:number|null;outLat:number|null;outLng:number|null};
+type S={id:number;userId:string;employee:string;date:string;in:string;out:string|null;missedOut:boolean;edited:boolean;inPhoto:boolean;outPhoto:boolean;inLat:number|null;inLng:number|null;outLat:number|null;outLng:number|null};
 let seq=50;
-const mk=(userId:string,employee:string,date:string,a:string,b:string|null,missed=false):S=>({id:++seq,userId,employee,date,in:at(date,a),out:b?at(date,b):null,missedOut:missed,edited:false,inLat:13.7466,inLng:100.5393,outLat:b?13.7468:null,outLng:b?100.5391:null});
+const mk=(userId:string,employee:string,date:string,a:string,b:string|null,missed=false):S=>({id:++seq,userId,employee,date,in:at(date,a),out:b?at(date,b):null,missedOut:missed,edited:false,inPhoto:true,outPhoto:!!b,inLat:13.7466,inLng:100.5393,outLat:b?13.7468:null,outLng:b?100.5391:null});
 const shifts:S[]=[
  mk('ploy','Ploy Dee (Ploy)',day(1),'09:02','17:05'),mk('ploy','Ploy Dee (Ploy)',day(2),'09:10',null,true),mk('ploy','Ploy Dee (Ploy)',day(3),'08:55','18:20'),mk('ploy','Ploy Dee (Ploy)',day(4),'13:00','17:00'),
  mk('mint','Mint Kaew (Mint)',today,'09:30',null),mk('mint','Mint Kaew (Mint)',day(1),'09:00','16:00'),
@@ -44,11 +44,12 @@ window.fetch=async(input,init)=>{
  const url=String(input);if(!url.startsWith('/api/'))return realFetch(input,init);
  const b=init?.body?JSON.parse(String(init.body)):null;await new Promise(r=>setTimeout(r,300));
  const me=role==='parttimer'?'ploy':'mint';
- const decide=(id:number,act:string)=>{const f=fixes.find(x=>x.id===id)!;f.status=act==='approve'?'approved':'rejected';f.decidedBy='Lek';if(act==='approve'){const s=shifts.find(x=>x.id===f.shiftId);if(s){s.in=f.in;s.out=f.out;s.missedOut=false;s.edited=true;}else shifts.push({...mk(f.userId,f.employee,f.date,'00:00','01:00'),in:f.in,out:f.out,edited:true,inLat:null,inLng:null,outLat:null,outLng:null});}};
+ const decide=(id:number,act:string)=>{const f=fixes.find(x=>x.id===id)!;f.status=act==='approve'?'approved':'rejected';f.decidedBy='Lek';if(act==='approve'){const s=shifts.find(x=>x.id===f.shiftId);if(s){s.in=f.in;s.out=f.out;s.missedOut=false;s.edited=true;}else shifts.push({...mk(f.userId,f.employee,f.date,'00:00','01:00'),in:f.in,out:f.out,edited:true,inPhoto:false,outPhoto:false,inLat:null,inLng:null,outLat:null,outLng:null});}};
  if(url.startsWith('/api/attendance')){
   if(!b)return json(state());
+  if((b.action==='in'||b.action==='out')&&!String(b.photo??'').startsWith('/9j/'))return json({ok:false,error:'Take a photo of yourself at work to clock '+b.action+'.'},422);
   if(b.action==='in'){shifts.push({...mk(me,'Ploy Dee (Ploy)',today,'00:00',null),in:new Date().toISOString()});return json(state());}
-  if(b.action==='out'){const s=shifts.find(x=>x.userId===me&&!x.out&&!x.missedOut)!;s.out=new Date(Math.max(Date.now(),+new Date(s.in)+60000)).toISOString();s.outLat=13.7468;s.outLng=100.5391;return json(state());}
+  if(b.action==='out'){const s=shifts.find(x=>x.userId===me&&!x.out&&!x.missedOut)!;s.out=new Date(Math.max(Date.now(),+new Date(s.in)+60000)).toISOString();s.outLat=13.7468;s.outLng=100.5391;s.outPhoto=true;return json(state());}
   if(b.action==='fix'){const t=(h:string)=>at(b.date,h);fixes.unshift({id:++seq,userId:me,employee:'Ploy Dee (Ploy)',shiftId:b.shiftId??null,date:b.date,in:t(b.in),out:t(b.out),reason:b.reason,status:'pending',decidedBy:null,decidedAt:null,note:null,createdAt:new Date().toISOString(),was:null});return json(state());}
   if(b.action==='fix-cancel'){fixes.find(f=>f.id===b.id)!.status='cancelled';return json(state());}
  }

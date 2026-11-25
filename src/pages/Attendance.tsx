@@ -1,9 +1,9 @@
-import {useCallback,useEffect,useState} from 'react';
+import {useCallback,useEffect,useRef,useState} from 'react';
 import {useNavigate} from 'react-router-dom';
-import {AlertTriangle,ArrowLeft,Building2,Clock3,Loader2,LogIn,LogOut,MapPin,PencilLine,X} from 'lucide-react';
+import {AlertTriangle,ArrowLeft,Building2,Camera,Clock3,Loader2,LogIn,LogOut,MapPin,PencilLine,X} from 'lucide-react';
 import {useLanguage} from '@/hooks/useLanguage';
 import {attendanceAction,AttendanceError,clock,dayLabel,hours,loadAttendance,weekdays,type AttendanceState,type Fix,type Shift} from '@/lib/attendance';
-import {currentPosition} from '@/lib/travel';
+import {currentPosition,prepareFile} from '@/lib/travel';
 
 type Draft={shiftId?:number;date:string;in:string;out:string;reason:string};
 const field='mt-1 w-full rounded-xl border border-slate-200 bg-white p-3 text-base focus:outline-hidden focus:ring-2 focus:ring-cyan-500';
@@ -22,7 +22,9 @@ export default function Attendance(){
   catch(e){const err=e as AttendanceError;if(err.state)setState(err.state);setError(err.message);return false;}
   finally{setBusy('');}
  };
- const punch=(action:'in'|'out')=>run(action,async()=>{const f=await currentPosition();return attendanceAction(action,{lat:f.lat,lng:f.lng,accuracy:f.accuracy});});
+ const camera=useRef<HTMLInputElement>(null),[action,setAction]=useState<'in'|'out'>('in');
+ const takePhoto=(a:'in'|'out')=>{setAction(a);setError('');camera.current?.click();};
+ const punch=(file?:File)=>{if(!file)return;void run(action,async()=>{try{const [p,f]=await Promise.all([prepareFile(file),currentPosition()]);if(p.preview)URL.revokeObjectURL(p.preview);return attendanceAction(action,{lat:f.lat,lng:f.lng,accuracy:f.accuracy,photo:p.content});}finally{if(camera.current)camera.current.value='';}});};
  const sendFix=async()=>{if(!draft)return;if(await run('fix',()=>attendanceAction('fix',{...draft,reason:draft.reason.trim()})))setDraft(null);};
  const startFix=(s?:Shift)=>setDraft(s?{shiftId:s.id,date:s.date,in:clock(s.in),out:s.out?clock(s.out):'',reason:''}:{date:state?.today??'',in:'09:00',out:'17:00',reason:''});
  const minDate=state?new Date(new Date(state.today+'T00:00:00Z').getTime()-31*864e5).toISOString().slice(0,10):'';
@@ -55,11 +57,13 @@ export default function Attendance(){
      </div>
      {open&&<div className="text-right"><p className="text-xs font-semibold text-emerald-700">{text('So far','ทำไปแล้ว')}</p><p className="text-xl font-bold tabular-nums text-emerald-700">{hours(elapsed)}</p></div>}
     </div>
-    <button type="button" disabled={!!busy} onClick={()=>void punch(open?'out':'in')} className={`mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-bold text-white shadow-sm transition active:scale-[0.98] disabled:opacity-60 ${open?'bg-rose-600':'bg-emerald-600'}`}>
+    <button type="button" disabled={!!busy} onClick={()=>takePhoto(open?'out':'in')} className={`mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-bold text-white shadow-sm transition active:scale-[0.98] disabled:opacity-60 ${open?'bg-rose-600':'bg-emerald-600'}`}>
      {busy==='in'||busy==='out'?<Loader2 className="h-5 w-5 animate-spin"/>:open?<LogOut className="h-5 w-5"/>:<LogIn className="h-5 w-5"/>}
-     {busy==='in'||busy==='out'?text('Finding your location…','กำลังหาตำแหน่ง…'):open?text('Clock out','ลงเวลาออก'):text('Clock in','ลงเวลาเข้า')}
+     {busy==='in'||busy==='out'?text('Saving photo and location…','กำลังบันทึกรูปและตำแหน่ง…'):open?text('Clock out','ลงเวลาออก'):text('Clock in','ลงเวลาเข้า')}
     </button>
-    <p className="mt-2 flex items-center justify-center gap-1 text-[11px] text-slate-500"><MapPin className="h-3 w-3"/>{text(`Your location is saved when you press. It is erased after ${state.settings.locationDays} days.`,`ระบบบันทึกตำแหน่งตอนกด และลบทิ้งหลัง ${state.settings.locationDays} วัน`)}</p>
+    <input ref={camera} type="file" accept="image/*" capture="user" className="hidden" onChange={e=>punch(e.target.files?.[0])}/>
+    <p className="mt-2 flex items-center justify-center gap-1 text-xs font-medium text-slate-600"><Camera className="h-3.5 w-3.5"/>{text('Take a photo of yourself at work when you press.','กดแล้วถ่ายรูปตัวเองขณะทำงาน')}</p>
+    <p className="mt-1 flex items-center justify-center gap-1 text-center text-[11px] text-slate-500"><MapPin className="h-3 w-3 shrink-0"/>{text(`Your photo and location are saved and erased after ${state.settings.locationDays} days.`,`ระบบบันทึกรูปและตำแหน่ง และลบทิ้งหลัง ${state.settings.locationDays} วัน`)}</p>
    </div>}
    {state?.eligible&&<div className="grid grid-cols-2 gap-3">
     <div className="rounded-2xl bg-white p-4 shadow-xs"><p className="text-xs font-semibold text-slate-500">{text('This week','สัปดาห์นี้')}</p><p className="text-2xl font-bold tabular-nums text-slate-900">{hours(state.weekMin)}<span className="text-sm font-medium text-slate-400"> {text('hrs','ชม.')}</span></p></div>
