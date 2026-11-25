@@ -1,6 +1,6 @@
 export interface HrSop {id:number;titleEn:string;titleTh:string;body:string;bodyEn:string;version:number;sortOrder:number;active:boolean;updatedAt:string;accepted:number;missing:string[]}
 export interface HrRole {role:string;timeShare:number}
-export interface HrPerson {id:string;code:string;name:string;nickname:string|null;department:string|null;type:'employee'|'intern';careerLevel:'operational'|'manager'|'c_level'|null;managerId:string|null;roles:HrRole[];sopPending:number}
+export interface HrPerson {id:string;code:string;name:string;nickname:string|null;department:string|null;type:'employee'|'intern';careerLevel:'operational'|'manager'|'c_level'|null;managerId:string|null;roles:HrRole[];sopPending:number;workEmail?:string|null}
 async function call<T>(init:{view?:string;body?:Record<string,unknown>}):Promise<T>{
  const r=await fetch(init.view?`/api/hr-admin?view=${init.view}`:'/api/hr-admin',{method:init.body?'POST':'GET',cache:'no-store',headers:init.body?{'Content-Type':'application/json'}:undefined,body:init.body?JSON.stringify(init.body):undefined});
  const b=await r.json().catch(()=>({error:'HR service unavailable'}));
@@ -11,8 +11,11 @@ export const loadSops=()=>call<{sops:HrSop[]}>({view:'sops'}).then(b=>b.sops);
 export const saveSop=(body:{id?:number;version?:number;titleEn:string;titleTh:string;body:string;bodyEn:string;notify:boolean})=>call<{sops:HrSop[];notified:number}>({body:{action:'hr-sop-save',...body}});
 export const setSopActive=(id:number,active:boolean)=>call<{sops:HrSop[]}>({body:{action:'hr-sop-active',id,active}}).then(b=>b.sops);
 export const loadPeople=()=>call<{people:HrPerson[]}>({view:'people'}).then(b=>b.people.map(p=>({...p,roles:p.roles.map(r=>({...r,timeShare:Number(r.timeShare)}))})));
-export const savePerson=(body:{userId:string;careerLevel:string;managerId:string;roles:HrRole[]})=>call<{people:HrPerson[]}>({body:{action:'hr-people-save',...body}}).then(b=>b.people.map(p=>({...p,roles:p.roles.map(r=>({...r,timeShare:Number(r.timeShare)}))})));
-export interface TravelSettings {officeLat:number|null;officeLng:number|null;radius:number;rate:number;homeCutoff:string;tripKmCap:number;accountingEmail:string|null;departments:string[];payoutNotify?:string|null}
+export const savePerson=(body:{userId:string;careerLevel:string;managerId:string;roles:HrRole[];workEmail?:string})=>call<{people:HrPerson[]}>({body:{action:'hr-people-save',...body}}).then(b=>b.people.map(p=>({...p,roles:p.roles.map(r=>({...r,timeShare:Number(r.timeShare)}))})));
+export interface PeopleAlerts {pcEmail:string|null;sickCount:number;sickWindowDays:number;leadNotice:boolean;leadDaysAhead:number;leads:number;leadsWithEmail:number}
+export const loadAlerts=()=>call<{alerts:PeopleAlerts}>({view:'alerts'}).then(b=>b.alerts);
+export const saveAlerts=(body:{pcEmail:string;sickCount:number;sickWindowDays:number;leadNotice:boolean;leadDaysAhead:number})=>call<{alerts:PeopleAlerts}>({body:{action:'people-alerts-save',...body}}).then(b=>b.alerts);
+export interface TravelSettings {officeLat:number|null;officeLng:number|null;radius:number;rate:number;homeCutoff:string;tripKmCap:number;accountingEmail:string|null;departments:string[];payoutNotify?:string|null;motorcycleRate?:number|null}
 export interface TravelPerson {id:string;name:string;nickname:string|null;department:string|null;eligible:boolean;override:boolean|null}
 export type AdminTrip=import('./travel').TripDetail&{employee:string;department:string|null};
 export type AdminTripRow=import('./travel').TripSummary&{employee:string;department:string|null};

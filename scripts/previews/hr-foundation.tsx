@@ -16,10 +16,12 @@ const docs=[
 const acks=new Map<number,{version:number;at:string}>([[2,{version:1,at:now}]]);
 const staff=['Mint','Bee','Ploy','Ton','Fah'];
 let people=[
- {id:'a',code:'TBS-001',name:'Somchai Jaidee',nickname:'Mint',department:'SEO',type:'employee',careerLevel:'manager',managerId:null,roles:[{role:'CM',timeShare:60},{role:'Head of SEO',timeShare:40}],sopPending:1},
+ {id:'a',code:'TBS-001',name:'Somchai Jaidee',nickname:'Mint',department:'SEO',type:'employee',careerLevel:'manager',managerId:null,roles:[{role:'CM',timeShare:60},{role:'Head of SEO',timeShare:40}],sopPending:1,workEmail:'mint@example.com' as string|null},
  {id:'b',code:'TBS-002',name:'Boonsri Dee',nickname:'Bee',department:'SEO',type:'employee',careerLevel:'operational',managerId:'a',roles:[{role:'CM',timeShare:100}],sopPending:2},
  {id:'c',code:'INT-101',name:'Ploy Sukjai',nickname:'Ploy',department:'Content',type:'intern',careerLevel:null,managerId:'a',roles:[],sopPending:2},
 ];
+const alerts={pcEmail:null as string|null,sickCount:3,sickWindowDays:90,leadNotice:false,leadDaysAhead:3};
+const alertJson=()=>{const leads=new Set(people.map(p=>p.managerId).filter(Boolean));return {...alerts,leads:leads.size,leadsWithEmail:people.filter(p=>leads.has(p.id)&&p.workEmail).length};};
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json'}});
 const employeeDocs=()=>docs.filter(d=>d.active).map(d=>({...d,acceptedAt:acks.get(d.id)?.version===d.version?acks.get(d.id)!.at:null,acceptedBefore:!!acks.get(d.id)&&acks.get(d.id)!.version<d.version}));
 const hrDocs=()=>docs.map(d=>{const ok=acks.get(d.id)?.version===d.version;return {...d,accepted:ok?1:0,missing:staff.slice(ok?1:0)};});
@@ -29,9 +31,11 @@ window.fetch=async(input,init)=>{
  if(url.startsWith('/api/sop')){if(body){const d=docs.find(x=>x.id===body.docId)!;acks.set(d.id,{version:d.version,at:new Date().toISOString()});}return json({ok:true,docs:employeeDocs()});}
  if(url.includes('view=sops'))return json({ok:true,sops:hrDocs()});
  if(url.includes('view=people'))return json({ok:true,people});
+ if(url.includes('view=alerts'))return json({ok:true,alerts:alertJson()});
+ if(body?.action==='people-alerts-save'){Object.assign(alerts,{...body,pcEmail:body.pcEmail||null});return json({ok:true,alerts:alertJson()});}
  if(body?.action==='hr-sop-save'){let notified=0;if(body.id){const d=docs.find(x=>x.id===body.id)!;if(d.body!==body.body||d.bodyEn!==body.bodyEn||d.titleEn!==body.titleEn||d.titleTh!==body.titleTh){d.version++;notified=body.notify?5:0;}Object.assign(d,{titleEn:body.titleEn,titleTh:body.titleTh,body:body.body,bodyEn:body.bodyEn,updatedAt:new Date().toISOString()});}else{docs.push({id:docs.length+1,titleEn:body.titleEn,titleTh:body.titleTh,body:body.body,bodyEn:body.bodyEn,version:1,sortOrder:docs.length,active:true,updatedAt:new Date().toISOString()});notified=body.notify?5:0;}return json({ok:true,notified,sops:hrDocs()});}
  if(body?.action==='hr-sop-active'){docs.find(x=>x.id===body.id)!.active=body.active;return json({ok:true,sops:hrDocs()});}
- if(body?.action==='hr-people-save'){people=people.map(p=>p.id===body.userId?{...p,careerLevel:body.careerLevel||null,managerId:body.managerId||null,roles:body.roles}:p);return json({ok:true,people});}
+ if(body?.action==='hr-people-save'){people=people.map(p=>p.id===body.userId?{...p,careerLevel:body.careerLevel||null,managerId:body.managerId||null,roles:body.roles,workEmail:body.workEmail||null}:p);return json({ok:true,people});}
  return json({ok:false,error:'Unknown'},404);
 };
 export function Preview(){

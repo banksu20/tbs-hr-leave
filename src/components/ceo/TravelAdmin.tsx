@@ -4,7 +4,7 @@ import TravelPayout from './TravelPayout';
 import {useDashboardText} from '@/hooks/useDashboardText';
 import {useLanguage} from '@/hooks/useLanguage';
 import {adminReceiptUrl,decideTrip,findOffice,loadTrip,loadTravelSettings,loadTrips,markTrip,saveTravelAccess,saveTravelSettings,type AdminTrip,type AdminTripRow,type TravelPerson,type TravelSettings} from '@/lib/hrAdmin';
-import {flagLabel,money,statusLabel,tripDate,type Place,type T} from '@/lib/travel';
+import {flagLabel,money,perKm,statusLabel,tripDate,type Place,type T} from '@/lib/travel';
 
 const field='mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500';
 const filters=['flagged','submitted','approved','paid','rejected',''] as const;
@@ -42,10 +42,11 @@ function TripDetailView({id,onBack,onChanged,accounting}:{id:number;onBack:()=>v
       {i<route.length-1&&<span className="absolute top-9 bottom-0 left-[17px] w-0.5 bg-sky-200"/>}
       <span className={`relative z-10 grid h-9 w-9 shrink-0 place-items-center rounded-full text-white ${i===0||i===route.length-1?'bg-slate-900':'bg-sky-600'}`}>{icon(pid)}</span>
       <div className="min-w-0 flex-1 pt-1.5">
-       {leg&&<p className="-mt-1 mb-1 inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">+{dt('{0} km',[money(leg.km)])}{trip.mode==='car'?` · ฿${money(leg.amount)}`:''}</p>}
+       {leg&&<p className="-mt-1 mb-1 inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">+{dt('{0} km',[money(leg.km)])}{perKm(trip.mode)?` · ฿${money(leg.amount)}`:''}</p>}
        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1"><p className="font-semibold text-slate-900">{pointName(pid)}</p><span className="text-xs text-slate-400">{clock(p.at)}</span>
         {p.accuracy!=null&&<span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${weak?'bg-amber-100 text-amber-800':'bg-slate-100 text-slate-500'}`}>{dt('±{0} m',[Math.round(p.accuracy)])}</span>}
         <a className="inline-flex items-center gap-0.5 text-xs font-semibold text-sky-700 hover:underline" href={mapLink(p.lat,p.lng)} target="_blank" rel="noreferrer">{dt('Map')}<ExternalLink className="h-3 w-3"/></a></div>
+       {p.manualReason&&<p className="mt-1 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900"><span className="font-semibold">{dt('Checked in without GPS')}</span> · {p.manualReason}</p>}
        {leg?.capped&&<p className="mt-0.5 text-xs text-amber-700">{dt('Capped at office distance (actual {0} km)',[money(leg.routeKm)])}</p>}
       </div></li>;})}</ol>:<p className="text-sm text-slate-500">{dt('No distance recorded.')}</p>}
     </div>
@@ -63,7 +64,7 @@ function TripDetailView({id,onBack,onChanged,accounting}:{id:number;onBack:()=>v
     <div className="overflow-hidden rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/10">
      <div className="p-5"><p className="text-xs font-medium text-slate-400">{dt('Total')}</p><p className="text-4xl font-extrabold tracking-tight">฿{money(trip.total)}</p></div>
      <dl className="space-y-2 border-t border-white/10 p-5 text-sm">
-      <div className="flex justify-between"><dt className="text-slate-400">{dt('Distance')}</dt><dd className="font-semibold">{dt('{0} km',[money(trip.km)])}{trip.mode==='car'?` · ฿${money(trip.kmAmount)}`:''}</dd></div>
+      <div className="flex justify-between"><dt className="text-slate-400">{dt('Distance')}</dt><dd className="font-semibold">{dt('{0} km',[money(trip.km)])}{perKm(trip.mode)?` · ฿${money(trip.kmAmount)}`:''}</dd></div>
       <div className="flex justify-between"><dt className="text-slate-400">{dt('Receipts')}</dt><dd className="font-semibold">฿{money(trip.receiptAmount)}</dd></div>
      </dl>
     </div>
@@ -84,12 +85,12 @@ function TripDetailView({id,onBack,onChanged,accounting}:{id:number;onBack:()=>v
 
 function Settings(){
  const dt=useDashboardText();
- const [s,setS]=useState<TravelSettings|null>(null),[people,setPeople]=useState<TravelPerson[]>([]),[query,setQuery]=useState(''),[places,setPlaces]=useState<Place[]|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[depts,setDepts]=useState(''),[email,setEmail]=useState(''),[notify,setNotify]=useState('');
- const apply=(r:{settings:TravelSettings;people:TravelPerson[]})=>{setS(r.settings);setPeople(r.people);setDepts(r.settings.departments.join(', '));setEmail(r.settings.accountingEmail??'');setNotify(r.settings.payoutNotify??'');};
+ const [s,setS]=useState<TravelSettings|null>(null),[people,setPeople]=useState<TravelPerson[]>([]),[query,setQuery]=useState(''),[places,setPlaces]=useState<Place[]|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[depts,setDepts]=useState(''),[email,setEmail]=useState(''),[notify,setNotify]=useState(''),[bike,setBike]=useState('');
+ const apply=(r:{settings:TravelSettings;people:TravelPerson[]})=>{setS(r.settings);setPeople(r.people);setDepts(r.settings.departments.join(', '));setEmail(r.settings.accountingEmail??'');setNotify(r.settings.payoutNotify??'');setBike(r.settings.motorcycleRate!=null?String(Number(r.settings.motorcycleRate)):'');};
  useEffect(()=>{loadTravelSettings().then(apply).catch(e=>setError((e as Error).message));},[]);
  const run=async(fn:()=>Promise<void>)=>{setBusy(true);setError('');setNotice('');try{await fn();}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
  const search=()=>run(async()=>{setPlaces(await findOffice(query));});
- const save=()=>run(async()=>{apply(await saveTravelSettings({officeLat:s!.officeLat,officeLng:s!.officeLng,radius:Number(s!.radius),rate:Number(s!.rate),homeCutoff:s!.homeCutoff,tripKmCap:Number(s!.tripKmCap),accountingEmail:email.trim(),payoutNotify:notify,departments:depts.split(',').map(x=>x.trim()).filter(Boolean)}));setNotice(dt('Saved.'));});
+ const save=()=>run(async()=>{apply(await saveTravelSettings({officeLat:s!.officeLat,officeLng:s!.officeLng,radius:Number(s!.radius),rate:Number(s!.rate),homeCutoff:s!.homeCutoff,tripKmCap:Number(s!.tripKmCap),accountingEmail:email.trim(),payoutNotify:notify,motorcycleRate:bike.trim()?Number(bike):null,departments:depts.split(',').map(x=>x.trim()).filter(Boolean)}));setNotice(dt('Saved.'));});
  if(!s)return error?<p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>:<p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin"/>{dt('Loading…')}</p>;
  const on=s.officeLat!=null;
  const claimers=people.filter(p=>p.eligible).length;
@@ -120,6 +121,7 @@ function Settings(){
   <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:grid-cols-2">
    <h3 className="flex items-center gap-2 font-bold text-slate-900 sm:col-span-2"><SlidersHorizontal className="h-4 w-4 text-slate-400"/>{dt('Rules')}</h3>
    <label className="text-sm font-medium text-slate-700">{dt('Car rate (฿ per km)')}<input type="number" min={1} max={100} step={0.5} value={s.rate} onChange={e=>setS({...s,rate:e.target.valueAsNumber})} className={field}/></label>
+   <label className="text-sm font-medium text-slate-700">{dt('Motorcycle rate (฿ per km)')}<input type="number" min={0.5} max={100} step={0.5} value={bike} placeholder={dt('Off')} onChange={e=>setBike(e.target.value)} className={field}/><span className="mt-1 block text-xs font-normal text-slate-500">{dt('Leave empty to keep motorcycle claims off.')}</span></label>
    <label className="text-sm font-medium text-slate-700">{dt('Check-in radius (m)')}<input type="number" min={50} max={2000} step={10} value={s.radius} onChange={e=>setS({...s,radius:e.target.valueAsNumber})} className={field}/></label>
    <label className="text-sm font-medium text-slate-700">{dt('Start from home only before')}<input type="time" value={s.homeCutoff} onChange={e=>setS({...s,homeCutoff:e.target.value})} className={field}/></label>
    <label className="text-sm font-medium text-slate-700">{dt('Flag trips over (km)')}<input type="number" min={1} max={5000} value={s.tripKmCap} onChange={e=>setS({...s,tripKmCap:e.target.valueAsNumber})} className={field}/></label>

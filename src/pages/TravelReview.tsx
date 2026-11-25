@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useMemo,useState} from 'react';
 import {Banknote,Building2,Car,CheckCircle2,Clock,FileText,Flag,Home,Loader2,Lock,MapPin,Receipt,ShieldCheck} from 'lucide-react';
 import {useLanguage} from '@/hooks/useLanguage';
-import {flagLabel,money,statusLabel,type T,type TripDetail} from '@/lib/travel';
+import {flagLabel,modeName,money,perKm,statusLabel,type T,type TripDetail} from '@/lib/travel';
 
 type Reviewed=TripDetail&{employee:string;department:string|null};
 function readLink(){
@@ -69,7 +69,7 @@ export default function TravelReview(){
      </div>
      <dl className="grid grid-cols-3 divide-x divide-white/10 border-t border-white/10 text-center">
       <div className="p-3"><dt className="text-[11px] text-slate-400">{text('Distance','ระยะทาง')}</dt><dd className="font-bold">{money(trip.km)} {text('km','กม.')}</dd></div>
-      <div className="p-3"><dt className="text-[11px] text-slate-400">{trip.mode==='car'?text(`× ฿${money(trip.rate)}/km`,`× ฿${money(trip.rate)}/กม.`):text('Travel by','เดินทางโดย')}</dt><dd className="font-bold">{trip.mode==='car'?`฿${money(trip.kmAmount)}`:trip.mode==='grab'?'Grab':text('Taxi','แท็กซี่')}</dd></div>
+      <div className="p-3"><dt className="text-[11px] text-slate-400">{perKm(trip.mode)?text(`× ฿${money(trip.rate)}/km`,`× ฿${money(trip.rate)}/กม.`):text('Travel by','เดินทางโดย')}</dt><dd className="font-bold">{perKm(trip.mode)?`฿${money(trip.kmAmount)}`:modeName(trip.mode,text)}</dd></div>
       <div className="p-3"><dt className="text-[11px] text-slate-400">{text('Receipts','ใบเสร็จ')}</dt><dd className="font-bold">฿{money(trip.receiptAmount)}</dd></div>
      </dl>
     </section>
@@ -79,12 +79,13 @@ export default function TravelReview(){
     </section>}
     <section className={box}>
      <h2 className="mb-4 font-bold text-slate-900">{text('Route','เส้นทาง')}</h2>
-     {route.length?<ol>{route.map((id,i)=>{const leg=trip.legs.find(l=>l.to===id);const at=trip.points.find(p=>p.id===id)?.at;return <li key={id} className="relative flex gap-3 pb-5 last:pb-0">
+     {route.length?<ol>{route.map((id,i)=>{const leg=trip.legs.find(l=>l.to===id);const pt=trip.points.find(p=>p.id===id),at=pt?.at;return <li key={id} className="relative flex gap-3 pb-5 last:pb-0">
       {i<route.length-1&&<span className="absolute top-9 bottom-0 left-[17px] w-0.5 bg-sky-200"/>}
       <span className={`relative z-10 grid h-9 w-9 shrink-0 place-items-center rounded-full ${i===0||i===route.length-1?'bg-slate-900 text-white':'bg-sky-600 text-white'}`}>{nodeIcon(id)}</span>
       <div className="min-w-0 flex-1 pt-1.5">
-       {leg&&<p className="-mt-1 mb-1 inline-flex flex-wrap items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">+{money(leg.km)} {text('km','กม.')}{trip.mode==='car'?` · ฿${money(leg.amount)}`:''}</p>}
+       {leg&&<p className="-mt-1 mb-1 inline-flex flex-wrap items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">+{money(leg.km)} {text('km','กม.')}{perKm(trip.mode)?` · ฿${money(leg.amount)}`:''}</p>}
        <div className="flex items-baseline justify-between gap-2"><p className="font-semibold text-slate-900">{pointName(id)}</p>{at&&<span className="shrink-0 text-xs text-slate-400">{time(at)}</span>}</div>
+       {pt?.manualReason&&<p className="mt-1 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900"><span className="font-semibold">{text('Checked in without GPS','เช็กอินโดยไม่มี GPS')}</span> · {pt.manualReason}</p>}
        {leg?.capped&&<p className="text-xs text-amber-700">{text(`Capped at office distance (actual ${money(leg.routeKm)} km)`,`จำกัดเท่าระยะจากออฟฟิศ (จริง ${money(leg.routeKm)} กม.)`)}</p>}
       </div></li>;})}</ol>:<p className="text-sm text-slate-500">{text('No distance recorded.','ไม่มีระยะทาง')}</p>}
     </section>

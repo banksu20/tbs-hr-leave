@@ -1,9 +1,9 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {createPortal} from 'react-dom';
-import {ArrowLeft,BookOpen,Briefcase,Building2,Camera,Car,CarTaxiFront,Check,CheckCircle2,ChevronRight,Clock,ExternalLink,Flag,Home,ImagePlus,Link2,Loader2,MapPin,Navigation,Plus,Receipt,Search,Smartphone,Trash2,X} from 'lucide-react';
+import {AlertTriangle,ArrowLeft,Bike,BookOpen,Briefcase,Building2,Camera,Car,CarTaxiFront,Check,CheckCircle2,ChevronRight,Clock,ExternalLink,Flag,Home,ImagePlus,Link2,Loader2,MapPin,Navigation,Plus,Receipt,Search,Smartphone,Trash2,X} from 'lucide-react';
 import {useLanguage} from '@/hooks/useLanguage';
-import {currentPosition,findPlaces,loadTravel,money,prepareFile,readReceipt,receiptUrl,travelAction,TravelError,type Fix,type Place,type ReceiptKind,type ReceiptRead,type TravelState,type TripDetail,type TripStatus,type TripSummary,flagLabel,monthSummary,statusLabel} from '@/lib/travel';
+import {currentPosition,findPlaces,loadTravel,money,prepareFile,readReceipt,receiptUrl,travelAction,TravelError,type Fix,type Place,type ReceiptKind,type ReceiptRead,type TravelState,type TripDetail,type TripStatus,type TripSummary,type TravelMode,flagLabel,modeName,monthSummary,perKm,statusLabel} from '@/lib/travel';
 
 import type {T} from '@/lib/travel';
 type Run=(fn:()=>Promise<TravelState>)=>Promise<void>;
@@ -56,7 +56,7 @@ function PlacePicker({text,value,onChange}:{text:T;value:Place|null;onChange:(p:
 
 function StartForm({state,text,run}:{state:TravelState;text:T;run:Run}){
  const [client,setClient]=useState(''),[place,setPlace]=useState<Place|null>(null),[purpose,setPurpose]=useState<'deal'|'care'>('deal'),[dealRef,setDealRef]=useState('');
- const [mode,setMode]=useState<'car'|'grab'|'taxi'>('car'),[appointment,setAppointment]=useState(''),[from,setFrom]=useState<'office'|'home'>('office');
+ const [mode,setMode]=useState<TravelMode>('car'),[appointment,setAppointment]=useState(''),[from,setFrom]=useState<'office'|'home'>('office');
  const homeOk=!!appointment&&appointment<state.settings.homeCutoff;
  useEffect(()=>{if(!homeOk&&from==='home')setFrom('office');},[homeOk,from]);
  const ready=client.trim()&&place&&appointment;
@@ -72,7 +72,7 @@ function StartForm({state,text,run}:{state:TravelState;text:T;run:Run}){
   <div><span className={label}>{text('Where are you going?','ไปที่ไหน')}</span><PlacePicker text={text} value={place} onChange={setPlace}/></div>
   <div><span className={label}>{text('Purpose','วัตถุประสงค์')}</span><Segmented<'deal'|'care'> value={purpose} onChange={setPurpose} options={[['deal',text('Close a deal','ปิดดีล')],['care',text('Customer care','ดูแลลูกค้า')]]}/>
    {purpose==='deal'&&<input value={dealRef} maxLength={120} onChange={e=>setDealRef(e.target.value)} placeholder={text('Deal or quotation no. (optional)','เลขดีลหรือใบเสนอราคา (ไม่บังคับ)')} className={input+' mt-2'}/>}</div>
-  <div><span className={label}>{text('Travel by','เดินทางโดย')}</span><Tiles<'car'|'grab'|'taxi'> value={mode} onChange={setMode} options={[['car',text('My car','รถส่วนตัว'),text(`฿${money(state.settings.rate)}/km`,`฿${money(state.settings.rate)}/กม.`),<Car key="c" className="h-5 w-5"/>],['grab','Grab',text('By receipt','ตามใบเสร็จ'),<Smartphone key="g" className="h-5 w-5"/>],['taxi',text('Taxi','แท็กซี่'),text('By receipt','ตามใบเสร็จ'),<CarTaxiFront key="t" className="h-5 w-5"/>]]}/></div>
+  <div><span className={label}>{text('Travel by','เดินทางโดย')}</span><Tiles<TravelMode> value={mode} onChange={setMode} options={[['car',text('My car','รถส่วนตัว'),text(`฿${money(state.settings.rate)}/km`,`฿${money(state.settings.rate)}/กม.`),<Car key="c" className="h-5 w-5"/>],...(state.settings.motorcycleRate?[['motorcycle',text('Motorcycle','มอเตอร์ไซค์'),text(`฿${money(state.settings.motorcycleRate)}/km`,`฿${money(state.settings.motorcycleRate)}/กม.`),<Bike key="m" className="h-5 w-5"/>] as [TravelMode,string,string,React.ReactNode]]:[]),['grab','Grab',text('By receipt','ตามใบเสร็จ'),<Smartphone key="g" className="h-5 w-5"/>],['taxi',text('Taxi','แท็กซี่'),text('By receipt','ตามใบเสร็จ'),<CarTaxiFront key="t" className="h-5 w-5"/>]]}/></div>
   <div><label className={label} htmlFor="travel-time">{text('Appointment time','เวลานัด')}</label>
    <div className="relative"><Clock className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-slate-400"/><input id="travel-time" type="time" value={appointment} onChange={e=>setAppointment(e.target.value)} className={input+' pl-10'}/></div></div>
   {homeOk&&<div><span className={label}>{text('Leaving from','ออกเดินทางจาก')}</span><Segmented<'office'|'home'> value={from} onChange={setFrom} options={[['office',text('Office','ออฟฟิศ'),<Building2 key="o" className="h-4 w-4"/>],['home',text('Home','บ้าน'),<Home key="h" className="h-4 w-4"/>]]}/>
@@ -84,7 +84,7 @@ function StartForm({state,text,run}:{state:TravelState;text:T;run:Run}){
 
 function AddReceipt({trip,text,run}:{trip:TripDetail;text:T;run:Run}){
  const ref=useRef<HTMLInputElement>(null),library=useRef<HTMLInputElement>(null);
- const [file,setFile]=useState<{mime:string;content:string;preview:string}|null>(null),[reading,setReading]=useState(false),[kind,setKind]=useState<ReceiptKind>(trip.mode==='car'?'toll':trip.mode),[amount,setAmount]=useState(''),[read,setRead]=useState<{read:ReceiptRead;sig:string}|null>(null),[error,setError]=useState('');
+ const [file,setFile]=useState<{mime:string;content:string;preview:string}|null>(null),[reading,setReading]=useState(false),[kind,setKind]=useState<ReceiptKind>(perKm(trip.mode)?'toll':trip.mode as ReceiptKind),[amount,setAmount]=useState(''),[read,setRead]=useState<{read:ReceiptRead;sig:string}|null>(null),[error,setError]=useState('');
  const pick=async(f:File|undefined)=>{
   if(!f)return;setError('');setReading(true);
   try{const p=await prepareFile(f);setFile(p);const r=await readReceipt(p.mime,p.content).catch(()=>null);setRead(r);if(r?.read.amount)setAmount(String(r.read.amount));if(r?.read.kind)setKind(r.read.kind);}
@@ -94,7 +94,7 @@ function AddReceipt({trip,text,run}:{trip:TripDetail;text:T;run:Run}){
  const value=Number(amount);
  const got=read?.read;
  const today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Bangkok'});
- const wrongType=(k:ReceiptKind)=>(trip.mode==='car'&&['grab','taxi'].includes(k))||(trip.mode==='grab'&&['taxi','parking'].includes(k))||(trip.mode==='taxi'&&['grab','parking'].includes(k));
+ const wrongType=(k:ReceiptKind)=>(perKm(trip.mode)&&['grab','taxi'].includes(k))||(trip.mode==='grab'&&['taxi','parking'].includes(k))||(trip.mode==='taxi'&&['grab','parking'].includes(k));
  const warnings=[
   got?.isReceipt===false&&text("This doesn't look like a receipt. If you save it, HR will check the trip.",'รูปนี้ดูไม่ใช่ใบเสร็จ ถ้าบันทึก HR จะตรวจทริปนี้'),
   got?.date&&got.date!==trip.date&&text(`This receipt is dated ${got.date}, not the trip day. HR will check it.`,`ใบเสร็จนี้ลงวันที่ ${got.date} ไม่ใช่วันเดินทาง HR จะตรวจ`),
@@ -135,10 +135,11 @@ function ReceiptTile({id,amount,kind,needsOriginal,text,onRemove}:{id:string;amo
  </div>;
 }
 
-type Node={key:string;title:string;sub?:string;icon:React.ReactNode;state:'done'|'next'|'todo';at?:string;leg?:{km:number;amount:number;capped:boolean};stopId?:number};
+type Node={key:string;title:string;sub?:string;icon:React.ReactNode;state:'done'|'next'|'todo';at?:string;leg?:{km:number;amount:number;capped:boolean};stopId?:number;manual?:boolean};
 
 function OpenTrip({trip,text,run}:{trip:TripDetail;text:T;run:Run}){
  const [adding,setAdding]=useState(false),[client,setClient]=useState(''),[place,setPlace]=useState<Place|null>(null),[confirmCancel,setConfirmCancel]=useState(false);
+ const [noGps,setNoGps]=useState<{action:'arrive'|'return';stopId?:number}|null>(null),[reason,setReason]=useState('');
  const last=trip.points[trip.points.length-1];
  const back=last?.kind==='return_office';
  const next=back?undefined:trip.stops.find(s=>!s.arrivedAt);
@@ -147,15 +148,17 @@ function OpenTrip({trip,text,run}:{trip:TripDetail;text:T;run:Run}){
   if(p.accuracy>100&&!window.confirm(text(`GPS is weak right now (±${p.accuracy} m). Continue anyway? The trip will be checked by your manager.`,`GPS ไม่แม่นตอนนี้ (±${p.accuracy} ม.) ดำเนินการต่อหรือไม่ ทริปนี้จะต้องให้หัวหน้าตรวจ`)))throw new TravelError(text('Try again when GPS is better.','ลองใหม่เมื่อ GPS ดีขึ้น'),0);
   return go();
  };
- const arrive=(stopId:number)=>run(async()=>{const p=await currentPosition();return gpsCheck(p,()=>travelAction('arrive',{tripId:trip.id,stopId,prevPointId:last.id,...p}));});
- const ret=()=>run(async()=>{const p=await currentPosition();return gpsCheck(p,()=>travelAction('return',{tripId:trip.id,prevPointId:last.id,...p}));});
+ const locate=async(target:{action:'arrive'|'return';stopId?:number})=>{try{return await currentPosition();}catch(e){setNoGps(target);throw e;}};
+ const arrive=(stopId:number)=>run(async()=>{const p=await locate({action:'arrive',stopId});return gpsCheck(p,()=>travelAction('arrive',{tripId:trip.id,stopId,prevPointId:last.id,...p}));});
+ const ret=()=>run(async()=>{const p=await locate({action:'return'});return gpsCheck(p,()=>travelAction('return',{tripId:trip.id,prevPointId:last.id,...p}));});
+ const withoutGps=()=>run(async()=>{const s=await travelAction(noGps!.action,{tripId:trip.id,prevPointId:last.id,...(noGps!.stopId!=null?{stopId:noGps!.stopId}:{}),manualReason:reason.trim()});setNoGps(null);setReason('');return s;});
  const addStop=()=>run(async()=>{const s=await travelAction('add-stop',{tripId:trip.id,clientName:client.trim(),destLat:place!.lat,destLng:place!.lng,destLabel:place!.label});setAdding(false);setClient('');setPlace(null);return s;});
  const legTo=(pointId?:number)=>pointId==null?undefined:trip.legs.find(l=>l.to===pointId);
  const startPoint=trip.points[0];
  const nodes:Node[]=[
   {key:'start',title:trip.startFrom==='home'?text('Left home','ออกจากบ้าน'):text('Left the office','ออกจากออฟฟิศ'),icon:trip.startFrom==='home'?<Home className="h-4 w-4"/>:<Building2 className="h-4 w-4"/>,state:'done',at:startPoint?.at},
-  ...trip.stops.map(s=>{const p=trip.points.find(x=>x.kind==='arrive'&&x.stopId===s.id);return {key:`s${s.id}`,title:s.clientName,sub:s.label,icon:s.arrivedAt?<Check className="h-4 w-4"/>:<MapPin className="h-4 w-4"/>,state:s.arrivedAt?'done':next?.id===s.id?'next':'todo',at:p?.at,leg:legTo(p?.id),stopId:s.id} as Node;}),
-  ...(back?[{key:'back',title:text('Back at the office','กลับถึงออฟฟิศ'),icon:<Building2 className="h-4 w-4"/>,state:'done',at:last.at,leg:legTo(last.id)} as Node]:[]),
+  ...trip.stops.map(s=>{const p=trip.points.find(x=>x.kind==='arrive'&&x.stopId===s.id);return {key:`s${s.id}`,title:s.clientName,sub:s.label,icon:s.arrivedAt?<Check className="h-4 w-4"/>:<MapPin className="h-4 w-4"/>,state:s.arrivedAt?'done':next?.id===s.id?'next':'todo',at:p?.at,leg:legTo(p?.id),stopId:s.id,manual:!!p?.manualReason} as Node;}),
+  ...(back?[{key:'back',title:text('Back at the office','กลับถึงออฟฟิศ'),icon:<Building2 className="h-4 w-4"/>,state:'done',at:last.at,leg:legTo(last.id),manual:!!last.manualReason} as Node]:[]),
  ];
  return <>
   <section className="overflow-hidden rounded-3xl bg-slate-900 text-white shadow-lg shadow-slate-900/20">
@@ -166,7 +169,7 @@ function OpenTrip({trip,text,run}:{trip:TripDetail;text:T;run:Run}){
    </div>
    <dl className="grid grid-cols-3 divide-x divide-white/10 border-t border-white/10 text-center">
     <div className="p-3"><dt className="text-[11px] text-slate-400">{text('Distance','ระยะทาง')}</dt><dd className="font-bold">{money(trip.km)} {text('km','กม.')}</dd></div>
-    <div className="p-3"><dt className="text-[11px] text-slate-400">{trip.mode==='car'?text('Mileage','ค่าระยะทาง'):text('Travel by','เดินทางโดย')}</dt><dd className="font-bold">{trip.mode==='car'?`฿${money(trip.kmAmount)}`:trip.mode==='grab'?'Grab':text('Taxi','แท็กซี่')}</dd></div>
+    <div className="p-3"><dt className="text-[11px] text-slate-400">{perKm(trip.mode)?text('Mileage','ค่าระยะทาง'):text('Travel by','เดินทางโดย')}</dt><dd className="font-bold">{perKm(trip.mode)?`฿${money(trip.kmAmount)}`:modeName(trip.mode,text)}</dd></div>
     <div className="p-3"><dt className="text-[11px] text-slate-400">{text('Receipts','ใบเสร็จ')}</dt><dd className="font-bold">฿{money(trip.receiptAmount)}</dd></div>
    </dl>
   </section>
@@ -177,11 +180,18 @@ function OpenTrip({trip,text,run}:{trip:TripDetail;text:T;run:Run}){
     {i<nodes.length-1&&<span className={`absolute top-9 bottom-0 left-[17px] w-0.5 ${nodes[i+1].state==='done'?'bg-sky-500':'bg-slate-200'}`}/>}
     <span className={`relative z-10 grid h-9 w-9 shrink-0 place-items-center rounded-full ${n.state==='done'?'bg-sky-600 text-white':n.state==='next'?'bg-white text-sky-700 ring-4 ring-sky-200':'bg-slate-100 text-slate-400'}`}>{n.icon}</span>
     <div className="min-w-0 flex-1 pt-1.5">
-     {n.leg&&<p className="-mt-1 mb-1 inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">+{money(n.leg.km)} {text('km','กม.')}{trip.mode==='car'?` · ฿${money(n.leg.amount)}`:''}{n.leg.capped?' · '+text('capped','จำกัด'):''}</p>}
+     {n.leg&&<p className="-mt-1 mb-1 inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">+{money(n.leg.km)} {text('km','กม.')}{perKm(trip.mode)?` · ฿${money(n.leg.amount)}`:''}{n.leg.capped?' · '+text('capped','จำกัด'):''}</p>}
      <div className="flex items-baseline justify-between gap-2"><p className={`font-semibold ${n.state==='todo'?'text-slate-400':'text-slate-900'}`}>{n.title}</p>{n.at&&<span className="shrink-0 text-xs text-slate-400">{clock(n.at)}</span>}</div>
      {n.sub&&<p className="truncate text-xs text-slate-500">{n.sub}</p>}
+     {n.manual&&<p className="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">{text('Without GPS · manager will check','ไม่มี GPS · หัวหน้าจะตรวจ')}</p>}
      {n.state==='next'&&n.stopId!=null&&<button type="button" onClick={()=>void arrive(n.stopId!)} className={primary+' mt-3 py-3.5'}><MapPin className="h-5 w-5"/>{text("I've arrived",'ถึงแล้ว')}</button>}
     </div></li>)}</ol>
+   {noGps&&<div className="mt-5 space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+    <p className="flex items-center gap-2 text-sm font-bold text-amber-900"><AlertTriangle className="h-4 w-4"/>{text('Location not working?','หาตำแหน่งไม่ได้?')}</p>
+    <p className="text-xs leading-relaxed text-amber-900/80">{noGps.action==='arrive'?text('You can check in without GPS. We use the client address for the distance, and your manager checks the trip before it is paid.','เช็กอินโดยไม่ใช้ GPS ได้ ระบบใช้ที่อยู่ลูกค้าคิดระยะทาง และหัวหน้าจะตรวจทริปก่อนจ่าย'):text('You can check in without GPS. We use the office address for the distance, and your manager checks the trip before it is paid.','เช็กอินโดยไม่ใช้ GPS ได้ ระบบใช้ที่อยู่ออฟฟิศคิดระยะทาง และหัวหน้าจะตรวจทริปก่อนจ่าย')}</p>
+    <textarea value={reason} maxLength={300} rows={2} onChange={e=>setReason(e.target.value)} aria-label={text('Why is GPS not working?','ทำไม GPS ใช้ไม่ได้')} placeholder={text('Why is GPS not working? e.g. phone has no signal in the building','ทำไม GPS ใช้ไม่ได้ เช่น ในอาคารไม่มีสัญญาณ')} className={input+' bg-white'}/>
+    <div className="flex gap-2"><button type="button" disabled={reason.trim().length<5} onClick={()=>void withoutGps()} className="flex-1 rounded-2xl bg-amber-600 py-3 text-sm font-bold text-white disabled:bg-slate-300">{text('Check in without GPS','เช็กอินโดยไม่ใช้ GPS')}</button><button type="button" onClick={()=>{setNoGps(null);setReason('');}} className="rounded-2xl bg-white px-5 text-sm font-semibold text-slate-600 ring-1 ring-slate-200">{text('Cancel','ยกเลิก')}</button></div>
+   </div>}
    {!back&&!next&&!adding&&<div className="mt-5 grid gap-2 border-t border-slate-100 pt-5">
     <button type="button" onClick={()=>void ret()} className={primary}><Building2 className="h-5 w-5"/>{text("I'm back at the office",'กลับถึงออฟฟิศแล้ว')}</button>
     <button type="button" onClick={()=>setAdding(true)} className={secondary}><Plus className="h-4 w-4"/>{text('Go to another client','ไปหาลูกค้าอีกราย')}</button>
@@ -221,7 +231,8 @@ function Guide({state,text,onClose}:{state:TravelState|null;text:T;onClose:()=>v
   [<Building2 key="b" className="h-4 w-4"/>,text('Come back','กลับออฟฟิศ'),text(`Tap I'm back at the office within ${radius} m of the office, or Go to another client to add the next stop.`,`กด กลับถึงออฟฟิศแล้ว เมื่ออยู่ห่างออฟฟิศไม่เกิน ${radius} ม. หรือกด ไปลูกค้าอีกที่ เพื่อเพิ่มจุดถัดไป`)],
   [<CheckCircle2 key="c" className="h-4 w-4"/>,text('Finish and claim','จบทริปและส่งเบิก'),text('Tap Finish and claim. Hand paper receipts to accounting within 7 days.','กด จบและส่งเบิก แล้วส่งใบเสร็จตัวจริงให้บัญชีภายใน 7 วัน')],
  ];
- const rules=[text(`Own car: ฿${rate} per km by road. Grab, taxi, tolls and parking: by receipt.`,`รถส่วนตัว: กม.ละ ${rate} บาท ตามระยะทางถนน Grab แท็กซี่ ทางด่วน และที่จอดรถ: เบิกตามใบเสร็จ`),text('Trips with something unusual wait for HR to check before payment.','ทริปที่มีจุดผิดปกติ HR จะตรวจก่อนจ่าย'),text('A trip left open closes by itself at midnight.','ทริปที่ไม่ได้ปิด ระบบจะปิดเองตอนเที่ยงคืน'),text('You get a LINE message when your claim is approved, rejected or paid.','คุณจะได้ LINE เมื่ออนุมัติ ไม่อนุมัติ หรือจ่ายแล้ว')];
+ const bike=state?.settings.motorcycleRate?money(Number(state.settings.motorcycleRate)):'';
+ const rules=[text(`Own car: ฿${rate} per km by road.${bike?` Motorcycle: ฿${bike} per km.`:''} Grab, taxi, tolls and parking: by receipt.`,`รถส่วนตัว: กม.ละ ${rate} บาท ตามระยะทางถนน${bike?` มอเตอร์ไซค์: กม.ละ ${bike} บาท`:''} Grab แท็กซี่ ทางด่วน และที่จอดรถ: เบิกตามใบเสร็จ`),text('If GPS will not work, you can check in without it and say why. Your manager checks those trips.','ถ้า GPS ใช้ไม่ได้ เช็กอินโดยไม่ใช้ GPS ได้ โดยบอกเหตุผล หัวหน้าจะตรวจทริปนั้น'),text('Trips with something unusual wait for HR to check before payment.','ทริปที่มีจุดผิดปกติ HR จะตรวจก่อนจ่าย'),text('A trip left open closes by itself at midnight.','ทริปที่ไม่ได้ปิด ระบบจะปิดเองตอนเที่ยงคืน'),text('You get a LINE message when your claim is approved, rejected or paid.','คุณจะได้ LINE เมื่ออนุมัติ ไม่อนุมัติ หรือจ่ายแล้ว')];
  return <div role="dialog" aria-modal="true" aria-label={text('How travel claims work','วิธีเบิกค่าเดินทาง')} className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-[2px] sm:items-center" onClick={onClose}>
   <div className="max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[2rem] bg-white p-5 pb-8 shadow-2xl sm:rounded-[2rem]" onClick={e=>e.stopPropagation()}>
    <div className="mb-4 flex items-start justify-between gap-3"><div><p className="text-xs font-semibold text-sky-700">{text('Travel claims','เบิกค่าเดินทาง')}</p><h2 className="text-xl font-extrabold text-slate-900">{text('How it works','วิธีใช้')}</h2></div><button type="button" onClick={onClose} aria-label={text('Close','ปิด')} className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-slate-600"><X className="h-4 w-4"/></button></div>
