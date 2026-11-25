@@ -14,7 +14,7 @@ export function accountingAllowed(req:VercelRequest){
  if(url.pathname.replace(/\/$/,'')==='/api/auth')return true;
  if(url.pathname.replace(/\/$/,'')!=='/api/hr-admin')return false;
  if(req.method==='GET')return ['trips','trip','receipt','payout','form'].includes(String(req.query?.view??url.searchParams.get('view')??''));
- return req.method==='POST'&&['travel-mark','travel-payout-paid','travel-form-save','travel-form-reset'].includes(String(req.body?.action??''));
+ return req.method==='POST'&&['travel-mark','travel-payout-paid','travel-form-save','travel-form-reset','travel-form-email'].includes(String(req.body?.action??''));
 }
 export async function dashboardSession(req:VercelRequest):Promise<DashboardSession|null>{const hash=tokenHash(req);if(!hash)return null;try{const result=await authCall('session',{sessionHash:hash});const session:DashboardSession|null=result.session??null;return session?.role==='accounting'&&!accountingAllowed(req)?null:session;}catch(e){if((e as {status?:number}).status===401)return null;throw e;}}
 export async function dashboardCall(req:VercelRequest,operation:string,payload:Record<string,unknown>={}){return authCall(operation,{...payload,sessionHash:tokenHash(req)});}

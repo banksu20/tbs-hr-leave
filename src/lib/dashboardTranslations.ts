@@ -945,6 +945,14 @@ export const dashboardThai: Record<string, string> = {
  "This person has not added their ID and bank details yet. Fill them in here and save; they will be remembered.": "พนักงานคนนี้ยังไม่ได้กรอกเลขบัตรประชาชนและบัญชีธนาคาร กรอกที่นี่แล้วบันทึก ระบบจะจำไว้ให้",
  "Unsaved changes": "ยังไม่ได้บันทึก",
  "Yes, start over": "ใช่ เริ่มใหม่",
+ "Email to accounting": "อีเมลถึงฝ่ายบัญชี",
+ "Send to {0}": "ส่งถึง {0}",
+ "Making the PDF…": "กำลังสร้าง PDF…",
+ "This PDF is too large to email. Print it instead.": "PDF นี้ใหญ่เกินกว่าจะส่งทางอีเมล กรุณาพิมพ์แทน",
+ "Sent to {0}. It arrives in a minute or two with the PDF attached.": "ส่งถึง {0} แล้ว อีเมลพร้อมไฟล์ PDF จะถึงภายใน 1–2 นาที",
+ "Add the accounting email in Travel settings first.": "กรุณาเพิ่มอีเมลฝ่ายบัญชีในการตั้งค่าการเดินทางก่อน",
+ "The PDF could not be read. Try again.": "อ่านไฟล์ PDF ไม่ได้ กรุณาลองใหม่",
+ "This form was just sent. Wait a minute before sending it again.": "เพิ่งส่งแบบฟอร์มนี้ไป กรุณารอสักครู่ก่อนส่งอีกครั้ง",
 };
 
 export function dashboardText(language: string, text: string, values: readonly (string | number)[] = []): string {

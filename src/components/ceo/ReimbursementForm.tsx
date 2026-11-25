@@ -1,25 +1,12 @@
 import {useEffect,useMemo,useState} from 'react';
 import {createPortal} from 'react-dom';
-import {AlertTriangle,ArrowLeft,FileText,Loader2,Plus,Printer,RotateCcw,Save,Trash2} from 'lucide-react';
+import {AlertTriangle,ArrowLeft,CheckCircle2,FileText,Loader2,Mail,Plus,Printer,RotateCcw,Save,Trash2} from 'lucide-react';
 import {useDashboardText} from '@/hooks/useDashboardText';
-import {adminReceiptUrl,loadTravelForm,resetTravelForm,saveTravelForm,type Evidence,type FormRow,type ReimbursementForm as Form,type TravelFormData} from '@/lib/hrAdmin';
+import {adminReceiptUrl,emailTravelForm,loadTravelForm,resetTravelForm,saveTravelForm,type Evidence,type FormRow,type ReimbursementForm as Form,type TravelFormData} from '@/lib/hrAdmin';
 import {bahtText} from '@/lib/bahtText';
 import {accountText,bankEn,banks} from '@/lib/banks';
+import {F,dmy,enDate,fmt,num,thDate} from '@/lib/reimbursementText';
 
-const F={
- company:'The Business SEO Co., Ltd. (Trading as TBS Marketing)',
- address:'No. 1023 TPS Building, Floor 4, Pattanakarn Road, Suanluang Sub District, Suanluang District, Bangkok, 10250 Thailand',
- titleTh:'ใบขอเบิกค่าใช้จ่าย',titleEn:'Reimbursement Form',
- dateTh:'วันที่',dateEn:'Date',meTh:'ข้าพเจ้า',meEn:'I',idTh:'บัตรประชาชนเลขที่',idEn:'Tax ID/Passport No.',posTh:'ตำแหน่ง',posEn:'Position',deptTh:'แผนก',deptEn:'Department',
- certTh:'ขอเบิกค่าใช้จ่ายดังรายละเอียดในตาราง ซึ่งข้าพเจ้ารับรองว่ารายจ่ายที่ขอเบิกข้าพเจ้าได้จ่ายไปในงานของบริษัท เดอะ บิสซิเนส เอสอีโอ จำกัด โดยแท้จริง ซึ่งบางรายการไม่อาจเรียกเก็บใบเสร็จรับเงินจากผู้ขายได้',
- certEn:'Request for reimbursement as detailed in the table. I certify that the expenditures requested by me have actually been paid for the work of The Business SEO Co., Ltd., which some items may not collect receipts from the seller.',
- paidTh:['ทั้งนี้ ข้าพเจ้าได้จ่ายเงินไปตั้งแต่วันที่','ถึงวันที่'],paidEn:['In this regard, I have paid the money from the date of','to the date of'],
- colDate:['วัน/เดือน/ปี','Date'],colDetail:['รายละเอียดรายจ่าย/ชื่อร้านค้า','Expense details/Seller name'],colAmount:['จำนวนเงิน(บาท)','Amount (baht)'],colRemark:['หมายเหตุ','Remark'],
- total:'รวมทั้งสิ้น',bankTh:'โดยให้โอนเงินเข้าบัญชี ธนาคาร',noTh:'เลขที่',bankEn:'by transferring money to the account',noEn:'No.',
- signTh:'ลงชื่อ',signEn:'Sign',approveTh:'อนุมัติโดย',approveEn:'Approved by',
- evidence:'หลักฐานการจ่ายเงิน / Payment evidence',pdf:'ไฟล์ PDF · พิมพ์แยกแล้วแนบ / PDF file · print separately and attach',
- kinds:{toll:'ค่าทางด่วน / Toll',parking:'ค่าจอดรถ / Parking',grab:'Grab',taxi:'แท็กซี่ / Taxi',other:'อื่นๆ / Other'} as Record<string,string>,
-};
 const css=`
 .rf-overlay{position:fixed;inset:0;z-index:60;overflow:auto;background:#e2e8f0}
 .rf-sheet{width:210mm;height:297mm;margin:0 auto 24px;padding:12mm 14mm;box-sizing:border-box;background:#fff;color:#000;box-shadow:0 4px 24px rgba(15,23,42,.15);overflow:hidden;font-size:12.5px;line-height:1.55;font-family:'Sarabun','TH Sarabun New',Tahoma,sans-serif}
@@ -43,11 +30,6 @@ const css=`
  .rf-in{border:0!important;background:transparent!important;padding:0!important;appearance:none}
  select.rf-in{display:none!important}
 }`;
-const thDate=(d:string|null)=>d?new Date(d+'T00:00:00+07:00').toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Bangkok'}):'..........';
-const enDate=(d:string|null)=>d?new Date(d+'T00:00:00+07:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Bangkok'}):'..........';
-const dmy=(d:string|null)=>d?d.split('-').reverse().join('/'):'';
-const num=(v:FormRow['amount'])=>{const n=typeof v==='number'?v:parseFloat(String(v??''));return Number.isFinite(n)?n:0;};
-const fmt=(n:number)=>n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const chunk=<X,>(l:X[],n:number)=>Array.from({length:Math.ceil(l.length/n)},(_,i)=>l.slice(i*n,i*n+n));
 
 function DateField({value,onChange,show}:{value:string|null;onChange:(v:string|null)=>void;show:(v:string|null)=>string}){
@@ -68,7 +50,7 @@ function EvidenceCard({e}:{e:Evidence}){
 
 export default function ReimbursementForm({month,userId,onClose}:{month:string;userId:string;onClose:()=>void}){
  const dt=useDashboardText();
- const [data,setData]=useState<TravelFormData|null>(null),[form,setForm]=useState<Form|null>(null),[dirty,setDirty]=useState(false),[busy,setBusy]=useState(''),[error,setError]=useState(''),[confirmReset,setConfirmReset]=useState(false);
+ const [data,setData]=useState<TravelFormData|null>(null),[form,setForm]=useState<Form|null>(null),[dirty,setDirty]=useState(false),[busy,setBusy]=useState(''),[error,setError]=useState(''),[confirmReset,setConfirmReset]=useState(false),[confirmMail,setConfirmMail]=useState(false),[sent,setSent]=useState('');
  const take=(d:TravelFormData)=>{setData(d);setForm(d.form);setDirty(false);};
  useEffect(()=>{loadTravelForm(month,userId).then(take).catch(e=>setError((e as Error).message));},[month,userId]);
  useEffect(()=>{const k=(e:KeyboardEvent)=>{if(e.key==='Escape'&&!dirty)onClose();};window.addEventListener('keydown',k);return ()=>window.removeEventListener('keydown',k);},[dirty,onClose]);
@@ -77,6 +59,18 @@ export default function ReimbursementForm({month,userId,onClose}:{month:string;u
  const total=useMemo(()=>(form?.rows??[]).reduce((a,r)=>a+num(r.amount),0),[form]);
  const run=async(label:string,fn:()=>Promise<TravelFormData>)=>{setBusy(label);setError('');try{take(await fn());return true;}catch(e){setError((e as Error).message);return false;}finally{setBusy('');}};
  const save=()=>form?run('save',()=>saveTravelForm(month,userId,form)):Promise.resolve(false);
+ const email=async()=>{
+  setConfirmMail(false);setSent('');
+  if(dirty&&!await save())return;
+  if(!form||!data)return;
+  setBusy('email');setError('');
+  try{
+   const {maxEmailPdf,reimbursementPdfBase64}=await import('@/lib/reimbursementPdf');
+   const pdf=await reimbursementPdfBase64(form,data.evidence,month);
+   if(pdf.length>maxEmailPdf)throw Error(dt('This PDF is too large to email. Print it instead.'));
+   setSent((await emailTravelForm(month,userId,pdf)).sentTo);
+  }catch(e){setError((e as Error).message);}finally{setBusy('');}
+ };
  const print=async()=>{if(dirty&&!await save())return;setTimeout(()=>window.print(),300);};
  const pad=Math.max(0,11-(form?.rows.length??0));
  const pages=chunk(data?.evidence??[],4);
@@ -90,8 +84,12 @@ export default function ReimbursementForm({month,userId,onClose}:{month:string;u
     {confirmReset?<><button type="button" disabled={!!busy} onClick={()=>{setConfirmReset(false);void run('reset',()=>resetTravelForm(month,userId));}} className="rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{dt('Yes, start over')}</button><button type="button" onClick={()=>setConfirmReset(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">{dt('Cancel')}</button></>
      :<button type="button" disabled={!data||!!busy} onClick={()=>setConfirmReset(true)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50"><RotateCcw className="h-4 w-4"/>{dt('Start over from claims')}</button>}
     <button type="button" disabled={!dirty||!!busy} onClick={()=>void save()} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{busy==='save'?<Loader2 className="h-4 w-4 animate-spin"/>:<Save className="h-4 w-4"/>}{dt('Save')}</button>
+    {confirmMail?<><button type="button" disabled={!!busy} onClick={()=>void email()} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{dt('Send to {0}',[data?.mailTo??''])}</button><button type="button" onClick={()=>setConfirmMail(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">{dt('Cancel')}</button></>
+     :<button type="button" disabled={!form||!!busy||!data?.mailTo} title={data&&!data.mailTo?dt('Add the accounting email in Travel settings first.'):undefined} onClick={()=>{setSent('');setConfirmMail(true);}} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{busy==='email'?<Loader2 className="h-4 w-4 animate-spin"/>:<Mail className="h-4 w-4"/>}{busy==='email'?dt('Making the PDF…'):dt('Email to accounting')}</button>}
     <button type="button" disabled={!form||!!busy} onClick={()=>void print()} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50"><Printer className="h-4 w-4"/>{dt('Print / save PDF')}</button>
    </div>
+   {sent&&<p role="status" className="mx-auto mt-2 flex max-w-4xl items-center gap-2 rounded-lg bg-emerald-50 p-2.5 text-sm text-emerald-800"><CheckCircle2 className="h-4 w-4 shrink-0"/>{dt('Sent to {0}. It arrives in a minute or two with the PDF attached.',[sent])}</p>}
+   {data&&!data.mailTo&&<p className="mx-auto mt-2 max-w-4xl text-xs text-slate-500">{dt('Add the accounting email in Travel settings first.')}</p>}
    {error&&<p role="alert" className="mx-auto mt-2 max-w-4xl rounded-lg bg-rose-50 p-2.5 text-sm text-rose-700">{error}</p>}
    {data?.payeeMissing&&<p className="mx-auto mt-2 flex max-w-4xl items-center gap-2 rounded-lg bg-amber-50 p-2.5 text-sm text-amber-900"><AlertTriangle className="h-4 w-4 shrink-0"/>{dt('This person has not added their ID and bank details yet. Fill them in here and save; they will be remembered.')}</p>}
   </div>

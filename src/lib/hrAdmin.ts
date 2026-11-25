@@ -43,8 +43,9 @@ export const decideAttendanceFix=(id:number,decision:'approve'|'reject',note='')
 export interface FormRow {date:string|null;detail:string;amount:number|string|null;remark:string}
 export interface ReimbursementForm {formDate:string|null;nameTh:string;nameEn:string;idNo:string;position:string;department:string;bank:string;account:string;approver:string;from:string|null;to:string|null;rows:FormRow[]}
 export interface Evidence {n:number;id:string;mime:string;kind:import('./travel').ReceiptKind;date:string;amount:number;merchant:string|null;tripId:number;needsOriginal:boolean;originalReceivedAt:string|null}
-export interface TravelFormData {month:string;userId:string;code:string;saved:{updatedAt:string;updatedBy:string}|null;form:ReimbursementForm;evidence:Evidence[];payeeMissing:boolean}
+export interface TravelFormData {month:string;userId:string;code:string;saved:{updatedAt:string;updatedBy:string}|null;form:ReimbursementForm;evidence:Evidence[];payeeMissing:boolean;mailTo?:string|null}
 const formNumbers=(b:TravelFormData):TravelFormData=>({...b,form:{...b.form,rows:b.form.rows.map(r=>({...r,amount:r.amount==null?null:Number(r.amount)}))},evidence:b.evidence.map(e=>({...e,amount:Number(e.amount)}))});
 export const loadTravelForm=(month:string,userId:string)=>call<TravelFormData>({view:`form&month=${encodeURIComponent(month)}&userId=${encodeURIComponent(userId)}`}).then(formNumbers);
 export const saveTravelForm=(month:string,userId:string,data:ReimbursementForm)=>call<TravelFormData>({body:{action:'travel-form-save',month,userId,data}}).then(formNumbers);
+export const emailTravelForm=(month:string,userId:string,pdf:string)=>call<{sentTo:string}>({body:{action:'travel-form-email',month,userId,pdf}});
 export const resetTravelForm=(month:string,userId:string)=>call<TravelFormData>({body:{action:'travel-form-reset',month,userId}}).then(formNumbers);

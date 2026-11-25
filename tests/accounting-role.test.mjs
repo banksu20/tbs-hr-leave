@@ -47,6 +47,7 @@ test('the API only lets an accounting session through to travel claims',async()=
  assert.equal(await ok(req('POST','/api/hr-admin',{action:'travel-payout-paid',month:'2026-11'})),true);
  assert.equal(await ok(req('GET','/api/hr-admin?view=form&month=2026-11&userId=x')),true);
  assert.equal(await ok(req('POST','/api/hr-admin',{action:'travel-form-save',month:'2026-11',userId:'x',data:{}})),true);
+ assert.equal(await ok(req('POST','/api/hr-admin',{action:'travel-form-email',month:'2026-11',userId:'x',pdf:'JVBERi0'})),true);
  assert.equal(await ok(req('POST','/api/hr-admin',{action:'travel-decide',id:1})),false);
  assert.equal(await ok(req('GET','/api/hr-admin?view=travel')),false);
  assert.equal(await ok(req('GET','/api/hr-admin?view=people')),false);

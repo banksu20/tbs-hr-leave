@@ -91,10 +91,11 @@ window.fetch=async(input,init)=>{
    for(const t of l){const s=sum(t);if(s.kmAmount>0)rows.push({date:t.date,detail:`ค่าเดินทาง รถยนต์ ${s.km.toFixed(1)} กม. · ${s.clients.join(', ')}`,amount:s.kmAmount,remark:''});
     for(const r of t.receipts){n++;rows.push({date:t.date,detail:({toll:'ค่าทางด่วน / Toll',parking:'ค่าจอดรถ / Parking',grab:'ค่า Grab',taxi:'ค่าแท็กซี่ / Taxi'} as Record<string,string>)[r.kind]+(r.readMerchant?' · '+r.readMerchant:''),amount:r.amount,remark:'หลักฐาน #'+n});ev.push({n,id:r.id,mime:r.mime,kind:r.kind,date:t.date,amount:r.amount,merchant:r.readMerchant??null,tripId:t.id,needsOriginal:r.needsOriginal,originalReceivedAt:r.originalReceivedAt});}}
    const me=userId==='me'&&payee;const key=month+userId;
-   return {ok:true,month,userId,code:userId==='me'?'TBS-071':'TBS-072',saved:forms[key]?{updatedAt:now(),updatedBy:'acc'}:null,payeeMissing:!me,evidence:ev,
+   return {ok:true,month,userId,code:userId==='me'?'TBS-071':'TBS-072',saved:forms[key]?{updatedAt:now(),updatedBy:'acc'}:null,payeeMissing:!me,evidence:ev,mailTo:'b•••@example.com',
     form:forms[key]??{formDate:today,nameTh:me?payee!.nameTh:(l[0]?.employee.split(' (')[0]??''),nameEn:me?payee!.nameEn:'',idNo:me?payee!.idNo:'',position:me?payee!.position:'',department:'Sale',bank:me?payee!.bank:'',account:me?payee!.account:'',approver:'',from:l[0]?.date??null,to:l.at(-1)?.date??null,rows}};};
   if(q.get('view')==='form')return json(formData(q.get('month')!,q.get('userId')!));
   if(b?.action==='travel-form-save'){forms[b.month+b.userId]=b.data;return json(formData(b.month,b.userId));}
+  if(b?.action==='travel-form-email'){(window as unknown as {__pdf:string}).__pdf=b.pdf;return json({ok:true,sentTo:'b•••@example.com'});}
   if(b?.action==='travel-form-reset'){delete forms[b.month+b.userId];return json(formData(b.month,b.userId));}
   if(b?.action==='travel-payout-paid'){let n=0;trips.filter(t=>t.date.startsWith(b.month)&&['submitted','approved'].includes(t.status)&&(!b.userId||t.user===b.userId)&&!sum(t).originalsWaiting).forEach(t=>{t.status='paid';n++;});return json({ok:true,marked:n,people:payout()});}
   if(q.get('view')==='trip')return json({ok:true,trip:sum(trips.find(t=>t.id===Number(q.get('id')))!)});

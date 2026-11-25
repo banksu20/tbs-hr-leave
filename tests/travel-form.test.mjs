@@ -77,3 +77,26 @@ test('amounts are written in Thai words like the paper form',async()=>{
  assert.equal(bahtText(25000000),'ยี่สิบห้าล้านบาทถ้วน');
  assert.equal(bahtText(0.25),'ยี่สิบห้าสตางค์');
 });
+
+test('accounting can email the PDF to the accounting address once a minute; the file is dropped after sending',async()=>{
+ const pdf='JVBERi0xLjMK'+'A'.repeat(400);
+ assert.equal((await dash('travel-form-email',{month:'2026-10',userId:S,pdf})).statusCode,409);
+ await q("UPDATE tbs_travel_settings SET accounting_email='books@example.com' WHERE singleton");
+ assert.equal((await dash('travel-form',{month:'2026-10',userId:S})).mailTo,'b•••@example.com');
+ assert.equal((await dash('travel-form-email',{month:'2026-10',userId:S,pdf:'nope'})).statusCode,422);
+ assert.equal((await dash('travel-form-email',{month:'2026-10',userId:S,pdf:'QUJD'+'A'.repeat(400)})).statusCode,422);
+ assert.equal((await dash('travel-form-email',{month:'2026-10',userId:S,pdf},'z')).statusCode,401);
+ const r=await dash('travel-form-email',{month:'2026-10',userId:S,pdf});
+ assert.equal(r.ok,true);assert.equal(r.sentTo,'b•••@example.com');
+ assert.equal((await dash('travel-form-email',{month:'2026-10',userId:S,pdf})).statusCode,429);
+ const [job]=await q("SELECT * FROM tbs_sync_jobs WHERE kind='email' AND payload->>'form'='2026-10'");
+ assert.equal(job.payload.to,'books@example.com');assert.equal(job.payload.attachment.data,pdf);
+ assert.match(job.payload.attachment.name,/^Reimbursement TBS-081 2026-10\.pdf$/);
+ assert.match(job.payload.subject,/Kochakorn Test|กชกร/);assert.match(job.payload.html,/฿/);
+ assert.equal((await q("SELECT count(*)::int n FROM tbs_dashboard_account_audit WHERE action='travel-form-email'"))[0].n,1);
+ const claimed=(await q("SELECT * FROM tbs_claim_line_batch('email')")).find(j=>j.id===job.id);
+ assert.ok(claimed);
+ assert.equal((await q("SELECT tbs_finish_sync($1,$2,$3,NULL) s",[claimed.id,claimed.lease_token,claimed.generation]))[0].s,true);
+ const [after]=await q("SELECT payload FROM tbs_sync_jobs WHERE id=$1",[job.id]);
+ assert.equal(after.payload.attachment,undefined);assert.equal(after.payload.attachmentRemoved,true);
+});

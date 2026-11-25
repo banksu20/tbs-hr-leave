@@ -13,10 +13,14 @@ async function fonts() {
   })).then(entries=>Object.fromEntries(entries)).catch(error=>{fontData=undefined;throw error;});
   return fontData;
 }
-export async function downloadReportPdf(report: MonthlyReport) {
+export async function loadPdfMake() {
   // Load the PDF engine on demand; HR data stays in this browser.
   const [{default:pdfMake},vfs]=await Promise.all([import('pdfmake/build/pdfmake'),fonts()]);
   pdfMake.addVirtualFileSystem(vfs);
   pdfMake.addFonts({Sarabun:{normal:'Sarabun-Regular.ttf',bold:'Sarabun-Bold.ttf',italics:'Sarabun-Regular.ttf',bolditalics:'Sarabun-Bold.ttf'}});
+  return pdfMake;
+}
+export async function downloadReportPdf(report: MonthlyReport) {
+  const pdfMake=await loadPdfMake();
   await pdfMake.createPdf(monthlyReportDocument(report)).download(report.filename.replace(/\.csv$/,'.pdf'));
 }
