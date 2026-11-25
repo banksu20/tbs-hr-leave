@@ -100,3 +100,12 @@ test('accounting can email the PDF to the accounting address once a minute; the 
  const [after]=await q("SELECT payload FROM tbs_sync_jobs WHERE id=$1",[job.id]);
  assert.equal(after.payload.attachment,undefined);assert.equal(after.payload.attachmentRemoved,true);
 });
+
+test('the form and the monthly payout show when the form was last emailed',async()=>{
+ const f=await dash('travel-form',{month:'2026-10',userId:S});
+ assert.equal(f.lastEmail.by,'acc');assert.ok(f.lastEmail.at);
+ assert.equal((await dash('travel-form',{month:'2026-11',userId:S})).lastEmail,null);
+ const p=await dash('travel-payout',{month:'2026-10'});
+ assert.equal(p.ok,true);assert.ok(p.people.find(x=>x.userId===S).formEmailedAt);
+ assert.equal((await dash('travel-payout',{month:'2026-11'})).people.find(x=>x.userId===S)?.formEmailedAt??null,null);
+});

@@ -98,7 +98,7 @@ function Settings(){
   {done:on,label:dt('Office pin set'),hint:dt('Staff check back in against this pin.')},
   {done:s.departments.length>0,label:dt('Departments chosen'),hint:s.departments.length?s.departments.join(', '):dt('Empty means only people allowed below can claim.')},
   {done:!!s.payoutNotify,label:dt('Accountant on LINE chosen'),hint:dt('Gets each trip card and the monthly totals.')},
-  {done:!!s.accountingEmail,label:dt('Accounting email'),hint:s.accountingEmail??dt('Optional.'),optional:true},
+  {done:!!s.accountingEmail,label:dt('Accounting email'),hint:s.accountingEmail??dt('Needed to email reimbursement forms.'),optional:true},
   {done:claimers>0,label:dt('{0} people can claim',[claimers]),hint:dt('They see Travel claims on the home screen once the pin is set.')},
  ];
  const ready=steps.filter(x=>!x.optional).every(x=>x.done);
@@ -125,7 +125,7 @@ function Settings(){
    <label className="text-sm font-medium text-slate-700">{dt('Check-in radius (m)')}<input type="number" min={50} max={2000} step={10} value={s.radius} onChange={e=>setS({...s,radius:e.target.valueAsNumber})} className={field}/></label>
    <label className="text-sm font-medium text-slate-700">{dt('Start from home only before')}<input type="time" value={s.homeCutoff} onChange={e=>setS({...s,homeCutoff:e.target.value})} className={field}/></label>
    <label className="text-sm font-medium text-slate-700">{dt('Flag trips over (km)')}<input type="number" min={1} max={5000} value={s.tripKmCap} onChange={e=>setS({...s,tripKmCap:e.target.valueAsNumber})} className={field}/></label>
-   <label className="text-sm font-medium text-slate-700 sm:col-span-2">{dt('Accounting email (daily summary)')}<input type="email" value={email} onChange={e=>setEmail(e.target.value)} className={field}/></label>
+   <label className="text-sm font-medium text-slate-700 sm:col-span-2">{dt('Accounting email')}<span className="block text-xs font-normal text-slate-500">{dt('Gets the daily summary and the reimbursement forms (PDF) sent from Monthly payout.')}</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} className={field}/></label>
    <label className="text-sm font-medium text-slate-700 sm:col-span-2"><span className="flex items-center gap-1.5"><BellRing className="h-3.5 w-3.5 text-slate-400"/>{dt('Accountant on LINE')}</span><select value={notify} onChange={e=>setNotify(e.target.value)} className={field}><option value="">{dt('Nobody')}</option>{people.filter(p=>/^U[0-9a-f]{32}$/.test(p.id)||p.id===notify).map(p=><option key={p.id} value={p.id}>{p.nickname?`${p.nickname} · ${p.name}`:p.name}</option>)}</select><span className="mt-1 block text-xs font-normal text-slate-500">{dt('Gets a card for every finished client trip, and last month’s totals on the 1st.')}</span></label>
    <label className="text-sm font-medium text-slate-700 sm:col-span-2">{dt('Departments that can claim (comma separated)')}<input value={depts} onChange={e=>setDepts(e.target.value)} className={field}/></label>
    <button type="button" disabled={busy} onClick={()=>void save()} className="rounded-xl bg-sky-600 py-3 text-sm font-bold text-white shadow-sm disabled:opacity-50 sm:col-span-2">{busy?dt('Saving…'):dt('Save')}</button>

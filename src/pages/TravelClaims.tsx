@@ -249,7 +249,8 @@ function PayeeForm({state,text,run,onDone}:{state:TravelState;text:T;run:Run;onD
  const [v,setV]=useState({nameTh:p?.nameTh??'',nameEn:p?.nameEn??'',position:p?.position??'',idNo:p?.idNo??'',bank:p?.bank??'',account:p?.account??''});
  const set=(k:keyof typeof v)=>(e:{target:{value:string}})=>setV(x=>({...x,[k]:e.target.value}));
  const idOk=v.idNo.replace(/\D/g,'').length===13,acctOk=/^\d{10,15}$/.test(v.account.replace(/\D/g,''));
- const ok=v.nameTh.trim().length>=2&&v.nameEn.trim().length>=2&&v.position.trim().length>=2&&v.bank&&idOk&&acctOk;
+ const missing=[v.nameTh.trim().length<2&&text('Thai name','ชื่อภาษาไทย'),v.nameEn.trim().length<2&&text('English name','ชื่อภาษาอังกฤษ'),v.position.trim().length<2&&text('position','ตำแหน่ง'),!idOk&&text('ID card number','เลขบัตรประชาชน'),!v.bank&&text('bank','ธนาคาร'),!acctOk&&text('account number','เลขที่บัญชี')].filter(Boolean) as string[];
+ const ok=missing.length===0;
  return <section className={card+' space-y-4'}>
   <div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-sky-50 text-sky-600"><Landmark className="h-5 w-5"/></span><div><h2 className="font-bold text-slate-900">{text('Your payment details','ข้อมูลสำหรับรับเงิน')}</h2><p className="text-sm text-slate-500">{text('Fill this in once. Accounting uses it on your reimbursement form and to transfer your money.','กรอกครั้งเดียว บัญชีจะใช้ในใบขอเบิกและโอนเงินให้คุณ')}</p></div></div>
   <label className="block"><span className={label}>{text('Full name in Thai','ชื่อ-นามสกุล (ภาษาไทย)')}</span><input className={input} value={v.nameTh} onChange={set('nameTh')} autoComplete="name"/></label>
@@ -260,6 +261,7 @@ function PayeeForm({state,text,run,onDone}:{state:TravelState;text:T;run:Run;onD
   <label className="block"><span className={label}>{text('Account number','เลขที่บัญชี')}</span><input className={input} value={v.account} onChange={set('account')} inputMode="numeric" maxLength={20}/>{v.account&&!acctOk&&<span className="mt-1 block text-xs text-rose-600">{text('Use 10 to 15 digits.','ใช้ 10 ถึง 15 หลัก')}</span>}</label>
   <p className="flex items-start gap-2 rounded-2xl bg-slate-50 p-3 text-xs text-slate-500"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"/>{text('Only you, HR and accounting can see these details.','เฉพาะคุณ HR และฝ่ายบัญชีเท่านั้นที่เห็นข้อมูลนี้')}</p>
   <button type="button" disabled={!ok} className={primary} onClick={()=>void run(async()=>{const s=await travelAction('payee-save',v);onDone?.();return s;})}><Check className="h-5 w-5"/>{text('Save','บันทึก')}</button>
+  {!ok&&<p className="-mt-2 text-center text-xs text-slate-500">{text('Still needed: ','ยังขาด: ')}{missing.join(', ')}</p>}
   {onDone&&<button type="button" className={secondary} onClick={onDone}>{text('Cancel','ยกเลิก')}</button>}
  </section>;
 }

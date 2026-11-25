@@ -47,7 +47,7 @@ let payee:Record<string,string>|null=new URLSearchParams(location.search).has('n
 const state=(extra={})=>({ok:true,eligible:true,configured:true,settings,payee,trip:trips.filter(t=>t.user==='me'&&t.status==='open').map(sum)[0]??null,recent:trips.filter(t=>t.user==='me'&&t.status!=='open').map(sum),...extra});
 const json=(b:unknown,status=200)=>new Response(JSON.stringify(b),{status,headers:{'Content-Type':'application/json'}});
 const dist=(a:{lat:number;lng:number},b:{lat:number;lng:number})=>Math.round(Math.hypot((a.lat-b.lat)*111,(a.lng-b.lng)*108)*1.35*100)/100;
-const forms:Record<string,unknown>={};
+const forms:Record<string,unknown>={};const emailed:Record<string,string>={};
 const realFetch=window.fetch.bind(window);
 window.fetch=async(input,init)=>{
  const url=String(input);if(!url.startsWith('/api/'))return realFetch(input,init);
@@ -84,18 +84,18 @@ window.fetch=async(input,init)=>{
   if(q.get('view')==='trips')return json({ok:true,trips:trips.filter(t=>t.status!=='open'&&t.status!=='cancelled'&&(!q.get('status')||t.status===q.get('status'))).map(sum)});
   const payout=()=>{const m=q.get('month')??b?.month;const by=new Map<string,Trip[]>();trips.filter(t=>t.date.startsWith(m)&&['submitted','approved','paid','flagged'].includes(t.status)).forEach(t=>by.set(t.user,[...(by.get(t.user)??[]),t]));
    return [...by].map(([user,l])=>{const s=l.map(sum),ok=s.filter(t=>t.status!=='flagged'),add=(f:(t:ReturnType<typeof sum>)=>boolean)=>ok.filter(f).reduce((a,t)=>a+t.total,0);const [name,nick]=l[0].employee.replace(')','').split(' (');
-    return {userId:user,code:user==='me'?'TBS-071':'TBS-072',name,nickname:nick,department:l[0].department,trips:ok.length,flagged:s.length-ok.length,km:ok.reduce((a,t)=>a+t.km,0),kmAmount:ok.reduce((a,t)=>a+t.kmAmount,0),receiptAmount:ok.reduce((a,t)=>a+t.receiptAmount,0),total:add(()=>true),paid:add(t=>t.status==='paid'),ready:add(t=>t.status!=='paid'&&!t.originalsWaiting),held:add(t=>t.status!=='paid'&&t.originalsWaiting>0),paperMissing:ok.reduce((a,t)=>a+t.originalsWaiting,0),
+    return {userId:user,code:user==='me'?'TBS-071':'TBS-072',name,nickname:nick,department:l[0].department,trips:ok.length,flagged:s.length-ok.length,km:ok.reduce((a,t)=>a+t.km,0),kmAmount:ok.reduce((a,t)=>a+t.kmAmount,0),receiptAmount:ok.reduce((a,t)=>a+t.receiptAmount,0),total:add(()=>true),paid:add(t=>t.status==='paid'),ready:add(t=>t.status!=='paid'&&!t.originalsWaiting),held:add(t=>t.status!=='paid'&&t.originalsWaiting>0),paperMissing:ok.reduce((a,t)=>a+t.originalsWaiting,0),formEmailedAt:emailed[m+user]??null,
      lines:s.map(t=>({id:t.id,date:t.date,status:t.status,clients:t.clients,km:t.km,kmAmount:t.kmAmount,receiptAmount:t.receiptAmount,total:t.total,originalsWaiting:t.originalsWaiting}))};});};
   if(q.get('view')==='payout')return json({ok:true,people:payout()});
   const formData=(month:string,userId:string)=>{const l=trips.filter(t=>t.user===userId&&t.date.startsWith(month)&&['submitted','approved','paid'].includes(t.status)).sort((a,c)=>a.date.localeCompare(c.date)||a.id-c.id);let n=0;const ev:unknown[]=[];const rows:unknown[]=[];
    for(const t of l){const s=sum(t);if(s.kmAmount>0)rows.push({date:t.date,detail:`ค่าเดินทาง รถยนต์ ${s.km.toFixed(1)} กม. · ${s.clients.join(', ')}`,amount:s.kmAmount,remark:''});
     for(const r of t.receipts){n++;rows.push({date:t.date,detail:({toll:'ค่าทางด่วน / Toll',parking:'ค่าจอดรถ / Parking',grab:'ค่า Grab',taxi:'ค่าแท็กซี่ / Taxi'} as Record<string,string>)[r.kind]+(r.readMerchant?' · '+r.readMerchant:''),amount:r.amount,remark:'หลักฐาน #'+n});ev.push({n,id:r.id,mime:r.mime,kind:r.kind,date:t.date,amount:r.amount,merchant:r.readMerchant??null,tripId:t.id,needsOriginal:r.needsOriginal,originalReceivedAt:r.originalReceivedAt});}}
    const me=userId==='me'&&payee;const key=month+userId;
-   return {ok:true,month,userId,code:userId==='me'?'TBS-071':'TBS-072',saved:forms[key]?{updatedAt:now(),updatedBy:'acc'}:null,payeeMissing:!me,evidence:ev,mailTo:'b•••@example.com',
+   return {ok:true,month,userId,code:userId==='me'?'TBS-071':'TBS-072',saved:forms[key]?{updatedAt:now(),updatedBy:'acc'}:null,payeeMissing:!me,evidence:ev,mailTo:'b•••@example.com',lastEmail:emailed[month+userId]?{at:emailed[month+userId],by:'acc'}:null,
     form:forms[key]??{formDate:today,nameTh:me?payee!.nameTh:(l[0]?.employee.split(' (')[0]??''),nameEn:me?payee!.nameEn:'',idNo:me?payee!.idNo:'',position:me?payee!.position:'',department:'Sale',bank:me?payee!.bank:'',account:me?payee!.account:'',approver:'',from:l[0]?.date??null,to:l.at(-1)?.date??null,rows}};};
   if(q.get('view')==='form')return json(formData(q.get('month')!,q.get('userId')!));
   if(b?.action==='travel-form-save'){forms[b.month+b.userId]=b.data;return json(formData(b.month,b.userId));}
-  if(b?.action==='travel-form-email'){(window as unknown as {__pdf:string}).__pdf=b.pdf;return json({ok:true,sentTo:'b•••@example.com'});}
+  if(b?.action==='travel-form-email'){(window as unknown as {__pdf:string}).__pdf=b.pdf;emailed[b.month+b.userId]=now();return json({ok:true,sentTo:'b•••@example.com',lastEmail:{at:emailed[b.month+b.userId],by:'acc'}});}
   if(b?.action==='travel-form-reset'){delete forms[b.month+b.userId];return json(formData(b.month,b.userId));}
   if(b?.action==='travel-payout-paid'){let n=0;trips.filter(t=>t.date.startsWith(b.month)&&['submitted','approved'].includes(t.status)&&(!b.userId||t.user===b.userId)&&!sum(t).originalsWaiting).forEach(t=>{t.status='paid';n++;});return json({ok:true,marked:n,people:payout()});}
   if(q.get('view')==='trip')return json({ok:true,trip:sum(trips.find(t=>t.id===Number(q.get('id')))!)});

@@ -27,7 +27,7 @@ export const loadTrips=(status:string)=>call<{trips:AdminTripRow[]}>({view:`trip
 export const loadTrip=(id:number)=>call<{trip:AdminTrip}>({view:`trip&id=${id}`}).then(b=>b.trip);
 export const decideTrip=(id:number,decision:'approve'|'reject',note:string)=>call<{trip:AdminTrip}>({body:{action:'travel-decide',id,decision,note}}).then(b=>b.trip);
 export interface PayoutLine {id:number;date:string;status:string;clients:string[];km:number;kmAmount:number;receiptAmount:number;total:number;originalsWaiting:number}
-export interface PayoutPerson {userId:string;code:string;name:string;nickname:string|null;department:string|null;trips:number;flagged:number;km:number;kmAmount:number;receiptAmount:number;total:number;paid:number;ready:number;held:number;paperMissing:number;lines:PayoutLine[]}
+export interface PayoutPerson {userId:string;code:string;name:string;nickname:string|null;department:string|null;trips:number;flagged:number;km:number;kmAmount:number;receiptAmount:number;total:number;paid:number;ready:number;held:number;paperMissing:number;lines:PayoutLine[];formEmailedAt?:string|null}
 const numbers=(p:PayoutPerson):PayoutPerson=>({...p,km:Number(p.km),kmAmount:Number(p.kmAmount),receiptAmount:Number(p.receiptAmount),total:Number(p.total),paid:Number(p.paid),ready:Number(p.ready),held:Number(p.held),lines:p.lines.map(l=>({...l,km:Number(l.km),kmAmount:Number(l.kmAmount),receiptAmount:Number(l.receiptAmount),total:Number(l.total)}))});
 export const loadPayout=(month:string)=>call<{people:PayoutPerson[]}>({view:`payout&month=${encodeURIComponent(month)}`}).then(b=>b.people.map(numbers));
 export const markPayoutPaid=(month:string,userId?:string)=>call<{people:PayoutPerson[];marked:number}>({body:{action:'travel-payout-paid',month,...(userId?{userId}:{})}}).then(b=>({marked:b.marked,people:b.people.map(numbers)}));
@@ -43,9 +43,9 @@ export const decideAttendanceFix=(id:number,decision:'approve'|'reject',note='')
 export interface FormRow {date:string|null;detail:string;amount:number|string|null;remark:string}
 export interface ReimbursementForm {formDate:string|null;nameTh:string;nameEn:string;idNo:string;position:string;department:string;bank:string;account:string;approver:string;from:string|null;to:string|null;rows:FormRow[]}
 export interface Evidence {n:number;id:string;mime:string;kind:import('./travel').ReceiptKind;date:string;amount:number;merchant:string|null;tripId:number;needsOriginal:boolean;originalReceivedAt:string|null}
-export interface TravelFormData {month:string;userId:string;code:string;saved:{updatedAt:string;updatedBy:string}|null;form:ReimbursementForm;evidence:Evidence[];payeeMissing:boolean;mailTo?:string|null}
+export interface TravelFormData {month:string;userId:string;code:string;saved:{updatedAt:string;updatedBy:string}|null;form:ReimbursementForm;evidence:Evidence[];payeeMissing:boolean;mailTo?:string|null;lastEmail?:{at:string;by:string}|null}
 const formNumbers=(b:TravelFormData):TravelFormData=>({...b,form:{...b.form,rows:b.form.rows.map(r=>({...r,amount:r.amount==null?null:Number(r.amount)}))},evidence:b.evidence.map(e=>({...e,amount:Number(e.amount)}))});
 export const loadTravelForm=(month:string,userId:string)=>call<TravelFormData>({view:`form&month=${encodeURIComponent(month)}&userId=${encodeURIComponent(userId)}`}).then(formNumbers);
 export const saveTravelForm=(month:string,userId:string,data:ReimbursementForm)=>call<TravelFormData>({body:{action:'travel-form-save',month,userId,data}}).then(formNumbers);
-export const emailTravelForm=(month:string,userId:string,pdf:string)=>call<{sentTo:string}>({body:{action:'travel-form-email',month,userId,pdf}});
+export const emailTravelForm=(month:string,userId:string,pdf:string)=>call<{sentTo:string;lastEmail?:{at:string;by:string}|null}>({body:{action:'travel-form-email',month,userId,pdf}});
 export const resetTravelForm=(month:string,userId:string)=>call<TravelFormData>({body:{action:'travel-form-reset',month,userId}}).then(formNumbers);
