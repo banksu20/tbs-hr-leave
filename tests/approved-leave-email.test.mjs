@@ -25,7 +25,7 @@ test('each saved address gets one email when leave is approved, without the reas
  let m=await mails();
  assert.deepEqual(m.map(x=>x.to),['boss@example.com','team@example.com']);
  assert.match(m[0].subject,/^Leave approved \/ อนุมัติการลา: Mali Moon \(Mali\) · 02 Mar – 03 Mar 2099$/);
- assert.ok(m[0].html.includes('Sick leave · ลาป่วย'));assert.ok(m[0].html.includes('2 days'));
+ assert.ok(m[0].html.includes('Sick / ลาป่วย'));assert.ok(m[0].html.includes('2 day(s) / วัน'));assert.ok(m[0].html.includes('อนุมัติแล้ว / Approved'));
  assert.ok(!m[0].html.includes('private reason'));
  await q("UPDATE leave_requests SET status='Approved',leave_days=1 WHERE id=$1",[id]);
  await q("UPDATE leave_requests SET status='Cancelled' WHERE id=$1",[id]);
@@ -35,5 +35,18 @@ test('each saved address gets one email when leave is approved, without the reas
  assert.equal((await mails()).length,2);
  await leave('personal','Approved',0.5);
  m=await mails();
- assert.equal(m.length,4);assert.ok(m[3].html.includes('0.5 days'));
+ assert.equal(m.length,4);assert.ok(m[3].html.includes('0.5 day(s)'));
+});
+
+test('approval email uses the LINE card layout with single-use decision links',async()=>{
+ const id=await leave('annual','Pending',3,'2099-04-06,2099-04-07,2099-04-08');
+ await q("UPDATE leave_requests SET reason='<b>trip</b>' WHERE id=$1",[id]);
+ const [{p}]=await q(`SELECT tbs_email_approval_payload(r,'{"email":"boss@example.com"}'::jsonb,'tok123',now()+interval '14 days') p FROM leave_requests r WHERE id=$1`,[id]);
+ assert.equal(p.to,'boss@example.com');assert.equal(p.requestId,id);
+ assert.equal(p.subject,'Leave approval needed / คำขอลารออนุมัติ: Mali Moon (Mali)');
+ assert.ok(p.html.includes('คำขอลาใหม่ / New leave request'));assert.ok(p.html.includes('ลาพักร้อน / Annual · 3 วัน / days'));
+ assert.ok(p.html.includes('/email-decision?id='+id+'&amp;t=tok123&amp;action=approve'));
+ assert.ok(p.html.includes('&amp;t=tok123&amp;action=reject'));
+ assert.ok(p.html.includes('&lt;b&gt;trip&lt;/b&gt;'));assert.ok(!p.html.includes('<b>trip'));
+ assert.ok(p.html.includes('name="viewport"'));
 });
