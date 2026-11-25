@@ -33,6 +33,13 @@ export default async function handler(req:VercelRequest,res:VercelResponse) {
   if(admin&&delivery){
    const session=await dashboardSession(req);
    if(!session||!['admin','ceo'].includes(session.role))return json(res,403,{error:'Delivery administration is restricted'});
+   if(req.method==='POST'&&req.body?.kind==='quota'){
+    const quota=z.object({kind:z.literal('quota'),alertEmail:z.union([z.literal(''),z.string().trim().email().max(200)]),warnPct:z.number().int().min(50).max(95),reservePct:z.number().int().min(1).max(30)}).safeParse(req.body);
+    if(!quota.success)return json(res,422,{error:'Check the LINE limit settings'});
+    const {alertEmail,warnPct,reservePct}=quota.data;
+    const result=await dashboardCall(req,'line-quota-save',{body:{alertEmail,warnPct,reservePct}});
+    return json(res,typeof result?.statusCode==='number'?result.statusCode:200,result);
+   }
    const schema=z.object({kind:z.enum(['line','calendar']),id:z.string().uuid().optional(),confirmResend:z.boolean().optional()}).refine(p=>p.kind==='calendar'||!!p.id);
    const body=req.method==='POST'?schema.safeParse(req.body):null;
    if(body&&!body.success)return json(res,422,{error:'Invalid retry request'});

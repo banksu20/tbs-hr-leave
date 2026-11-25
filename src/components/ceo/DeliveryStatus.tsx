@@ -1,8 +1,9 @@
 import {useLanguage} from "@/hooks/useLanguage";
 import {useDashboardText} from "@/hooks/useDashboardText";
 import {useQuery,useMutation,useQueryClient} from '@tanstack/react-query';
+import LineQuota,{type LineQuotaState} from './LineQuota';
 interface Job {id:string;kind:string;name:string;status:string;attempts:number;blocked:boolean;running:boolean;needsResend:boolean;error:string|null;updatedAt:string;}
-interface Delivery {pending:number;failed:number;jobs:Job[];calendar?:{lastSuccess:string|null;error:string|null;running:boolean;failures:number};}
+interface Delivery {pending:number;failed:number;jobs:Job[];calendar?:{lastSuccess:string|null;error:string|null;running:boolean;failures:number};lineQuota?:LineQuotaState;}
 export default function DeliveryStatus(){
  const dt = useDashboardText();
  const {language}=useLanguage();
@@ -16,7 +17,7 @@ export default function DeliveryStatus(){
  {retry.error&&<p role="alert" className="text-red-700">{retry.error.message}</p>}{retry.isSuccess&&<p role="status" className="text-emerald-700">{dt("Retry queued. This page updates when the worker finishes.")}</p>}
  {query.isLoading?<p>{dt("Checking delivery…")}</p>:query.error?<p role="alert" className="text-red-700">{query.error.message}</p>:query.data&&<>
  {query.data.calendar&&<div className="border rounded-lg p-4 space-y-2"><div className="flex justify-between gap-3"><strong>Google Calendar</strong><button className="text-cyan-700 underline disabled:opacity-50" disabled={retry.isPending||query.data.calendar.running} onClick={()=>retry.mutate({kind:'calendar'})}>{query.data.calendar.running?dt("Syncing…"):dt("Retry sync")}</button></div><p>{dt("Last successful sync:")} {time(query.data.calendar.lastSuccess)}</p>{query.data.calendar.error&&<p role="alert" className="text-red-700">{query.data.calendar.error}</p>}</div>}
- <h3 className="font-semibold">{dt("LINE notifications")}</h3><p className={query.data.failed?'text-red-700':'text-slate-600'}>{query.data.pending}  {dt("queued ·")} {query.data.failed}  {dt("need attention")}</p>
+ <h3 className="font-semibold">{dt("LINE notifications")}</h3>{query.data.lineQuota&&<LineQuota quota={query.data.lineQuota}/>}<p className={query.data.failed?'text-red-700':'text-slate-600'}>{query.data.pending}  {dt("queued ·")} {query.data.failed}  {dt("need attention")}</p>
  {query.data.jobs.map(j=><article key={j.id} className="border rounded-lg p-4 space-y-2"><div className="flex flex-wrap justify-between gap-3"><strong>{j.name}</strong><button className="text-cyan-700 underline disabled:opacity-50" disabled={retry.isPending||j.running} onClick={()=>{if(j.needsResend&&!window.confirm(dt("LINE’s duplicate-protection window has expired. This sends a new copy and the recipient may receive a duplicate. Resend?")))return;retry.mutate({kind:'line',id:j.id,confirmResend:j.needsResend});}}>{j.running?dt("Sending…"):j.needsResend?dt("Resend…"):dt("Retry")}</button></div><p>{dt(j.status)} · {j.attempts}  {dt("attempts ·")} {time(j.updatedAt)}</p>{j.error&&<p className="text-red-700">{j.error}</p>}{j.needsResend&&<p className="text-amber-700">{dt("Delivery outcome needs review before resending.")}</p>}</article>)}
  </>}
  </section>;
