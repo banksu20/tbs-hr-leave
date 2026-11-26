@@ -109,23 +109,21 @@ export default function Attendance(){
    {state?.eligible&&!officeDay&&<div className={card}>
     <div className="flex items-center justify-between">
      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${open?'bg-emerald-50 text-emerald-700':'bg-slate-100 text-slate-600'}`}>{open?text(`Working since ${clock(open.in)}`,`ทำงานตั้งแต่ ${clock(open.in)}`):text('Not clocked in','ยังไม่ได้ลงเวลา')}</span>
-     <span className="text-xs font-medium text-slate-500">{text(`Goal ${hours(targetMin)} h`,`เป้าหมาย ${hours(targetMin)} ชม.`)}</span>
     </div>
     <div className="mt-3"><Ring value={todayMin} target={targetMin} live={!!open} label={text('Live','กำลังทำงาน')} sub={todayMin>=targetMin?text('Goal reached','ครบเป้าแล้ว'):text(`${hours(targetMin-todayMin)} h to go`,`อีก ${hours(targetMin-todayMin)} ชม.`)}/></div>
     <button type="button" disabled={!!busy} onClick={()=>takePhoto(open?'out':'in')} className={`mt-4 flex w-full items-center justify-center gap-2.5 rounded-2xl py-4 text-lg font-extrabold text-white shadow-lg transition active:scale-[0.98] disabled:opacity-70 ${open?'bg-linear-to-r/srgb from-rose-500 to-rose-600 shadow-rose-200':'bg-linear-to-r/srgb from-emerald-500 to-teal-600 shadow-emerald-200'}`}>
      {busy==='in'||busy==='out'?<Loader2 className="h-5 w-5 animate-spin"/>:open?<LogOut className="h-5 w-5"/>:<LogIn className="h-5 w-5"/>}
      {busy==='in'||busy==='out'?text('Saving…','กำลังบันทึก…'):open?text('Clock out','ลงเวลาออก'):text('Clock in','ลงเวลาเข้า')}
-     {!busy&&<span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-bold"><Camera className="h-3.5 w-3.5"/>{text('Photo','ถ่ายรูป')}</span>}
     </button>
     <input ref={camera} type="file" accept="image/*" capture="user" className="hidden" onChange={e=>punch(e.target.files?.[0])}/>
-    <ol className="mt-4 grid grid-cols-3 gap-2">{steps.map(([k,icon,label],i)=>{const active=stageIndex===i,passed=stageIndex>i;return <li key={k} className={`flex flex-col items-center gap-1 rounded-2xl px-2 py-2.5 text-center transition ${active?'bg-emerald-50 text-emerald-700':passed?'text-emerald-600':'text-slate-400'}`}>
+    {stage&&<ol className="mt-4 grid grid-cols-3 gap-2">{steps.map(([k,icon,label],i)=>{const active=stageIndex===i,passed=stageIndex>i;return <li key={k} className={`flex flex-col items-center gap-1 rounded-2xl px-2 py-2.5 text-center transition ${active?'bg-emerald-50 text-emerald-700':passed?'text-emerald-600':'text-slate-400'}`}>
      <span className={`grid h-8 w-8 place-items-center rounded-full ${active?'bg-emerald-500 text-white':passed?'bg-emerald-100':'bg-slate-100'}`}>{active?<Loader2 className="h-4 w-4 animate-spin"/>:passed?<Check className="h-4 w-4"/>:icon}</span>
      <span className="text-[11px] font-bold">{i+1}. {label}</span>
-    </li>;})}</ol>
-    <p className="mt-3 flex items-start justify-center gap-1.5 text-center text-[11px] leading-snug text-slate-500"><ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0 text-emerald-600"/>{text(`Take a photo of yourself at work. Your photo and location go only to HR and are erased after ${state.settings.locationDays} days.`,`ถ่ายรูปตัวเองขณะทำงาน รูปและตำแหน่งส่งถึง HR เท่านั้น และลบทิ้งหลัง ${state.settings.locationDays} วัน`)}</p>
+    </li>;})}</ol>}
+    <p className="mt-3 flex items-start justify-center gap-1.5 text-center text-[11px] leading-snug text-slate-500"><ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0 text-emerald-600"/>{text('Only HR sees your photo and location.','รูปและตำแหน่งส่งถึง HR เท่านั้น')}</p>
    </div>}
    {state?.eligible&&<div className={card}>
-    <div className="flex items-baseline justify-between"><h2 className="font-bold text-slate-900">{text('This week','สัปดาห์นี้')}</h2><span className="text-xs font-medium text-slate-500">{text(`Goal ${hours(targetMin)} h a day`,`เป้าหมายวันละ ${hours(targetMin)} ชม.`)}</span></div>
+    <div className="flex items-baseline justify-between"><h2 className="font-bold text-slate-900">{text('This week','สัปดาห์นี้')}</h2></div>
     <div className="mt-4 grid grid-cols-7 gap-2">
      {week.map((d,i)=><div key={d.date} className="flex flex-col items-center gap-1">
       <span className="h-4 text-[10px] font-semibold tabular-nums text-slate-500">{d.min?hours(d.min):''}</span>
@@ -145,7 +143,7 @@ export default function Attendance(){
      <div className="min-w-0 flex-1">
       <p className="flex items-center gap-1.5 text-sm font-semibold tabular-nums text-slate-900">{clock(s.in)} <span className="text-slate-300">→</span> {s.missedOut?<span className="text-rose-600">{text('no clock-out','ไม่ได้ลงเวลาออก')}</span>:clock(s.out)}</p>
       <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
-       {(s.inPhoto||s.outPhoto)&&<span className="inline-flex items-center gap-0.5"><Camera className="h-3 w-3"/>{text('Photo','รูป')}</span>}
+       {(s.inPhoto||s.outPhoto)&&<span className="inline-flex items-center gap-0.5"><Camera className="h-3 w-3"/></span>}
        {s.edited&&<span className="rounded bg-slate-100 px-1.5 py-0.5 font-semibold text-slate-600">{text('fixed by HR','HR แก้ไขแล้ว')}</span>}
        {s.overtimeMin>0&&<span className="rounded bg-amber-50 px-1.5 py-0.5 font-semibold text-amber-700">+{hours(s.overtimeMin)} OT</span>}
       </p>
@@ -168,7 +166,6 @@ export default function Attendance(){
    <div role="dialog" aria-modal="true" aria-label={draft.shiftId?text('Fix this shift','แก้ไขเวลากะนี้'):text('Add a missing day','เพิ่มวันที่ลืมลงเวลา')} onClick={e=>e.stopPropagation()} className="max-h-[90dvh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:max-w-md sm:rounded-3xl">
     <span className="mx-auto mb-3 block h-1.5 w-10 rounded-full bg-slate-200 sm:hidden"/>
     <div className="flex items-center justify-between"><p className="text-lg font-extrabold text-slate-900">{draft.shiftId?text('Fix this shift','แก้ไขเวลากะนี้'):text('Add a missing day','เพิ่มวันที่ลืมลงเวลา')}</p><button type="button" aria-label={text('Close','ปิด')} onClick={()=>setDraft(null)} className="rounded-full bg-slate-100 p-1.5 text-slate-500"><X className="h-4 w-4"/></button></div>
-    <p className="mt-1 text-sm text-slate-500">{text('HR checks it before your hours change.','HR จะตรวจก่อนเปลี่ยนชั่วโมงทำงาน')}</p>
     <label className="mt-4 block text-sm font-semibold text-slate-700">{text('Date','วันที่')}<input type="date" value={draft.date} min={minDate} max={state?.today} disabled={!!draft.shiftId} onChange={e=>setDraft({...draft,date:e.target.value})} className={field}/></label>
     <div className="mt-3 grid grid-cols-2 gap-3">
      <label className="block text-sm font-semibold text-slate-700">{text('Clock in','เวลาเข้า')}<input type="time" value={draft.in} onChange={e=>setDraft({...draft,in:e.target.value})} className={field}/></label>
