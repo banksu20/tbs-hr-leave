@@ -38,11 +38,11 @@ test('clock in and out records location and counts hours with a 1 hour break',as
  let st=await emp('attendance-in',{accountId:P,...here});
  assert.ok(st.open);assert.equal(Number(st.open.inLat),here.lat);
  assert.equal((await emp('attendance-in',{accountId:P,...here})).statusCode,409);
- await q(`UPDATE tbs_attendance_shifts SET in_at=${hoursAgo(8.5)} WHERE user_id=$1`,[P]);
+ await q(`UPDATE tbs_attendance_shifts SET in_at=${hoursAgo(9.5)} WHERE user_id=$1`,[P]);
  st=await emp('attendance-out',{accountId:P,...here});
  assert.equal(st.open,null);
  const s=st.shifts[0];
- assert.ok(s.workedMin>=449&&s.workedMin<=451);
+ assert.ok(s.workedMin>=509&&s.workedMin<=511);
  assert.ok(s.overtimeMin>=29&&s.overtimeMin<=31);
  assert.equal((await emp('attendance-out',{accountId:P,...here})).statusCode,409);
  assert.equal((await q("SELECT tbs_attendance_worked(now()-interval '4 hours',now()) m"))[0].m,240);
@@ -123,7 +123,7 @@ test('full-time WFH staff clock in only on their WFH days with an 8 hour target'
  st=await emp('attendance-out',{accountId:X,...here});
  assert.ok(st.shifts[0].workedMin>=509&&st.shifts[0].workedMin<=511);
  assert.ok(st.shifts[0].overtimeMin>=29&&st.shifts[0].overtimeMin<=31);
- assert.equal((await emp('attendance-state',{accountId:P})).settings.workMinutes,420);
+ assert.equal((await emp('attendance-state',{accountId:P})).settings.workMinutes,480);
  o=await dash('attendance-person-save',{userId:X,member:true,kind:'part-time'});
  me=o.people.find(p=>p.id===X);assert.equal(me.kind,'part-time');assert.deepEqual(me.wfhDays,[]);
  assert.equal((await emp('attendance-state',{accountId:X})).workToday,true);

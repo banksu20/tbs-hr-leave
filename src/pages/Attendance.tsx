@@ -3,7 +3,7 @@ import {useNavigate} from 'react-router-dom';
 import {AlertTriangle,ArrowLeft,Building2,Camera,Check,CheckCircle2,Clock3,Home,Loader2,LogIn,LogOut,MapPin,PencilLine,Plus,ShieldCheck,X} from 'lucide-react';
 import {useLanguage} from '@/hooks/useLanguage';
 import {attendanceAction,AttendanceError,clock,dayLabel,hours,loadAttendance,weekdays,type AttendanceState,type Fix,type Shift} from '@/lib/attendance';
-import {currentPosition,prepareFile} from '@/lib/travel';
+import {currentPosition,prepareFile,type Fix as Spot} from '@/lib/travel';
 
 type Draft={shiftId?:number;date:string;in:string;out:string;reason:string};
 type Stage='photo'|'location'|'saving';
@@ -42,13 +42,24 @@ export default function Attendance(){
   finally{setBusy('');setStage(null);}
  };
  const camera=useRef<HTMLInputElement>(null),[action,setAction]=useState<'in'|'out'>('in');
+ const spot=useRef<{fix:Spot;at:number}|null>(null);
+ const ready=!!state?.eligible&&state.workToday!==false;
+ useEffect(()=>{
+  if(!ready||typeof navigator.geolocation?.watchPosition!=='function')return;
+  const id=navigator.geolocation.watchPosition(p=>{spot.current={fix:{lat:p.coords.latitude,lng:p.coords.longitude,accuracy:Math.round(p.coords.accuracy)},at:Date.now()};},()=>undefined,{enableHighAccuracy:true,maximumAge:60000});
+  return()=>navigator.geolocation.clearWatch(id);
+ },[ready]);
+ const locate=():Promise<Spot>=>{
+  const s=spot.current;if(s&&Date.now()-s.at<120000)return Promise.resolve(s.fix);
+  return Promise.race([currentPosition(),new Promise<Spot>((resolve,reject)=>setTimeout(()=>spot.current?resolve(spot.current.fix):reject(new Error(text('Location is taking too long. Turn on Location for LINE in your phone settings, then try again.','หาตำแหน่งนานเกินไป เปิดตำแหน่งให้ LINE ในการตั้งค่าโทรศัพท์ แล้วลองอีกครั้ง'))),15000))]);
+ };
  const takePhoto=(a:'in'|'out')=>{setAction(a);setError('');setDone('');camera.current?.click();};
  const punch=(file?:File)=>{
   if(!file)return;
   void run(action,async()=>{
    try{
     setStage('photo');const p=await prepareFile(file);if(p.preview)URL.revokeObjectURL(p.preview);
-    setStage('location');const f=await currentPosition();
+    setStage('location');const f=await locate();
     setStage('saving');const s=await attendanceAction(action,{lat:f.lat,lng:f.lng,accuracy:f.accuracy,photo:p.content});
     setDone(action);return s;
    }finally{if(camera.current)camera.current.value='';}
@@ -80,7 +91,7 @@ export default function Attendance(){
   <header className="relative overflow-hidden rounded-b-[2rem] bg-linear-to-br/srgb from-emerald-500 via-teal-600 to-cyan-700 px-5 pt-6 pb-20 text-white">
    <span className="pointer-events-none absolute -top-20 -right-16 h-56 w-56 rounded-full bg-white/10"/><span className="pointer-events-none absolute bottom-0 -left-10 h-32 w-32 rounded-full bg-white/5"/>
    <div className="relative md:mx-auto md:max-w-2xl">
-    <div className="mb-5 flex items-center justify-between gap-2">
+    <div className="mb-5 flex items-center gap-2 pr-16">
      <button type="button" onClick={()=>navigate('/')} className="inline-flex items-center gap-1.5 rounded-full bg-white/15 py-1.5 pr-3.5 pl-2.5 text-sm font-semibold backdrop-blur-sm"><ArrowLeft className="h-4 w-4"/>{text('Back','กลับ')}</button>
      {state?.eligible&&<span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold backdrop-blur-sm">{wfh?<Home className="h-3.5 w-3.5"/>:<Clock3 className="h-3.5 w-3.5"/>}{wfh?text('Work from home','ทำงานที่บ้าน'):text('Part-time','พาร์ทไทม์')}</span>}
     </div>
