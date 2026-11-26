@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useState} from 'react';
-import {AlertTriangle,Camera,CheckCircle2,ChevronDown,Clock3,Home,Loader2,MapPin,PencilLine,Power,ShieldCheck,UserMinus,UserPlus,Users,X,XCircle} from 'lucide-react';
+import {AlertTriangle,Camera,CheckCircle2,ChevronDown,Clock3,Home,Loader2,MapPin,PencilLine,Power,Search,ShieldCheck,UserMinus,UserPlus,Users,X,XCircle} from 'lucide-react';
 import {useDashboardText} from '@/hooks/useDashboardText';
 import {useLanguage} from '@/hooks/useLanguage';
 import {clock,dayLabel,hours,mapLink,weekdays,type AttendanceKind} from '@/lib/attendance';
@@ -19,13 +19,14 @@ function Thumb({src}:{src:string}){const [bad,setBad]=useState(false);return bad
 export default function AttendanceAdmin(){
  const dt=useDashboardText();
  const {language}=useLanguage();const th=language==='th';
- const [data,setData]=useState<AttendanceOverview|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState(''),[edit,setEdit]=useState<Edit|null>(null),[open,setOpen]=useState<string|null>(null),[photo,setPhoto]=useState<Photo|null>(null);
+ const [data,setData]=useState<AttendanceOverview|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState(''),[edit,setEdit]=useState<Edit|null>(null),[open,setOpen]=useState<string|null>(null),[photo,setPhoto]=useState<Photo|null>(null),[query,setQuery]=useState('');
  const load=useCallback((f:string,t:string)=>loadAttendanceOverview(f,t).then(d=>{setData(d);setFrom(d.from);setTo(d.to);}).catch(e=>setError((e as Error).message)),[]);
  useEffect(()=>{void load('','');},[load]);
  useEffect(()=>{if(!photo&&!edit)return;const k=(e:KeyboardEvent)=>{if(e.key==='Escape'){setPhoto(null);setEdit(null);}};window.addEventListener('keydown',k);return()=>window.removeEventListener('keydown',k);},[photo,edit]);
  const act=async(key:string,fn:()=>Promise<AttendanceOverview>)=>{setBusy(key);setError('');try{const d=await fn();setData(d);return true;}catch(e){setError((e as Error).message);return false;}finally{setBusy('');}};
  const members=useMemo(()=>data?.people.filter(p=>p.member)??[],[data]);
  const others=useMemo(()=>data?.people.filter(p=>!p.member)??[],[data]);
+ const matches=useMemo(()=>{const q=query.trim().toLowerCase();return q?others.filter(p=>`${p.name} ${p.department??''}`.toLowerCase().includes(q)):others;},[others,query]);
  const target=useCallback((p:AttendancePerson)=>p.kind==='wfh'?data?.settings.wfhWorkMinutes??480:data?.settings.workMinutes??420,[data]);
  const totals=useMemo(()=>members.map(p=>{const s=data?.shifts.filter(x=>x.userId===p.id)??[];const days=new Set(s.map(x=>x.date)).size;return {...p,shifts:s,worked:s.reduce((a,x)=>a+x.workedMin,0),overtime:s.reduce((a,x)=>a+x.overtimeMin,0),missed:s.filter(x=>x.missedOut).length,days,goal:days*target(p)};}),[members,data,target]);
  const working=useMemo(()=>(data?.shifts??[]).filter(x=>!x.out&&!x.missedOut),[data]);
@@ -83,7 +84,7 @@ export default function AttendanceAdmin(){
    <section className={panel}>
     <div className="flex items-center justify-between gap-2">
      <h2 className="flex items-center gap-2 font-bold text-slate-900"><Users className="h-4 w-4 text-emerald-600"/>{dt('People who clock in ({0})',[members.length])}</h2>
-     <button type="button" disabled={!!busy} onClick={()=>setEdit({id:'',kind:'part-time',days:[]})} className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"><UserPlus className="h-3.5 w-3.5"/>{dt('Add a person')}</button>
+     <button type="button" disabled={!!busy} onClick={()=>{setQuery('');setEdit({id:'',kind:'part-time',days:[]});}} className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"><UserPlus className="h-3.5 w-3.5"/>{dt('Add a person')}</button>
     </div>
     {members.length===0&&<p className="mt-3 rounded-2xl border border-dashed border-slate-200 p-4 text-center text-sm text-slate-500">{dt('Nobody yet.')}</p>}
     <ul className="mt-3 divide-y divide-slate-100">{members.map(p=><li key={p.id} className="group flex items-center gap-3 py-2.5">
@@ -128,7 +129,10 @@ export default function AttendanceAdmin(){
   {edit&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" onClick={()=>setEdit(null)}>
    <div role="dialog" aria-modal="true" aria-label={members.some(p=>p.id===edit.id)?dt('Edit'):dt('Add a person')} onClick={e=>e.stopPropagation()} className="w-full max-w-md space-y-4 rounded-3xl bg-white p-6 shadow-2xl">
     <div className="flex items-center justify-between"><h3 className="text-lg font-extrabold text-slate-900">{members.some(p=>p.id===edit.id)?members.find(p=>p.id===edit.id)!.name:dt('Add a person')}</h3><button type="button" aria-label={dt('Cancel')} onClick={()=>setEdit(null)} className="rounded-full bg-slate-100 p-1.5 text-slate-500"><X className="h-4 w-4"/></button></div>
-    {!members.some(p=>p.id===edit.id)&&<label className="block text-sm font-semibold text-slate-700">{dt('Person')}<select value={edit.id} onChange={e=>setEdit({...edit,id:e.target.value})} className={field}><option value="">{dt('Choose a person…')}</option>{others.map(p=><option key={p.id} value={p.id}>{p.name}{p.department?` · ${p.department}`:''}</option>)}</select></label>}
+    {!members.some(p=>p.id===edit.id)&&<div><p className="text-sm font-semibold text-slate-700">{dt('Person')}</p>
+     <div className="relative mt-1.5"><Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"/><input type="search" autoFocus value={query} onChange={e=>setQuery(e.target.value)} placeholder={dt('Search by name or nickname')} aria-label={dt('Search by name or nickname')} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-3 pl-9 text-sm focus:border-emerald-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-200"/></div>
+     <ul role="listbox" aria-label={dt('Person')} className="mt-2 max-h-56 space-y-1 overflow-y-auto">{matches.length===0&&<li className="p-3 text-center text-sm text-slate-500">{dt('No matching staff')}</li>}{matches.map(p=><li key={p.id}><button type="button" role="option" aria-selected={edit.id===p.id} onClick={()=>setEdit({...edit,id:p.id})} className={`flex w-full items-center gap-3 rounded-xl p-2 text-left transition ${edit.id===p.id?'bg-emerald-50 ring-2 ring-emerald-500':'hover:bg-slate-50'}`}><Avatar id={p.id} name={p.name} size="h-8 w-8 text-xs"/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-slate-900">{p.name}</span>{p.department&&<span className="block text-xs text-slate-500">{p.department}</span>}</span>{edit.id===p.id&&<CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600"/>}</button></li>)}</ul>
+    </div>}
     <div><p className="text-sm font-semibold text-slate-700">{dt('Type')}</p><div className="mt-1.5 grid grid-cols-2 gap-2">{(['part-time','wfh'] as const).map(k=><button key={k} type="button" aria-pressed={edit.kind===k} onClick={()=>setEdit({...edit,kind:k})} className={`flex flex-col items-center gap-1 rounded-2xl p-3 text-sm font-bold ring-1 transition ${edit.kind===k?'bg-emerald-50 text-emerald-800 ring-2 ring-emerald-500':'bg-white text-slate-600 ring-slate-200 hover:ring-slate-300'}`}>{k==='wfh'?<Home className="h-5 w-5"/>:<Clock3 className="h-5 w-5"/>}{k==='wfh'?dt('Full-time, works from home'):dt('Part-time')}</button>)}</div></div>
     {edit.kind==='wfh'&&<div><p className="text-sm font-semibold text-slate-700">{dt('Work-from-home days')}</p><div className="mt-1.5 grid grid-cols-7 gap-1">{[1,2,3,4,5,6,7].map(d=><button key={d} type="button" aria-pressed={edit.days.includes(d)} onClick={()=>setEdit({...edit,days:edit.days.includes(d)?edit.days.filter(x=>x!==d):[...edit.days,d].sort()})} className={`h-10 rounded-xl text-xs font-bold ring-1 transition ${edit.days.includes(d)?'bg-emerald-600 text-white ring-emerald-600':'bg-white text-slate-600 ring-slate-200'}`}>{weekdays([d],th)}</button>)}</div></div>}
     <button type="button" disabled={!edit.id||(edit.kind==='wfh'&&!edit.days.length)||!!busy} onClick={()=>void saveEdit()} className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 py-3 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">{busy==='save'?<Loader2 className="h-4 w-4 animate-spin"/>:<UserPlus className="h-4 w-4"/>}{members.some(p=>p.id===edit.id)?dt('Save'):dt('Add')}</button>
