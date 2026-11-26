@@ -929,6 +929,8 @@ export const dashboardThai: Record<string, string> = {
  "Work-from-home days": "วันทำงานที่บ้าน",
  "They can clock in only on these days.": "ลงเวลาได้เฉพาะวันเหล่านี้",
  "Add a person": "เพิ่มคน",
+ "Nobody yet.": "ยังไม่มี",
+ "Part-time {0} h · Work from home {1} h · {2} min break · Photos kept {3} days": "พาร์ทไทม์ {0} ชม. · ทำงานที่บ้าน {1} ชม. · พัก {2} นาที · เก็บรูป {3} วัน",
  "Working now": "กำลังทำงาน",
  "Hours today": "ชั่วโมงวันนี้",
  "Fixes to check": "คำขอแก้เวลารอตรวจ",
